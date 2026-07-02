@@ -19,6 +19,7 @@ void main() {
     await appState.load();
 
     await tester.pumpWidget(AshitaMotsumonoApp(appState: appState));
+    await tester.pumpAndSettle();
 
     expect(find.text('あした持つもの'), findsOneWidget);
     expect(find.text('まず子どもを登録'), findsOneWidget);

@@ -167,6 +167,10 @@ void main() {
       expect(ExtractionService().normalize('水筒\n\n\n持参'), '水筒\n\n持参');
     });
 
+    test('converts full-width spaces to half-width', () {
+      expect(ExtractionService().normalize('水筒　持参'), '水筒 持参');
+    });
+
     test('trims whitespace', () {
       expect(ExtractionService().normalize('  水筒  '), '水筒');
     });
