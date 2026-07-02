@@ -71,8 +71,9 @@ class ExtractionService {
     return sb
         .toString()
         .replaceAll('／', '/')
-        .replaceAll('ー', '-')
+        .replaceAll('，', ',')
         .replaceAll('￥', '¥')
+        .replaceAll('　', ' ')
         .replaceAll(RegExp(r'[ \t]+'), ' ')
         .replaceAll(RegExp(r'\n{3,}'), '\n\n')
         .trim();
