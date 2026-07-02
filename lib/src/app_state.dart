@@ -175,7 +175,8 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> toggleTodoDone(String id) async {
-    final todo = _todos.firstWhere((e) => e.id == id);
+    final todo = _todos.where((e) => e.id == id).firstOrNull;
+    if (todo == null) return;
     final updated = todo.copyWith(
       status: todo.status == TodoStatus.done ? TodoStatus.active : TodoStatus.done,
       updatedAt: DateTime.now(),
@@ -191,7 +192,8 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> toggleItem(String todoId, String itemId) async {
-    final todo = _todos.firstWhere((e) => e.id == todoId);
+    final todo = _todos.where((e) => e.id == todoId).firstOrNull;
+    if (todo == null) return;
     final items = todo.items
         .map((item) => item.id == itemId ? item.copyWith(isChecked: !item.isChecked) : item)
         .toList();

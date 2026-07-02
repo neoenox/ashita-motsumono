@@ -1,6 +1,6 @@
 // lib/src/screens/add_child_screen.dart
 // 子どもを追加・削除する画面。名前入力と登録済み一覧表示。
-// 削除は確認なしで即時実行（MVPでは簡略化）。
+// 削除は確認ダイアログで実行。関連するTodoの子ども指定はクリアされる。
 // 関連: screens/home_screen.dart, app_state.dart
 
 import 'package:flutter/material.dart';
@@ -58,10 +58,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
               (child) => ListTile(
                 leading: CircleAvatar(backgroundColor: Color(child.colorValue)),
                 title: Text(child.name),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () => context.read<AppState>().deleteChild(child.id),
-                ),
+trailing: IconButton(
+                   icon: const Icon(Icons.delete_outline),
+                   onPressed: () => _confirmDelete(context, child.id, child.name),
+                 ),
               ),
             ),
         ],
@@ -76,6 +76,23 @@ class _AddChildScreenState extends State<AddChildScreen> {
     _controller.clear();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('追加しました')));
+    }
+  }
+
+  Future<void> _confirmDelete(BuildContext context, String id, String name) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('削除確認'),
+        content: Text('$name を削除しますか？\n関連するTodoは対象の子ども指定がクリアされます。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('削除')),
+        ],
+      ),
+    );
+    if (result == true && mounted) {
+      await context.read<AppState>().deleteChild(id);
     }
   }
 }

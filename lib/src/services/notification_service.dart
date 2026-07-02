@@ -25,7 +25,7 @@ class NotificationService {
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const ios = DarwinInitializationSettings();
     const settings = InitializationSettings(android: android, iOS: ios);
-    await _plugin.initialize(settings);
+    await _plugin.initialize(settings: settings);
     await _plugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
@@ -63,8 +63,8 @@ class NotificationService {
 
   Future<void> cancelTodo(String todoId) async {
     await initialize();
-    await _plugin.cancel(_notificationId(todoId, 1));
-    await _plugin.cancel(_notificationId(todoId, 2));
+    await _plugin.cancel(id: _notificationId(todoId, 1));
+    await _plugin.cancel(id: _notificationId(todoId, 2));
   }
 
   Future<void> _scheduleIfFuture(int id, DateTime when, String title, String body) async {
@@ -80,11 +80,11 @@ class NotificationService {
       iOS: DarwinNotificationDetails(threadIdentifier: 'preparation_reminders'),
     );
     await _plugin.zonedSchedule(
-      id,
-      title,
-      body,
-      tz.TZDateTime.from(when, tz.local),
-      details,
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: tz.TZDateTime.from(when, tz.local),
+      notificationDetails: details,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
     );
   }
