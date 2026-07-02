@@ -135,6 +135,11 @@ void main() {
       expect(draft.items, containsAll(['水筒', '上履き', '体操着', 'マスク']));
     });
 
+    test('keeps long vowel marks in item names', () {
+      final draft = ExtractionService().extract('プールバッグとレジャーシートを持参', now: now);
+      expect(draft.items, containsAll(['プールバッグ', 'レジャーシート']));
+    });
+
     test('returns empty items when nothing matches', () {
       final draft = ExtractionService().extract('キャンプファイヤー、花火', now: now);
       expect(draft.items, isEmpty);
@@ -146,8 +151,12 @@ void main() {
       expect(ExtractionService().normalize('７月１０日'), '7月10日');
     });
 
-    test('normalizes slashes and yen signs', () {
+    test('normalizes slashes, yen signs and full-width commas', () {
       expect(ExtractionService().normalize('￥１，０００'), '¥1,000');
+    });
+
+    test('does not replace Japanese long vowel marks', () {
+      expect(ExtractionService().normalize('プールバッグ'), 'プールバッグ');
     });
 
     test('collapses multiple spaces', () {
