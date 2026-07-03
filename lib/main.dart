@@ -14,7 +14,6 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final store = await LocalStore.create();
   final notifications = NotificationService();
-  await notifications.initialize();
   final appState = AppState(store: store, notifications: notifications);
   await appState.load();
   runApp(AshitaMotsumonoApp(appState: appState));
