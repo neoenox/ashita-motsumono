@@ -78,6 +78,19 @@ flutter run
 flutter test
 ```
 
+## リリースAPK生成
+
+GitHub Actions の `Release APK` ワークフローは、`v*` 形式のタグをpushしたときにAPKを生成します。
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+ワークフロー内では Android 雛形を生成し、`tool/configure_android_release.sh` でAndroid向けのOCR・通知・desugaring設定を反映してから `flutter build apk --release` を実行します。
+
+生成されたAPKは、Actionsのartifact `ashita-motsumono-<tag>-release-apk` からダウンロードできます。
+
 ## まず確認する導線
 
 1. 子どもを追加
