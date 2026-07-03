@@ -5,7 +5,6 @@
 
 import 'dart:io' show File;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
@@ -234,13 +233,10 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                 children: [
                   Text('元画像', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
-                  if (kIsWeb)
-                    const Text('（Web版では画像表示は利用できません）')
-                  else
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(File(document!.localImagePath!)),
-                    ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(File(document!.localImagePath!)),
+                  ),
                 ],
               ),
             ),
