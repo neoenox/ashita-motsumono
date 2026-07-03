@@ -9,14 +9,45 @@
 `android/app/build.gradle` または `android/app/build.gradle.kts` で以下を確認します。
 
 ```gradle
-minSdkVersion 24
+minSdkVersion 21
 targetSdkVersion 35
 compileSdkVersion 35
 ```
 
-ML Kit Text RecognitionのFlutterプラグインはAndroidで minSdkVersion 24、target/compile SDK 35を案内しています。
+ML Kit Text Recognition は Android で `minSdkVersion 21`、`targetSdkVersion 35`、`compileSdkVersion 35` を案内しています。
+`flutter_local_notifications` は `compileSdk` 35以上を要求します。
 
-### 2. 日本語OCR言語パック
+### 2. flutter_local_notifications の desugaring
+
+スケジュール通知を使うため、Android 側で core library desugaring を有効化します。
+
+Groovy の例:
+
+```gradle
+android {
+    defaultConfig {
+        multiDexEnabled true
+    }
+
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
+}
+
+dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+}
+```
+
+Kotlin DSL の場合も同等の設定を入れてください。
+
+### 3. 日本語OCR言語パック
 
 `android/app/build.gradle` の dependencies に追加します。
 
@@ -26,16 +57,13 @@ dependencies {
 }
 ```
 
-### 3. 権限
+### 4. 権限と通知設定
 
-`android/app/src/main/AndroidManifest.xml` に必要に応じて追加します。
+`AndroidManifest.xml` にカメラ権限と Android 13以降の通知権限を追加します。
 
-```xml
-<uses-permission android:name="android.permission.CAMERA" />
-<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-```
+スケジュール通知を端末再起動後にも維持したい場合は、`flutter_local_notifications` の公式 README の AndroidManifest 設定も追加してください。このMVPは `AndroidScheduleMode.inexactAllowWhileIdle` を使っているため、正確なアラーム権限は追加しません。
 
-Android 13以降の通知は実行時許可が必要です。MVPコードでは `flutter_local_notifications` 経由で通知許可を要求しています。
+Android 13以降の通知は実行時許可が必要です。MVPコードでは、初回説明ダイアログでユーザーが「通知を有効にする」を押した後に `flutter_local_notifications` 経由で通知許可を要求します。
 
 ## iOS
 
@@ -46,6 +74,8 @@ Android 13以降の通知は実行時許可が必要です。MVPコードでは 
 ```ruby
 platform :ios, '15.5'
 ```
+
+ML Kit は32-bitアーキテクチャをサポートしないため、必要に応じて `armv7` を除外します。
 
 ### 2. 日本語OCR言語パック
 
@@ -77,7 +107,10 @@ pod 'GoogleMLKit/TextRecognitionJapanese', '~> 9.0.0'
 - 端末側で通知許可がOFF
 - Android 13以降の通知権限未許可
 - Androidの省電力制限
+- Xiaomi / Huawei など、バックグラウンド動作を強く制限する端末設定
 - 期限が過去日時
+- AndroidManifest のスケジュール通知設定不足
+- desugaring 設定不足
 
 ### `flutter create` 後にlibが上書きされるか
 
