@@ -6,7 +6,6 @@
 
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -55,35 +54,33 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (!kIsWeb) ...[
-            Text('画像・スクショから登録', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _busy ? null : () => _pickAndOcr(ImageSource.camera),
-                    icon: const Icon(Icons.photo_camera),
-                    label: const Text('写真を撮る'),
-                  ),
+          Text('画像・スクショから登録', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _busy ? null : () => _pickAndOcr(ImageSource.camera),
+                  icon: const Icon(Icons.photo_camera),
+                  label: const Text('写真を撮る'),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _busy ? null : () => _pickAndOcr(ImageSource.gallery),
-                    icon: const Icon(Icons.photo_library),
-                    label: const Text('画像を選ぶ'),
-                  ),
-                ),
-              ],
-            ),
-            if (_busy)
-              const Padding(
-                padding: EdgeInsets.only(top: 12),
-                child: LinearProgressIndicator(),
               ),
-            const SizedBox(height: 24),
-          ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _busy ? null : () => _pickAndOcr(ImageSource.gallery),
+                  icon: const Icon(Icons.photo_library),
+                  label: const Text('画像を選ぶ'),
+                ),
+              ),
+            ],
+          ),
+          if (_busy)
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: LinearProgressIndicator(),
+            ),
+          const SizedBox(height: 24),
           Text('OCRテキストを貼り付けて抽出', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           TextField(
@@ -180,9 +177,8 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
       lastDate: DateTime(now.year + 3),
       initialDate: _dueDate ?? now,
     );
-    if (result != null) {
-      setState(() => _dueDate = result);
-    }
+    if (!mounted || result == null) return;
+    setState(() => _dueDate = result);
   }
 
   Future<void> _saveManual() async {
@@ -191,6 +187,11 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('タイトルを入力してください')));
       return;
     }
+    final parsedAmount = _parseAmountOrShowError(_amountController.text);
+    if (!parsedAmount.valid) return;
+
+    final appState = context.read<AppState>();
+    final navigator = Navigator.of(context);
     final items = _itemsController.text
         .split(RegExp(r'[,、\n]'))
         .map((e) => e.trim())
@@ -200,21 +201,35 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
       title: title,
       category: _category,
       dueDate: _dueDate,
-      amount: int.tryParse(_amountController.text.replaceAll(',', '').trim()),
+      amount: parsedAmount.amount,
       items: items,
       note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
     );
-    await context.read<AppState>().addTodoFromDraft(draft: draft, childId: _childId);
-    if (mounted) Navigator.of(context).pop();
+    await appState.addTodoFromDraft(draft: draft, childId: _childId);
+    if (!mounted) return;
+    navigator.pop();
+  }
+
+  ({bool valid, int? amount}) _parseAmountOrShowError(String value) {
+    final amountText = value.replaceAll(',', '').trim();
+    if (amountText.isEmpty) return (valid: true, amount: null);
+    final amount = int.tryParse(amountText);
+    if (amount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('金額は数字で入力してください')));
+      return (valid: false, amount: null);
+    }
+    return (valid: true, amount: amount);
   }
 
   Future<void> _extractFromText(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
+    final appState = context.read<AppState>();
+    final navigator = Navigator.of(context);
     final draft = ExtractionService().extract(trimmed);
-    final document = await context.read<AppState>().addDocument(sourceType: 'text', ocrText: trimmed);
+    final document = await appState.addDocument(sourceType: 'text', ocrText: trimmed);
     if (!mounted) return;
-    await Navigator.of(context).pushReplacement(
+    await navigator.pushReplacement(
       MaterialPageRoute(
         builder: (_) => ReviewExtractionScreen(draft: draft, documentId: document.id),
       ),
@@ -222,16 +237,10 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
   }
 
   Future<void> _pickAndOcr(ImageSource source) async {
-    if (kIsWeb) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Web版では画像OCRが使えません。テキストを貼り付けてください。')),
-        );
-      }
-      return;
-    }
     setState(() => _busy = true);
     try {
+      final appState = context.read<AppState>();
+      final navigator = Navigator.of(context);
       final picker = ImagePicker();
       final picked = await picker.pickImage(source: source, imageQuality: 92);
       if (picked == null) return;
@@ -245,14 +254,14 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
         await ImageFileService.deleteIfExists(imageFile.path);
         return;
       }
-      final document = await context.read<AppState>().addDocument(
-            sourceType: source == ImageSource.camera ? 'camera' : 'gallery',
-            localImagePath: imageFile.path,
-            ocrText: ocrText,
-          );
+      final document = await appState.addDocument(
+        sourceType: source == ImageSource.camera ? 'camera' : 'gallery',
+        localImagePath: imageFile.path,
+        ocrText: ocrText,
+      );
       final draft = ExtractionService().extract(ocrText);
       if (!mounted) return;
-      await Navigator.of(context).pushReplacement(
+      await navigator.pushReplacement(
         MaterialPageRoute(
           builder: (_) => ReviewExtractionScreen(draft: draft, documentId: document.id),
         ),
