@@ -37,4 +37,12 @@ class ImageFileService {
       return dest;
     }
   }
+
+  static Future<void> deleteIfExists(String path) async {
+    if (kIsWeb || path.isEmpty) return;
+    final file = File(path);
+    if (await file.exists()) {
+      await file.delete();
+    }
+  }
 }
