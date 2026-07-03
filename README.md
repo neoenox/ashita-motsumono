@@ -27,6 +27,18 @@
 - P2Pなし
 - Cloudflare Workers + D1同期はv0.2以降
 
+## 必要環境
+
+`pubspec.lock` の解決結果に合わせ、Dart SDK は 3.12.0 以上を前提にしています。
+`flutter_local_notifications 22.x` は Flutter SDK 3.38.1 以上を要求するため、Flutter は安定版の新しめのバージョンを使ってください。
+
+```bash
+flutter --version
+flutter pub get
+flutter analyze
+flutter test
+```
+
 ## このZIPについて
 
 この実行環境にはFlutter SDKが入っていなかったため、`flutter build` / `flutter test` は未実行です。  
@@ -45,7 +57,7 @@ bash tool/create_platforms.sh
 flutter pub get
 ```
 
-その後、`docs/NATIVE_SETUP.md` に沿ってAndroid/iOSのOCR言語パックと権限を追加してください。
+その後、`docs/NATIVE_SETUP.md` に沿ってAndroid/iOSのOCR言語パック、通知、権限を追加してください。
 
 ## 実行
 
