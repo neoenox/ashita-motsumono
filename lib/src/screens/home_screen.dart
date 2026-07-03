@@ -101,14 +101,45 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _exportData(AppState state) async {
-    final messenger = ScaffoldMessenger.of(context);
+  Future<void> _exportData(AppState state) async {
+    final shouldExport = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('データをエクスポート'),
+        content: const Text(
+          '子ども名、Todo、OCR全文、端末内画像パスを含むJSONをクリップボードにコピーします。'
+          '他のアプリに貼り付けると個人情報が含まれる可能性があります。',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('コピーする')),
+        ],
+      ),
+    );
+    if (!mounted || shouldExport != true) return;
+
     final json = const JsonEncoder.withIndent('  ').convert(
       AppSnapshot(children: state.children, todos: state.todos, documents: state.documents).toJson(),
     );
     await Clipboard.setData(ClipboardData(text: json));
-    messenger.showSnackBar(
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('データをクリップボードにコピーしました')),
+    );
+  }
+
+  Future<void> _copyCorruptBackup(AppState state) async {
+    final backup = state.loadCorruptBackup();
+    if (backup == null || backup.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('退避データが見つかりませんでした')),
+      );
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: backup));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('退避データをクリップボードにコピーしました')),
     );
   }
 
@@ -151,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == 'export') _exportData(state);
+              if (value == 'export') unawaited(_exportData(state));
             },
             itemBuilder: (_) => [
               const PopupMenuItem(
@@ -201,6 +232,10 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
               children: [
+                if (state.lastLoadHadCorruptData) ...[
+                  _CorruptDataCard(onCopy: () => unawaited(_copyCorruptBackup(state))),
+                  const SizedBox(height: 12),
+                ],
                 if (state.children.isEmpty) const _FirstRunCard(),
                 if (state.children.isNotEmpty && allFiltered && _searchQuery.isEmpty && state.todos.isEmpty)
                   _EmptyState(),
@@ -226,6 +261,36 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         icon: const Icon(Icons.add),
         label: const Text('追加'),
+      ),
+    );
+  }
+}
+
+class _CorruptDataCard extends StatelessWidget {
+  const _CorruptDataCard({required this.onCopy});
+
+  final VoidCallback onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Theme.of(context).colorScheme.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('保存データの読み込みに失敗しました', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            const Text('破損していた保存データは退避されています。復旧確認用にコピーできます。'),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onCopy,
+              icon: const Icon(Icons.copy),
+              label: const Text('退避データをコピー'),
+            ),
+          ],
+        ),
       ),
     );
   }
