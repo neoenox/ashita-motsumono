@@ -152,14 +152,15 @@ class ExtractionService {
   }
 
   List<String> _extractItems(String text) {
-    final found = <String>[];
-    for (final item in itemDictionary) {
-      // 辞書の各語をテキスト内で検索。text が短い前提で単純ループ。
-      if (text.contains(item)) {
-        found.add(item);
+    final selected = <String>{};
+    final candidates = [...itemDictionary]..sort((a, b) => b.length.compareTo(a.length));
+    for (final item in candidates) {
+      // 長い語を優先し、バスタオル→タオル、お弁当→弁当のような重複を避ける。
+      if (text.contains(item) && !selected.any((existing) => existing.contains(item))) {
+        selected.add(item);
       }
     }
-    return found;
+    return itemDictionary.where(selected.contains).toList();
   }
 
   TodoCategory _inferCategory(String text, int? amount, List<String> items) {
