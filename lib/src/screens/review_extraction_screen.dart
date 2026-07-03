@@ -88,12 +88,26 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
             onChanged: (value) => setState(() => _category = value ?? TodoCategory.other),
           ),
           const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: _selectDueDate,
-            icon: const Icon(Icons.event),
-            label: Text(_dueDate == null
-                ? '期限を選ぶ'
-                : '${_dueDate!.year}/${_dueDate!.month}/${_dueDate!.day}'),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _selectDueDate,
+                  icon: const Icon(Icons.event),
+                  label: Text(_dueDate == null
+                      ? '期限を選ぶ'
+                      : '${_dueDate!.year}/${_dueDate!.month}/${_dueDate!.day}'),
+                ),
+              ),
+              if (_dueDate != null) ...[
+                const SizedBox(width: 8),
+                IconButton.outlined(
+                  tooltip: '期限をクリア',
+                  onPressed: () => setState(() => _dueDate = null),
+                  icon: const Icon(Icons.clear),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 12),
           TextField(
@@ -149,7 +163,8 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
       lastDate: DateTime(now.year + 3),
       initialDate: _dueDate ?? now,
     );
-    if (result != null) setState(() => _dueDate = result);
+    if (!mounted || result == null) return;
+    setState(() => _dueDate = result);
   }
 
   Future<void> _save() async {
@@ -158,6 +173,11 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('タイトルを入力してください')));
       return;
     }
+    final parsedAmount = _parseAmountOrShowError(_amountController.text);
+    if (!parsedAmount.valid) return;
+
+    final appState = context.read<AppState>();
+    final navigator = Navigator.of(context);
     final items = _itemsController.text
         .split(RegExp(r'[,、\n]'))
         .map((e) => e.trim())
@@ -167,18 +187,30 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
       title: title,
       category: _category,
       dueDate: _dueDate,
-      amount: int.tryParse(_amountController.text.replaceAll(',', '').trim()),
+      amount: parsedAmount.amount,
       items: items,
       note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
       rawText: widget.draft.rawText,
     );
-    await context.read<AppState>().addTodoFromDraft(
-          draft: draft,
-          childId: _childId,
-          documentId: widget.documentId,
-          notifyPreviousNight: _notifyPreviousNight,
-          notifySameMorning: _notifySameMorning,
-        );
-    if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    await appState.addTodoFromDraft(
+      draft: draft,
+      childId: _childId,
+      documentId: widget.documentId,
+      notifyPreviousNight: _notifyPreviousNight,
+      notifySameMorning: _notifySameMorning,
+    );
+    if (!mounted) return;
+    navigator.popUntil((route) => route.isFirst);
+  }
+
+  ({bool valid, int? amount}) _parseAmountOrShowError(String value) {
+    final amountText = value.replaceAll(',', '').trim();
+    if (amountText.isEmpty) return (valid: true, amount: null);
+    final amount = int.tryParse(amountText);
+    if (amount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('金額は数字で入力してください')));
+      return (valid: false, amount: null);
+    }
+    return (valid: true, amount: amount);
   }
 }
