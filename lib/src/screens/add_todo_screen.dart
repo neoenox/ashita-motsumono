@@ -77,10 +77,11 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
                 ),
               ],
             ),
-            if (_busy) const Padding(
-              padding: EdgeInsets.only(top: 12),
-              child: LinearProgressIndicator(),
-            ),
+            if (_busy)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: LinearProgressIndicator(),
+              ),
             const SizedBox(height: 24),
           ],
           Text('OCRテキストを貼り付けて抽出', style: Theme.of(context).textTheme.titleMedium),
@@ -237,6 +238,13 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
       final imageFile = await ImageFileService().copyIntoAppDirectory(File(picked.path));
       final ocrText = await OcrService().recognize(imageFile);
       if (!mounted) return;
+      if (ocrText.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('文字を読み取れませんでした。撮り直すか、テキスト貼り付けを使ってください。')),
+        );
+        await ImageFileService.deleteIfExists(imageFile.path);
+        return;
+      }
       final document = await context.read<AppState>().addDocument(
             sourceType: source == ImageSource.camera ? 'camera' : 'gallery',
             localImagePath: imageFile.path,
