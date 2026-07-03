@@ -10,7 +10,9 @@ coverage/
 .idea/
 .vscode/
 .DS_Store
-android/
+android/.gradle/
+android/local.properties
+android/*.iml
 ios/
 linux/
 macos/

@@ -112,6 +112,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateChild(ChildProfile child) async {
+    final updated = child.copyWith(updatedAt: DateTime.now());
+    _children = _children.map((e) => e.id == updated.id ? updated : e).toList();
+    await _persist();
+    notifyListeners();
+  }
+
   Future<DocumentRecord> addDocument({
     required String sourceType,
     String? localImagePath,
@@ -161,7 +168,11 @@ class AppState extends ChangeNotifier {
     );
     _todos = [..._todos, todo];
     await _persist();
-    await _notifications.scheduleTodo(todo);
+    try {
+      await _notifications.scheduleTodo(todo);
+    } on Object {
+      // Web など通知非対応環境では無視
+    }
     notifyListeners();
     return todo;
   }
@@ -170,7 +181,11 @@ class AppState extends ChangeNotifier {
     final updated = todo.copyWith(updatedAt: DateTime.now());
     _todos = _todos.map((e) => e.id == updated.id ? updated : e).toList();
     await _persist();
-    await _notifications.scheduleTodo(updated);
+    try {
+      await _notifications.scheduleTodo(updated);
+    } on Object {
+      // Web など通知非対応環境では無視
+    }
     notifyListeners();
   }
 
@@ -183,10 +198,14 @@ class AppState extends ChangeNotifier {
     );
     _todos = _todos.map((e) => e.id == id ? updated : e).toList();
     await _persist();
-    if (updated.isDone) {
-      await _notifications.cancelTodo(updated.id);
-    } else {
-      await _notifications.scheduleTodo(updated);
+    try {
+      if (updated.isDone) {
+        await _notifications.cancelTodo(updated.id);
+      } else {
+        await _notifications.scheduleTodo(updated);
+      }
+    } on Object {
+      // Web など通知非対応環境では無視
     }
     notifyListeners();
   }
@@ -203,8 +222,18 @@ class AppState extends ChangeNotifier {
   Future<void> deleteTodo(String id) async {
     _todos = _todos.where((todo) => todo.id != id).toList();
     await _persist();
-    await _notifications.cancelTodo(id);
+    try {
+      await _notifications.cancelTodo(id);
+    } on Object {
+      // Web など通知非対応環境では無視
+    }
+    _cleanupOrphanDocuments();
     notifyListeners();
+  }
+
+  void _cleanupOrphanDocuments() {
+    final usedDocIds = _todos.map((t) => t.documentId).whereType<String>().toSet();
+    _documents = _documents.where((d) => usedDocIds.contains(d.id)).toList();
   }
 
   Future<void> _persist() {

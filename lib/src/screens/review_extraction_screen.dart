@@ -179,6 +179,6 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
           notifyPreviousNight: _notifyPreviousNight,
           notifySameMorning: _notifySameMorning,
         );
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
   }
 }

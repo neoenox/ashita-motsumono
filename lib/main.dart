@@ -35,6 +35,7 @@ class AshitaMotsumonoApp extends StatelessWidget {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2F7D6E)),
           useMaterial3: true,
+          fontFamily: 'Noto Sans JP',
         ),
         home: const HomeScreen(),
       ),

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
+import '../models/entities.dart';
 
 class AddChildScreen extends StatefulWidget {
   const AddChildScreen({super.key});
@@ -58,9 +59,18 @@ class _AddChildScreenState extends State<AddChildScreen> {
               (child) => ListTile(
                 leading: CircleAvatar(backgroundColor: Color(child.colorValue)),
                 title: Text(child.name),
-trailing: IconButton(
-                   icon: const Icon(Icons.delete_outline),
-                   onPressed: () => _confirmDelete(context, child.id, child.name),
+                trailing: Row(
+                   mainAxisSize: MainAxisSize.min,
+                   children: [
+                     IconButton(
+                       icon: const Icon(Icons.edit_outlined),
+                       onPressed: () => _startEdit(context, child),
+                     ),
+                     IconButton(
+                       icon: const Icon(Icons.delete_outline),
+                       onPressed: () => _confirmDelete(context, child.id, child.name),
+                     ),
+                   ],
                  ),
               ),
             ),
@@ -76,6 +86,37 @@ trailing: IconButton(
     _controller.clear();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('追加しました')));
+    }
+  }
+
+  Future<void> _startEdit(BuildContext context, ChildProfile child) async {
+    final controller = TextEditingController(text: child.name);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('名前を編集'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: '子どもの名前',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (value) => Navigator.pop(context, value.trim()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result != null && result.isNotEmpty && mounted) {
+      await context.read<AppState>().updateChild(child.copyWith(name: result));
     }
   }
 

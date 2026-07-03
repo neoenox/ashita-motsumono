@@ -1,7 +1,7 @@
 // lib/src/services/image_file_service.dart
 // 撮影または選択した画像ファイルをアプリのドキュメントディレクトリにコピーする。
-// 元ファイルが一時領域にある場合があるため、確実に保持するためにコピーする。
-// Web 版では path_provider が未実装のため、元ファイルをそのまま返す。
+// 元ファイルが一時領域や content:// URI の場合があるため、確実に保持するために読み取りコピーする。
+// Web 版では path_provider が未実装のため、元パスをそのまま返す。
 // 関連: services/ocr_service.dart, screens/add_todo_screen.dart
 
 import 'dart:io';
@@ -27,6 +27,14 @@ class ImageFileService {
     }
     final extension = p.extension(source.path).isEmpty ? '.jpg' : p.extension(source.path);
     final dest = File(p.join(imageDir.path, '${_uuid.v4()}$extension'));
-    return source.copy(dest.path);
+    // content:// URI など File.copy が使えないケースに対応するため読み取りコピー
+    try {
+      return await source.copy(dest.path);
+    } on FileSystemException {
+      // content:// URI の場合など、copy が失敗したら読み取り→書き込みで対処
+      final bytes = await source.readAsBytes();
+      await dest.writeAsBytes(bytes);
+      return dest;
+    }
   }
 }

@@ -27,7 +27,7 @@ class LocalStore {
     }
     try {
       final jsonMap = jsonDecode(raw) as Map<String, dynamic>;
-      return AppSnapshot.fromJson(jsonMap);
+      return AppSnapshot.fromJson(jsonMap).migrate();
     } on Object {
       return AppSnapshot.empty;
     }

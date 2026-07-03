@@ -323,21 +323,44 @@ class AppSnapshot {
     required this.children,
     required this.todos,
     required this.documents,
+    this.version = currentVersion,
   });
 
   final List<ChildProfile> children;
   final List<AppTodo> todos;
   final List<DocumentRecord> documents;
+  final int version;
 
+  static const currentVersion = 1;
   static const empty = AppSnapshot(children: [], todos: [], documents: []);
 
+  AppSnapshot migrate() {
+    var migrated = this;
+    if (version < 1) {
+      // v0→v1: どのTodoからも参照されていない孤立ドキュメントを削除
+      final activeDocIds = migrated.todos
+          .map((t) => t.documentId)
+          .whereType<String>()
+          .toSet();
+      migrated = AppSnapshot(
+        children: migrated.children,
+        todos: migrated.todos,
+        documents: migrated.documents.where((d) => activeDocIds.contains(d.id)).toList(),
+        version: 1,
+      );
+    }
+    return migrated;
+  }
+
   Map<String, dynamic> toJson() => {
+        'version': currentVersion,
         'children': children.map((e) => e.toJson()).toList(),
         'todos': todos.map((e) => e.toJson()).toList(),
         'documents': documents.map((e) => e.toJson()).toList(),
       };
 
   factory AppSnapshot.fromJson(Map<String, dynamic> json) => AppSnapshot(
+        version: json['version'] as int? ?? 0,
         children: (json['children'] as List<dynamic>? ?? const [])
             .map((e) => ChildProfile.fromJson(e as Map<String, dynamic>))
             .toList(),

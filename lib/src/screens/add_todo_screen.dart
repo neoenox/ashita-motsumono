@@ -55,32 +55,34 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('画像・スクショから登録', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _busy ? null : () => _pickAndOcr(ImageSource.camera),
-                  icon: const Icon(Icons.photo_camera),
-                  label: const Text('写真を撮る'),
+          if (!kIsWeb) ...[
+            Text('画像・スクショから登録', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _busy ? null : () => _pickAndOcr(ImageSource.camera),
+                    icon: const Icon(Icons.photo_camera),
+                    label: const Text('写真を撮る'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _busy ? null : () => _pickAndOcr(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library),
-                  label: const Text('画像を選ぶ'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _busy ? null : () => _pickAndOcr(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library),
+                    label: const Text('画像を選ぶ'),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          if (_busy) const Padding(
-            padding: EdgeInsets.only(top: 12),
-            child: LinearProgressIndicator(),
-          ),
-          const SizedBox(height: 24),
+              ],
+            ),
+            if (_busy) const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: LinearProgressIndicator(),
+            ),
+            const SizedBox(height: 24),
+          ],
           Text('OCRテキストを貼り付けて抽出', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           TextField(
