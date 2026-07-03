@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 
 import 'models/entities.dart';
 import 'repositories/local_store.dart';
+import 'services/image_file_service.dart';
 import 'services/notification_service.dart';
 
 class AppState extends ChangeNotifier {
@@ -41,6 +42,10 @@ class AppState extends ChangeNotifier {
     _documents = snapshot.documents;
     _loaded = true;
     notifyListeners();
+  }
+
+  Future<void> requestNotificationPermissions() {
+    return _notifications.requestPermissions();
   }
 
   List<AppTodo> todosForDate(DateTime date) {
@@ -221,19 +226,34 @@ class AppState extends ChangeNotifier {
 
   Future<void> deleteTodo(String id) async {
     _todos = _todos.where((todo) => todo.id != id).toList();
+    final orphanDocuments = _cleanupOrphanDocuments();
     await _persist();
     try {
       await _notifications.cancelTodo(id);
     } on Object {
       // Web など通知非対応環境では無視
     }
-    _cleanupOrphanDocuments();
+    await _deleteDocumentImages(orphanDocuments);
     notifyListeners();
   }
 
-  void _cleanupOrphanDocuments() {
+  List<DocumentRecord> _cleanupOrphanDocuments() {
     final usedDocIds = _todos.map((t) => t.documentId).whereType<String>().toSet();
+    final orphanDocuments = _documents.where((d) => !usedDocIds.contains(d.id)).toList();
     _documents = _documents.where((d) => usedDocIds.contains(d.id)).toList();
+    return orphanDocuments;
+  }
+
+  Future<void> _deleteDocumentImages(List<DocumentRecord> documents) async {
+    for (final document in documents) {
+      final path = document.localImagePath;
+      if (path == null || path.isEmpty) continue;
+      try {
+        await ImageFileService.deleteIfExists(path);
+      } on Object {
+        // 画像削除に失敗してもTodo削除は成立させる
+      }
+    }
   }
 
   Future<void> _persist() {
