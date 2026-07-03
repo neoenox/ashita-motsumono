@@ -241,7 +241,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<TodoCategory>(
-          value: _category,
+          initialValue: _category,
           decoration: const InputDecoration(labelText: '種類', border: OutlineInputBorder()),
           items: TodoCategory.values
               .map((c) => DropdownMenuItem(value: c, child: Text(c.label)))

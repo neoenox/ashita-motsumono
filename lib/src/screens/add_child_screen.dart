@@ -90,6 +90,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
   }
 
   Future<void> _startEdit(BuildContext context, ChildProfile child) async {
+    final appState = context.read<AppState>();
     final controller = TextEditingController(text: child.name);
     final result = await showDialog<String>(
       context: context,
@@ -116,11 +117,12 @@ class _AddChildScreenState extends State<AddChildScreen> {
     );
     controller.dispose();
     if (result != null && result.isNotEmpty && mounted) {
-      await context.read<AppState>().updateChild(child.copyWith(name: result));
+      await appState.updateChild(child.copyWith(name: result));
     }
   }
 
   Future<void> _confirmDelete(BuildContext context, String id, String name) async {
+    final appState = context.read<AppState>();
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -133,7 +135,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
       ),
     );
     if (result == true && mounted) {
-      await context.read<AppState>().deleteChild(id);
+      await appState.deleteChild(id);
     }
   }
 }

@@ -120,7 +120,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<TodoCategory>(
-            value: _category,
+            initialValue: _category,
             decoration: const InputDecoration(labelText: '種類', border: OutlineInputBorder()),
             items: TodoCategory.values
                 .map((category) => DropdownMenuItem(value: category, child: Text(category.label)))
@@ -277,7 +277,7 @@ class _ChildDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String?>(
-      value: value,
+      initialValue: value,
       decoration: const InputDecoration(labelText: '対象', border: OutlineInputBorder()),
       items: [
         const DropdownMenuItem<String?>(value: null, child: Text('未指定')),

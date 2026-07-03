@@ -182,7 +182,7 @@ class ExtractionService {
   String _makeTitle(String text, TodoCategory category, List<String> items, int? amount) {
     switch (category) {
       case TodoCategory.payment:
-        return amount == null ? '集金を確認' : '集金 ${amount}円';
+        return amount == null ? '集金を確認' : '集金 $amount円';
       case TodoCategory.submit:
         final submitItem = items.firstWhere(
           (e) => e.contains('申込書') || e.contains('同意書') || e.contains('封筒'),

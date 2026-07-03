@@ -13,12 +13,10 @@ import 'services/notification_service.dart';
 
 class AppState extends ChangeNotifier {
   AppState({
-    required LocalStore store,
-    required NotificationService notifications,
+    required this._store,
+    required this._notifications,
     Uuid? uuid,
-  })  : _store = store,
-        _notifications = notifications,
-        _uuid = uuid ?? const Uuid();
+  }) : _uuid = uuid ?? const Uuid();
 
   final LocalStore _store;
   final NotificationService _notifications;
@@ -98,7 +96,7 @@ class AppState extends ChangeNotifier {
     final child = ChildProfile(
       id: _uuid.v4(),
       name: name.trim(),
-      colorValue: Colors.primaries[_children.length % Colors.primaries.length].value,
+        colorValue: Colors.primaries[_children.length % Colors.primaries.length].toARGB32(),
       createdAt: now,
       updatedAt: now,
     );

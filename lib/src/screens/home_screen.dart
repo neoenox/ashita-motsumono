@@ -59,6 +59,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted || (prefs.getBool(_notificationInfoShownKey) ?? false)) return;
 
+    final appState = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
+
     final enableNotifications = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -85,29 +88,28 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted || enableNotifications != true) return;
 
     try {
-      await context.read<AppState>().requestNotificationPermissions();
+      await appState.requestNotificationPermissions();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('通知設定を確認しました')),
       );
     } on Object catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('通知設定を確認できませんでした: $e')),
       );
     }
   }
 
   void _exportData(AppState state) async {
+    final messenger = ScaffoldMessenger.of(context);
     final json = const JsonEncoder.withIndent('  ').convert(
       AppSnapshot(children: state.children, todos: state.todos, documents: state.documents).toJson(),
     );
     await Clipboard.setData(ClipboardData(text: json));
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('データをクリップボードにコピーしました')),
-      );
-    }
+    messenger.showSnackBar(
+      const SnackBar(content: Text('データをクリップボードにコピーしました')),
+    );
   }
 
   List<AppTodo> _filter(List<AppTodo> todos, List<ChildProfile> children) {

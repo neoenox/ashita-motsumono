@@ -65,7 +65,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
           const Text('OCRは間違う前提です。登録前に内容を確認してください。'),
           const SizedBox(height: 16),
           DropdownButtonFormField<String?>(
-            value: _childId,
+            initialValue: _childId,
             decoration: const InputDecoration(labelText: '対象', border: OutlineInputBorder()),
             items: [
               const DropdownMenuItem<String?>(value: null, child: Text('未指定')),
@@ -80,7 +80,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<TodoCategory>(
-            value: _category,
+            initialValue: _category,
             decoration: const InputDecoration(labelText: '種類', border: OutlineInputBorder()),
             items: TodoCategory.values
                 .map((category) => DropdownMenuItem(value: category, child: Text(category.label)))
