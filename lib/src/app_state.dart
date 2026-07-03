@@ -24,6 +24,7 @@ class AppState extends ChangeNotifier {
 
   bool _loaded = false;
   bool get loaded => _loaded;
+  bool get lastLoadHadCorruptData => _store.lastLoadHadCorruptData;
 
   List<ChildProfile> _children = [];
   List<AppTodo> _todos = [];
@@ -45,6 +46,8 @@ class AppState extends ChangeNotifier {
   Future<void> requestNotificationPermissions() {
     return _notifications.requestPermissions();
   }
+
+  String? loadCorruptBackup() => _store.loadCorruptBackup();
 
   List<AppTodo> todosForDate(DateTime date) {
     final d = DateTime(date.year, date.month, date.day);
@@ -96,7 +99,7 @@ class AppState extends ChangeNotifier {
     final child = ChildProfile(
       id: _uuid.v4(),
       name: name.trim(),
-        colorValue: Colors.primaries[_children.length % Colors.primaries.length].toARGB32(),
+      colorValue: Colors.primaries[_children.length % Colors.primaries.length].toARGB32(),
       createdAt: now,
       updatedAt: now,
     );
@@ -174,7 +177,7 @@ class AppState extends ChangeNotifier {
     try {
       await _notifications.scheduleTodo(todo);
     } on Object {
-      // Web など通知非対応環境では無視
+      // 通知非対応環境や未設定端末では無視
     }
     notifyListeners();
     return todo;
@@ -187,7 +190,7 @@ class AppState extends ChangeNotifier {
     try {
       await _notifications.scheduleTodo(updated);
     } on Object {
-      // Web など通知非対応環境では無視
+      // 通知非対応環境や未設定端末では無視
     }
     notifyListeners();
   }
@@ -208,7 +211,7 @@ class AppState extends ChangeNotifier {
         await _notifications.scheduleTodo(updated);
       }
     } on Object {
-      // Web など通知非対応環境では無視
+      // 通知非対応環境や未設定端末では無視
     }
     notifyListeners();
   }
@@ -229,7 +232,7 @@ class AppState extends ChangeNotifier {
     try {
       await _notifications.cancelTodo(id);
     } on Object {
-      // Web など通知非対応環境では無視
+      // 通知非対応環境や未設定端末では無視
     }
     await _deleteDocumentImages(orphanDocuments);
     notifyListeners();
