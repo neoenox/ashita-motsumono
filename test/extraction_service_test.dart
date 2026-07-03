@@ -140,6 +140,13 @@ void main() {
       expect(draft.items, containsAll(['プールバッグ', 'レジャーシート']));
     });
 
+    test('does not duplicate shorter item contained in longer item', () {
+      final draft = ExtractionService().extract('バスタオルとお弁当を持参', now: now);
+      expect(draft.items, containsAll(['バスタオル', 'お弁当']));
+      expect(draft.items, isNot(contains('タオル')));
+      expect(draft.items, isNot(contains('弁当')));
+    });
+
     test('returns empty items when nothing matches', () {
       final draft = ExtractionService().extract('キャンプファイヤー、花火', now: now);
       expect(draft.items, isEmpty);
