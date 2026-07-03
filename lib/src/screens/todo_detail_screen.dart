@@ -72,6 +72,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       return;
     }
 
+    final appState = context.read<AppState>();
     final noteText = _noteController.text.trim();
     final items = _itemsController.text
         .split(RegExp(r'[,、\n]'))
@@ -93,12 +94,33 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       items: items,
       updatedAt: DateTime.now(),
     );
-    await context.read<AppState>().updateTodo(updated);
+    await appState.updateTodo(updated);
+    if (!mounted) return;
     setState(() => _isEditing = false);
   }
 
   void _cancelEdit() {
     setState(() => _isEditing = false);
+  }
+
+  Future<void> _confirmDelete(AppTodo todo) async {
+    final appState = context.read<AppState>();
+    final navigator = Navigator.of(context);
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('削除確認'),
+        content: Text('「${todo.title}」を削除しますか？\n元画像がこのTodoだけで使われている場合は画像も削除されます。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('削除')),
+        ],
+      ),
+    );
+    if (!mounted || result != true) return;
+    await appState.deleteTodo(todo.id);
+    if (!mounted) return;
+    navigator.pop();
   }
 
   @override
@@ -129,10 +151,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline),
-              onPressed: () async {
-                await context.read<AppState>().deleteTodo(todo.id);
-                if (context.mounted) Navigator.of(context).pop();
-              },
+              onPressed: () => _confirmDelete(todo),
             ),
           ],
         ],
@@ -302,6 +321,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       lastDate: DateTime(now.year + 3),
       initialDate: _dueDate ?? now,
     );
-    if (result != null) setState(() => _dueDate = result);
+    if (!mounted || result == null) return;
+    setState(() => _dueDate = result);
   }
 }
