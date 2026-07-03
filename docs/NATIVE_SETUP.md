@@ -1,5 +1,7 @@
 # ネイティブ設定メモ
 
+このMVPの対象は Android/iOS のみです。Web、Windows、macOS、Linux は v0.1 の対象外です。
+
 `flutter create . --platforms=android,ios` 実行後に必要な設定です。
 
 ## Android
