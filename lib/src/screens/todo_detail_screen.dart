@@ -64,6 +64,15 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
   Future<void> _saveEdit(AppTodo todo) async {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
+
+    final amountText = _amountController.text.replaceAll(',', '').trim();
+    final amount = amountText.isEmpty ? null : int.tryParse(amountText);
+    if (amountText.isNotEmpty && amount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('金額は数字で入力してください')));
+      return;
+    }
+
+    final noteText = _noteController.text.trim();
     final items = _itemsController.text
         .split(RegExp(r'[,、\n]'))
         .map((e) => e.trim())
@@ -76,8 +85,11 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       title: title,
       category: _category,
       dueDate: _dueDate,
-      amount: int.tryParse(_amountController.text.replaceAll(',', '').trim()),
-      note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+      clearDueDate: _dueDate == null,
+      amount: amount,
+      clearAmount: amountText.isEmpty,
+      note: noteText.isEmpty ? null : noteText,
+      clearNote: noteText.isEmpty,
       items: items,
       updatedAt: DateTime.now(),
     );
@@ -125,7 +137,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
           ],
         ],
       ),
-      body: _isEditing ? _buildEditForm(todo, child) : _buildDetail(todo, child, document),
+      body: _isEditing ? _buildEditForm() : _buildDetail(todo, child, document),
     );
   }
 
@@ -219,7 +231,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     );
   }
 
-  Widget _buildEditForm(AppTodo todo, ChildProfile? child) {
+  Widget _buildEditForm() {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -237,10 +249,24 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
           onChanged: (value) => setState(() => _category = value ?? TodoCategory.other),
         ),
         const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: _selectDueDate,
-          icon: const Icon(Icons.event),
-          label: Text(_dueDate == null ? '期限を選ぶ' : '${_dueDate!.year}/${_dueDate!.month}/${_dueDate!.day}'),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _selectDueDate,
+                icon: const Icon(Icons.event),
+                label: Text(_dueDate == null ? '期限を選ぶ' : '${_dueDate!.year}/${_dueDate!.month}/${_dueDate!.day}'),
+              ),
+            ),
+            if (_dueDate != null) ...[
+              const SizedBox(width: 8),
+              IconButton.outlined(
+                tooltip: '期限をクリア',
+                onPressed: () => setState(() => _dueDate = null),
+                icon: const Icon(Icons.clear),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 12),
         TextField(
