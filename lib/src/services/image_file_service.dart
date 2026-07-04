@@ -36,9 +36,13 @@ class ImageFileService {
 
   static Future<void> deleteIfExists(String path) async {
     if (path.isEmpty) return;
-    final file = File(path);
-    if (await file.exists()) {
-      await file.delete();
+    try {
+      final file = File(path);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } on Object {
+      // 削除に失敗しても呼び出し元に影響させない
     }
   }
 }
