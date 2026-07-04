@@ -77,7 +77,7 @@ def ensure_kts():
     if 'proguard-rules.pro' not in text:
         text = re.sub(
             r'release\s*\{',
-            'release {\n            proguardFiles(getDefaultProguardFile(\'proguard-android-optimize.txt\'), \'proguard-rules.pro\')',
+            'release {\n            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")',
             text,
             count=1,
         )
