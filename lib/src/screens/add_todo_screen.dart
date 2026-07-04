@@ -4,8 +4,6 @@
 // 関連: services/ocr_service.dart, services/extraction_service.dart,
 //       services/image_file_service.dart, screens/review_extraction_screen.dart
 
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -244,7 +242,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
       final picker = ImagePicker();
       final picked = await picker.pickImage(source: source, imageQuality: 92);
       if (picked == null) return;
-      final imageFile = await ImageFileService().copyIntoAppDirectory(File(picked.path));
+      final imageFile = await ImageFileService().copyFromXFile(picked);
       final ocrText = await OcrService().recognize(imageFile);
       if (!mounted) return;
       if (ocrText.trim().isEmpty) {
@@ -267,8 +265,14 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
         ),
       );
     } on Object catch (e) {
+      debugPrint('OCR error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('読み取りに失敗しました: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('読み取りに失敗しました: $e'),
+            duration: const Duration(seconds: 10),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
