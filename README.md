@@ -39,13 +39,6 @@ v0.1 MVPは **Android/iOS専用** です。
 `pubspec.lock` の解決結果に合わせ、Dart SDK は 3.12.0 以上を前提にしています。
 `flutter_local_notifications 22.x` は Flutter SDK 3.38.1 以上を要求するため、Flutter は安定版の新しめのバージョンを使ってください。
 
-```bash
-flutter --version
-flutter pub get
-flutter analyze
-flutter test
-```
-
 ## このZIPについて
 
 この実行環境にはFlutter SDKが入っていなかったため、`flutter build` / `flutter test` は未実行です。  
