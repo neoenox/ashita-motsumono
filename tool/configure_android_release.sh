@@ -37,9 +37,9 @@ def replace_or_insert(pattern: str, replacement: str, text: str) -> str:
 
 def ensure_kts():
     text = app_kts.read_text()
-    text = re.sub(r"compileSdk\s*=\s*[^\n]+", "compileSdk = 35", text, count=1)
+    text = re.sub(r"compileSdk\s*=\s*[^\n]+", "compileSdk = 36", text, count=1)
     text = re.sub(r"minSdk\s*=\s*[^\n]+", "minSdk = 21", text, count=1)
-    text = re.sub(r"targetSdk\s*=\s*[^\n]+", "targetSdk = 35", text, count=1)
+    text = re.sub(r"targetSdk\s*=\s*[^\n]+", "targetSdk = 36", text, count=1)
     text = text.replace("JavaVersion.VERSION_11", "JavaVersion.VERSION_17")
 
     if "isCoreLibraryDesugaringEnabled" not in text:
@@ -75,9 +75,9 @@ def ensure_kts():
 
 def ensure_groovy():
     text = app_groovy.read_text()
-    text = re.sub(r"compileSdk(?:Version)?\s+[^\n]+", "compileSdkVersion 35", text, count=1)
+    text = re.sub(r"compileSdk(?:Version)?\s+[^\n]+", "compileSdkVersion 36", text, count=1)
     text = re.sub(r"minSdk(?:Version)?\s+[^\n]+", "minSdkVersion 21", text, count=1)
-    text = re.sub(r"targetSdk(?:Version)?\s+[^\n]+", "targetSdkVersion 35", text, count=1)
+    text = re.sub(r"targetSdk(?:Version)?\s+[^\n]+", "targetSdkVersion 36", text, count=1)
     text = text.replace("JavaVersion.VERSION_11", "JavaVersion.VERSION_17")
 
     if "coreLibraryDesugaringEnabled" not in text:
