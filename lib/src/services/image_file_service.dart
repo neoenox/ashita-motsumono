@@ -1,12 +1,11 @@
 // lib/src/services/image_file_service.dart
 // 撮影または選択した画像ファイルをアプリのドキュメントディレクトリにコピーする。
 // 元ファイルが一時領域や content:// URI の場合があるため、確実に保持するために読み取りコピーする。
-// Web 版では path_provider が未実装のため、元パスをそのまま返す。
+// このMVPは Android/iOS 専用。
 // 関連: services/ocr_service.dart, screens/add_todo_screen.dart
 
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -17,9 +16,6 @@ class ImageFileService {
   final Uuid _uuid;
 
   Future<File> copyIntoAppDirectory(File source) async {
-    if (kIsWeb) {
-      return source;
-    }
     final dir = await getApplicationDocumentsDirectory();
     final imageDir = Directory(p.join(dir.path, 'document_images'));
     if (!await imageDir.exists()) {
@@ -35,6 +31,18 @@ class ImageFileService {
       final bytes = await source.readAsBytes();
       await dest.writeAsBytes(bytes);
       return dest;
+    }
+  }
+
+  static Future<void> deleteIfExists(String path) async {
+    if (path.isEmpty) return;
+    try {
+      final file = File(path);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } on Object {
+      // 削除に失敗しても呼び出し元に影響させない
     }
   }
 }

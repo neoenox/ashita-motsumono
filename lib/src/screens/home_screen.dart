@@ -5,11 +5,13 @@
 // 関連: screens/add_todo_screen.dart, screens/add_child_screen.dart,
 //       screens/todo_detail_screen.dart, app_state.dart
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_state.dart';
 import '../models/entities.dart';
@@ -26,6 +28,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const _notificationInfoShownKey = 'notification_info_shown_v1';
+
   bool _notificationDialogShown = false;
   final _searchController = TextEditingController();
   String _searchQuery = '';
@@ -44,40 +48,99 @@ class _HomeScreenState extends State<HomeScreen> {
     if (loaded && !_notificationDialogShown) {
       _notificationDialogShown = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showNotificationInfo();
+        if (mounted) {
+          unawaited(_showNotificationInfoIfNeeded());
+        }
       });
     }
   }
 
-  void _showNotificationInfo() {
-    showDialog(
+  Future<void> _showNotificationInfoIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted || (prefs.getBool(_notificationInfoShownKey) ?? false)) return;
+
+    final appState = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    final enableNotifications = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('通知について'),
         content: const Text(
           '前日20:00と当日7:00にTodoのリマインド通知をお送りします。'
-          '通知を許可してください。後で設定を変更することもできます。',
+          '通知を有効にする場合は、次に表示される端末の通知許可で「許可」を選んでください。',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('わかりました'),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('あとで'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('通知を有効にする'),
           ),
         ],
       ),
     );
+
+    if (!mounted) return;
+    await prefs.setBool(_notificationInfoShownKey, true);
+    if (!mounted || enableNotifications != true) return;
+
+    try {
+      await appState.requestNotificationPermissions();
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('通知設定を確認しました')),
+      );
+    } on Object catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('通知設定を確認できませんでした: $e')),
+      );
+    }
   }
 
-  void _exportData(AppState state) async {
+  Future<void> _exportData(AppState state) async {
+    final shouldExport = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('データをエクスポート'),
+        content: const Text(
+          '子ども名、Todo、OCR全文、端末内画像パスを含むJSONをクリップボードにコピーします。'
+          '他のアプリに貼り付けると個人情報が含まれる可能性があります。',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('コピーする')),
+        ],
+      ),
+    );
+    if (!mounted || shouldExport != true) return;
+
     final json = const JsonEncoder.withIndent('  ').convert(
       AppSnapshot(children: state.children, todos: state.todos, documents: state.documents).toJson(),
     );
     await Clipboard.setData(ClipboardData(text: json));
-    if (context.mounted) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('データをクリップボードにコピーしました')),
+    );
+  }
+
+  Future<void> _copyCorruptBackup(AppState state) async {
+    final backup = state.loadCorruptBackup();
+    if (backup == null || backup.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('データをクリップボードにコピーしました')),
+        const SnackBar(content: Text('退避データが見つかりませんでした')),
       );
+      return;
     }
+    await Clipboard.setData(ClipboardData(text: backup));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('退避データをクリップボードにコピーしました')),
+    );
   }
 
   List<AppTodo> _filter(List<AppTodo> todos, List<ChildProfile> children) {
@@ -102,7 +165,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final todayTodos = _filter(state.todosForDate(today), state.children);
     final tomorrowTodos = _filter(state.todosForDate(tomorrow), state.children);
     final undated = _filter(state.undatedTodos(), state.children);
-    final allFiltered = todayTodos.isEmpty && tomorrowTodos.isEmpty && undated.isEmpty;
+    final upcoming = _filter(state.upcomingTodos(), state.children);
+    final allFiltered =
+        todayTodos.isEmpty && tomorrowTodos.isEmpty && undated.isEmpty && upcoming.isEmpty;
 
     return Scaffold(
       appBar: AppBar(
@@ -117,15 +182,18 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == 'export') _exportData(state);
+              if (value == 'export') unawaited(_exportData(state));
             },
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'export', child: ListTile(
-                leading: Icon(Icons.download),
-                title: Text('データをエクスポート'),
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-              )),
+              const PopupMenuItem(
+                value: 'export',
+                child: ListTile(
+                  leading: Icon(Icons.download),
+                  title: Text('データをエクスポート'),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
             ],
           ),
         ],
@@ -164,6 +232,10 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
               children: [
+                if (state.lastLoadHadCorruptData) ...[
+                  _CorruptDataCard(onCopy: () => unawaited(_copyCorruptBackup(state))),
+                  const SizedBox(height: 12),
+                ],
                 if (state.children.isEmpty) const _FirstRunCard(),
                 if (state.children.isNotEmpty && allFiltered && _searchQuery.isEmpty && state.todos.isEmpty)
                   _EmptyState(),
@@ -177,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 16),
                 _TodoSection(title: '期限未設定・要確認', todos: undated),
                 const SizedBox(height: 16),
-                _UpcomingSection(todos: state.upcomingTodos()),
+                _UpcomingSection(todos: upcoming),
               ],
             ),
           ),
@@ -189,6 +261,36 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         icon: const Icon(Icons.add),
         label: const Text('追加'),
+      ),
+    );
+  }
+}
+
+class _CorruptDataCard extends StatelessWidget {
+  const _CorruptDataCard({required this.onCopy});
+
+  final VoidCallback onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Theme.of(context).colorScheme.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('保存データの読み込みに失敗しました', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            const Text('破損していた保存データは退避されています。復旧確認用にコピーできます。'),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onCopy,
+              icon: const Icon(Icons.copy),
+              label: const Text('退避データをコピー'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -8,16 +8,15 @@ import 'package:uuid/uuid.dart';
 
 import 'models/entities.dart';
 import 'repositories/local_store.dart';
+import 'services/image_file_service.dart';
 import 'services/notification_service.dart';
 
 class AppState extends ChangeNotifier {
   AppState({
-    required LocalStore store,
-    required NotificationService notifications,
+    required this._store,
+    required this._notifications,
     Uuid? uuid,
-  })  : _store = store,
-        _notifications = notifications,
-        _uuid = uuid ?? const Uuid();
+  }) : _uuid = uuid ?? const Uuid();
 
   final LocalStore _store;
   final NotificationService _notifications;
@@ -25,6 +24,7 @@ class AppState extends ChangeNotifier {
 
   bool _loaded = false;
   bool get loaded => _loaded;
+  bool get lastLoadHadCorruptData => _store.lastLoadHadCorruptData;
 
   List<ChildProfile> _children = [];
   List<AppTodo> _todos = [];
@@ -42,6 +42,12 @@ class AppState extends ChangeNotifier {
     _loaded = true;
     notifyListeners();
   }
+
+  Future<void> requestNotificationPermissions() {
+    return _notifications.requestPermissions();
+  }
+
+  String? loadCorruptBackup() => _store.loadCorruptBackup();
 
   List<AppTodo> todosForDate(DateTime date) {
     final d = DateTime(date.year, date.month, date.day);
@@ -93,7 +99,7 @@ class AppState extends ChangeNotifier {
     final child = ChildProfile(
       id: _uuid.v4(),
       name: name.trim(),
-      colorValue: Colors.primaries[_children.length % Colors.primaries.length].value,
+      colorValue: Colors.primaries[_children.length % Colors.primaries.length].toARGB32(),
       createdAt: now,
       updatedAt: now,
     );
@@ -171,7 +177,7 @@ class AppState extends ChangeNotifier {
     try {
       await _notifications.scheduleTodo(todo);
     } on Object {
-      // Web など通知非対応環境では無視
+      // 通知非対応環境や未設定端末では無視
     }
     notifyListeners();
     return todo;
@@ -184,7 +190,7 @@ class AppState extends ChangeNotifier {
     try {
       await _notifications.scheduleTodo(updated);
     } on Object {
-      // Web など通知非対応環境では無視
+      // 通知非対応環境や未設定端末では無視
     }
     notifyListeners();
   }
@@ -205,7 +211,7 @@ class AppState extends ChangeNotifier {
         await _notifications.scheduleTodo(updated);
       }
     } on Object {
-      // Web など通知非対応環境では無視
+      // 通知非対応環境や未設定端末では無視
     }
     notifyListeners();
   }
@@ -221,19 +227,34 @@ class AppState extends ChangeNotifier {
 
   Future<void> deleteTodo(String id) async {
     _todos = _todos.where((todo) => todo.id != id).toList();
+    final orphanDocuments = _cleanupOrphanDocuments();
     await _persist();
     try {
       await _notifications.cancelTodo(id);
     } on Object {
-      // Web など通知非対応環境では無視
+      // 通知非対応環境や未設定端末では無視
     }
-    _cleanupOrphanDocuments();
+    await _deleteDocumentImages(orphanDocuments);
     notifyListeners();
   }
 
-  void _cleanupOrphanDocuments() {
+  List<DocumentRecord> _cleanupOrphanDocuments() {
     final usedDocIds = _todos.map((t) => t.documentId).whereType<String>().toSet();
+    final orphanDocuments = _documents.where((d) => !usedDocIds.contains(d.id)).toList();
     _documents = _documents.where((d) => usedDocIds.contains(d.id)).toList();
+    return orphanDocuments;
+  }
+
+  Future<void> _deleteDocumentImages(List<DocumentRecord> documents) async {
+    for (final document in documents) {
+      final path = document.localImagePath;
+      if (path == null || path.isEmpty) continue;
+      try {
+        await ImageFileService.deleteIfExists(path);
+      } on Object {
+        // 画像削除に失敗してもTodo削除は成立させる
+      }
+    }
   }
 
   Future<void> _persist() {

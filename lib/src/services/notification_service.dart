@@ -16,23 +16,37 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  Future<void>? _initFuture;
 
-  Future<void> initialize() async {
-    if (_initialized) return;
+  Future<void> initialize() {
+    if (_initialized) return Future.value();
+    if (_initFuture != null) return _initFuture!;
+    return _initFuture = _doInitialize();
+  }
+
+  Future<void> _doInitialize() async {
     tzdata.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Tokyo'));
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const ios = DarwinInitializationSettings();
+    const ios = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
     const settings = InitializationSettings(android: android, iOS: ios);
     await _plugin.initialize(settings: settings);
+    _initialized = true;
+  }
+
+  Future<void> requestPermissions() async {
+    await initialize();
     await _plugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
     await _plugin
         .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(alert: true, badge: true, sound: true);
-    _initialized = true;
   }
 
   Future<void> scheduleTodo(AppTodo todo) async {

@@ -60,18 +60,18 @@ class _AddChildScreenState extends State<AddChildScreen> {
                 leading: CircleAvatar(backgroundColor: Color(child.colorValue)),
                 title: Text(child.name),
                 trailing: Row(
-                   mainAxisSize: MainAxisSize.min,
-                   children: [
-                     IconButton(
-                       icon: const Icon(Icons.edit_outlined),
-                       onPressed: () => _startEdit(context, child),
-                     ),
-                     IconButton(
-                       icon: const Icon(Icons.delete_outline),
-                       onPressed: () => _confirmDelete(context, child.id, child.name),
-                     ),
-                   ],
-                 ),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: () => _startEdit(context, child),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => _confirmDelete(context, child.id, child.name),
+                    ),
+                  ],
+                ),
               ),
             ),
         ],
@@ -80,16 +80,24 @@ class _AddChildScreenState extends State<AddChildScreen> {
   }
 
   Future<void> _add(BuildContext context) async {
+    final appState = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
     final name = _controller.text.trim();
     if (name.isEmpty) return;
-    await context.read<AppState>().addChild(name);
+    if (_hasDuplicateName(appState.children, name)) {
+      messenger.showSnackBar(const SnackBar(content: Text('同じ名前がすでに登録されています')));
+      return;
+    }
+    await appState.addChild(name);
     _controller.clear();
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('追加しました')));
+      messenger.showSnackBar(const SnackBar(content: Text('追加しました')));
     }
   }
 
   Future<void> _startEdit(BuildContext context, ChildProfile child) async {
+    final appState = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
     final controller = TextEditingController(text: child.name);
     final result = await showDialog<String>(
       context: context,
@@ -115,12 +123,20 @@ class _AddChildScreenState extends State<AddChildScreen> {
       ),
     );
     controller.dispose();
-    if (result != null && result.isNotEmpty && mounted) {
-      await context.read<AppState>().updateChild(child.copyWith(name: result));
+    if (!mounted || result == null || result.isEmpty) return;
+    if (_hasDuplicateName(appState.children, result, exceptId: child.id)) {
+      messenger.showSnackBar(const SnackBar(content: Text('同じ名前がすでに登録されています')));
+      return;
     }
+    await appState.updateChild(child.copyWith(name: result));
+  }
+
+  bool _hasDuplicateName(List<ChildProfile> children, String name, {String? exceptId}) {
+    return children.any((child) => child.id != exceptId && child.name == name);
   }
 
   Future<void> _confirmDelete(BuildContext context, String id, String name) async {
+    final appState = context.read<AppState>();
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -133,7 +149,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
       ),
     );
     if (result == true && mounted) {
-      await context.read<AppState>().deleteChild(id);
+      await appState.deleteChild(id);
     }
   }
 }

@@ -5,7 +5,6 @@
 
 import 'dart:io' show File;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
@@ -64,6 +63,16 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
   Future<void> _saveEdit(AppTodo todo) async {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
+
+    final amountText = _amountController.text.replaceAll(',', '').trim();
+    final amount = amountText.isEmpty ? null : int.tryParse(amountText);
+    if (amountText.isNotEmpty && amount == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('金額は数字で入力してください')));
+      return;
+    }
+
+    final appState = context.read<AppState>();
+    final noteText = _noteController.text.trim();
     final items = _itemsController.text
         .split(RegExp(r'[,、\n]'))
         .map((e) => e.trim())
@@ -76,17 +85,41 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       title: title,
       category: _category,
       dueDate: _dueDate,
-      amount: int.tryParse(_amountController.text.replaceAll(',', '').trim()),
-      note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+      clearDueDate: _dueDate == null,
+      amount: amount,
+      clearAmount: amountText.isEmpty,
+      note: noteText.isEmpty ? null : noteText,
+      clearNote: noteText.isEmpty,
       items: items,
       updatedAt: DateTime.now(),
     );
-    await context.read<AppState>().updateTodo(updated);
+    await appState.updateTodo(updated);
+    if (!mounted) return;
     setState(() => _isEditing = false);
   }
 
   void _cancelEdit() {
     setState(() => _isEditing = false);
+  }
+
+  Future<void> _confirmDelete(AppTodo todo) async {
+    final appState = context.read<AppState>();
+    final navigator = Navigator.of(context);
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('削除確認'),
+        content: Text('「${todo.title}」を削除しますか？\n元画像がこのTodoだけで使われている場合は画像も削除されます。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('削除')),
+        ],
+      ),
+    );
+    if (!mounted || result != true) return;
+    await appState.deleteTodo(todo.id);
+    if (!mounted) return;
+    navigator.pop();
   }
 
   @override
@@ -117,15 +150,12 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline),
-              onPressed: () async {
-                await context.read<AppState>().deleteTodo(todo.id);
-                if (context.mounted) Navigator.of(context).pop();
-              },
+              onPressed: () => _confirmDelete(todo),
             ),
           ],
         ],
       ),
-      body: _isEditing ? _buildEditForm(todo, child) : _buildDetail(todo, child, document),
+      body: _isEditing ? _buildEditForm() : _buildDetail(todo, child, document),
     );
   }
 
@@ -203,13 +233,10 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                 children: [
                   Text('元画像', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
-                  if (kIsWeb)
-                    const Text('（Web版では画像表示は利用できません）')
-                  else
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(File(document!.localImagePath!)),
-                    ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(File(document!.localImagePath!)),
+                  ),
                 ],
               ),
             ),
@@ -219,7 +246,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     );
   }
 
-  Widget _buildEditForm(AppTodo todo, ChildProfile? child) {
+  Widget _buildEditForm() {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -229,7 +256,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<TodoCategory>(
-          value: _category,
+          initialValue: _category,
           decoration: const InputDecoration(labelText: '種類', border: OutlineInputBorder()),
           items: TodoCategory.values
               .map((c) => DropdownMenuItem(value: c, child: Text(c.label)))
@@ -237,10 +264,24 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
           onChanged: (value) => setState(() => _category = value ?? TodoCategory.other),
         ),
         const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: _selectDueDate,
-          icon: const Icon(Icons.event),
-          label: Text(_dueDate == null ? '期限を選ぶ' : '${_dueDate!.year}/${_dueDate!.month}/${_dueDate!.day}'),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _selectDueDate,
+                icon: const Icon(Icons.event),
+                label: Text(_dueDate == null ? '期限を選ぶ' : '${_dueDate!.year}/${_dueDate!.month}/${_dueDate!.day}'),
+              ),
+            ),
+            if (_dueDate != null) ...[
+              const SizedBox(width: 8),
+              IconButton.outlined(
+                tooltip: '期限をクリア',
+                onPressed: () => setState(() => _dueDate = null),
+                icon: const Icon(Icons.clear),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 12),
         TextField(
@@ -276,6 +317,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       lastDate: DateTime(now.year + 3),
       initialDate: _dueDate ?? now,
     );
-    if (result != null) setState(() => _dueDate = result);
+    if (!mounted || result == null) return;
+    setState(() => _dueDate = result);
   }
 }

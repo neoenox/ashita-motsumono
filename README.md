@@ -2,6 +2,12 @@
 
 園・学校・習い事のプリント、スクショ、連絡文から、今日・明日の持ち物・提出物・集金をTodo化するFlutter MVPです。
 
+## 対象プラットフォーム
+
+v0.1 MVPは **Android/iOS専用** です。
+
+日本語OCRは `google_mlkit_text_recognition` のAndroid/iOS向けネイティブ実装を使います。Web版、Windows版、macOS版、Linux版はこのMVPでは対象外です。
+
 ## 実装済み
 
 - 子ども登録
@@ -16,6 +22,7 @@
 - 元画像表示
 - ローカル通知予約
 - 端末内保存（SharedPreferences JSON）
+- 保存データ破損時の退避データコピー導線
 - 抽出ロジックの単体テスト
 
 ## MVPの前提
@@ -26,6 +33,18 @@
 - 画像クラウド保存なし
 - P2Pなし
 - Cloudflare Workers + D1同期はv0.2以降
+
+## 必要環境
+
+`pubspec.lock` の解決結果に合わせ、Dart SDK は 3.12.0 以上を前提にしています。
+`flutter_local_notifications 22.x` は Flutter SDK 3.38.1 以上を要求するため、Flutter は安定版の新しめのバージョンを使ってください。
+
+```bash
+flutter --version
+flutter pub get
+flutter analyze
+flutter test
+```
 
 ## このZIPについて
 
@@ -45,7 +64,7 @@ bash tool/create_platforms.sh
 flutter pub get
 ```
 
-その後、`docs/NATIVE_SETUP.md` に沿ってAndroid/iOSのOCR言語パックと権限を追加してください。
+その後、`docs/NATIVE_SETUP.md` に沿ってAndroid/iOSのOCR言語パック、通知、権限を追加してください。
 
 ## 実行
 
@@ -58,6 +77,19 @@ flutter run
 ```bash
 flutter test
 ```
+
+## リリースAPK生成
+
+GitHub Actions の `Release APK` ワークフローは、`v*` 形式のタグをpushしたときにAPKを生成します。
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+ワークフロー内では Android 雛形を生成し、`tool/configure_android_release.sh` でAndroid向けのOCR・通知・desugaring設定を反映してから `flutter build apk --release` を実行します。
+
+生成されたAPKは、Actionsのartifact `ashita-motsumono-<tag>-release-apk` からダウンロードできます。
 
 ## まず確認する導線
 
@@ -73,6 +105,12 @@ flutter test
 4. 候補が作られる
 5. 確認画面で修正して登録
 6. ホームの「今後の予定」に表示される
+
+## データとプライバシー
+
+v0.1は端末内保存のみです。子ども名、Todo、OCR全文、元画像パスはSharedPreferences JSONに保存されます。
+
+エクスポート機能は、これらのデータをJSONとしてクリップボードにコピーします。個人情報を含む可能性があるため、貼り付け先に注意してください。
 
 ## 注意
 
