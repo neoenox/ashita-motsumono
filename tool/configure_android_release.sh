@@ -49,19 +49,12 @@ def ensure_kts():
             text,
         )
 
-    if "kotlinOptions" in text:
-        text = re.sub(
-            r"jvmTarget\s*=\s*[^\n]+",
-            'jvmTarget = JavaVersion.VERSION_17.toString()',
-            text,
-            count=1,
-        )
-    else:
-        text = replace_or_insert(
-            r"compileOptions\s*\{[^}]*\}",
-            lambda m: m.group(0) + '\n\n    kotlinOptions {\n        jvmTarget = JavaVersion.VERSION_17.toString()\n    }',
-            text,
-        )
+    # Remove deprecated kotlinOptions block inside android {}
+    text = re.sub(r'\n\s*kotlinOptions\s*\{[^}]*\}', '', text)
+
+    # Add new compilerOptions at top level if not already present
+    if 'compilerOptions' not in text:
+        text = text.rstrip() + '\n\nkotlin {\n    compilerOptions {\n        jvmTarget.set(JavaVersion.VERSION_17.toString())\n    }\n}\n'
 
     if "dependencies" not in text:
         text += "\n\ndependencies {\n}\n"
