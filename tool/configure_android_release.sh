@@ -7,6 +7,9 @@ cd "$ROOT"
 APP_GRADLE_KTS="android/app/build.gradle.kts"
 APP_GRADLE_GROOVY="android/app/build.gradle"
 MANIFEST="android/app/src/main/AndroidManifest.xml"
+PROGUARD_RULES="android/app/proguard-rules.pro"
+
+# Variables are referenced inside the inline Python script below
 
 if [[ ! -d android ]]; then
   echo "android/ was not found. Run tool/create_platforms.sh first." >&2
@@ -70,6 +73,15 @@ def ensure_kts():
             text,
         )
 
+    # Reference proguard rules if not already present
+    if 'proguard-rules.pro' not in text:
+        text = re.sub(
+            r'release\s*\{',
+            'release {\n            proguardFiles(getDefaultProguardFile(\'proguard-android-optimize.txt\'), \'proguard-rules.pro\')',
+            text,
+            count=1,
+        )
+
     app_kts.write_text(text)
 
 
@@ -113,6 +125,18 @@ def ensure_groovy():
     app_groovy.write_text(text)
 
 
+def ensure_proguard():
+    rules = root / "android/app/proguard-rules.pro"
+    content = (
+        "# ML Kit optional language packs not included\n"
+        "-dontwarn com.google.mlkit.vision.text.chinese.**\n"
+        "-dontwarn com.google.mlkit.vision.text.devanagari.**\n"
+        "-dontwarn com.google.mlkit.vision.text.korean.**\n"
+    )
+    if not rules.exists():
+        rules.write_text(content)
+
+
 def ensure_manifest():
     text = manifest.read_text()
     permissions = [
@@ -132,6 +156,8 @@ elif app_groovy.exists():
     ensure_groovy()
 else:
     raise RuntimeError("No android/app Gradle build file found")
+
+ensure_proguard()
 
 if not manifest.exists():
     raise RuntimeError("AndroidManifest.xml was not found")
