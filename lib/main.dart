@@ -5,24 +5,30 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'src/app_state.dart';
-import 'src/repositories/local_store.dart';
+import 'src/repositories/drift_store.dart';
 import 'src/screens/home_screen.dart';
+import 'src/services/app_settings.dart';
 import 'src/services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final store = await LocalStore.create();
-  final notifications = NotificationService();
+  final prefs = await SharedPreferences.getInstance();
+  final settings = AppSettings(prefs);
+  final store = await DriftStore.create();
+  final notifications = NotificationService(settings: settings);
   final appState = AppState(store: store, notifications: notifications);
   await appState.load();
-  runApp(AshitaMotsumonoApp(appState: appState));
+  runApp(AshitaMotsumonoApp(appState: appState, settings: settings));
 }
 
 class AshitaMotsumonoApp extends StatelessWidget {
-  const AshitaMotsumonoApp({super.key, required this.appState});
+  const AshitaMotsumonoApp({super.key, required this.appState, required this.settings});
 
   final AppState appState;
+  final AppSettings settings;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +41,7 @@ class AshitaMotsumonoApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2F7D6E)),
           useMaterial3: true,
         ),
-        home: const HomeScreen(),
+        home: HomeScreen(settings: settings),
       ),
     );
   }

@@ -15,13 +15,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_state.dart';
 import '../models/entities.dart';
+import '../services/app_settings.dart';
 import '../utils/date_formatters.dart';
 import 'add_child_screen.dart';
 import 'add_todo_screen.dart';
+import 'settings_screen.dart';
 import 'todo_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, required this.settings});
+
+  final AppSettings settings;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -173,6 +177,13 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('あした持つもの'),
         actions: [
+          IconButton(
+            tooltip: '設定',
+            icon: const Icon(Icons.settings),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => SettingsScreen(settings: widget.settings)),
+            ),
+          ),
           IconButton(
             tooltip: '子どもを追加',
             icon: const Icon(Icons.child_care),

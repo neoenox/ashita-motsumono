@@ -1,7 +1,7 @@
 // lib/src/models/entities.dart
 // アプリ全体で使うドメインモデル（ChildProfile, AppTodo, ChecklistItem, DocumentRecord, ExtractionDraft, AppSnapshot）。
 // すべて @immutable で toJson/fromJson を持ち、SharedPreferences に保存できる。
-// 関連: repositories/local_store.dart, app_state.dart
+// 関連: repositories/store.dart, app_state.dart
 
 import 'package:flutter/foundation.dart';
 

@@ -1,13 +1,13 @@
 // lib/src/app_state.dart
 // ChangeNotifier ベースのアプリ全体の状態管理。
 // 子ども・Todo・ドキュメントの CRUD、通知スケジュール、永続化を統括する。
-// 関連: models/entities.dart, repositories/local_store.dart, services/notification_service.dart
+// 関連: models/entities.dart, repositories/store.dart, services/notification_service.dart
 
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import 'models/entities.dart';
-import 'repositories/local_store.dart';
+import 'repositories/store.dart';
 import 'services/image_file_service.dart';
 import 'services/notification_service.dart';
 
@@ -18,7 +18,7 @@ class AppState extends ChangeNotifier {
     Uuid? uuid,
   }) : _uuid = uuid ?? const Uuid();
 
-  final LocalStore _store;
+  final Store _store;
   final NotificationService _notifications;
   final Uuid _uuid;
 
@@ -35,7 +35,7 @@ class AppState extends ChangeNotifier {
   List<DocumentRecord> get documents => List.unmodifiable(_documents);
 
   Future<void> load() async {
-    final snapshot = _store.load();
+    final snapshot = await _store.load();
     _children = snapshot.children;
     _todos = snapshot.todos;
     _documents = snapshot.documents;

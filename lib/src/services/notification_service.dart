@@ -1,20 +1,26 @@
 // lib/src/services/notification_service.dart
 // flutter_local_notifications を使ったローカル通知のスケジュール・キャンセル。
-// 前日20:00 と 当日7:00 に Todo 内容を通知する（JST固定、MVP限定）。
+// 前日20:00 と 当日7:00 に Todo 内容を通知する。
+// 端末のタイムゾーンを自動検出（flutter_timezone）、フォールバックは Asia/Tokyo。
 // 関連: models/entities.dart, app_state.dart
 
 import 'dart:math';
 
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/entities.dart';
+import 'app_settings.dart';
 
 class NotificationService {
-  NotificationService();
+  /// [timezoneName] を指定すると flutter_timezone による自動検出をスキップする（テスト用）。
+  NotificationService({this.settings, String? timezoneName}) : _timezoneName = timezoneName;
 
+  final AppSettings? settings;
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final String? _timezoneName;
   bool _initialized = false;
   Future<void>? _initFuture;
 
@@ -26,7 +32,12 @@ class NotificationService {
 
   Future<void> _doInitialize() async {
     tzdata.initializeTimeZones();
-    tz.setLocalLocation(tz.getLocation('Asia/Tokyo'));
+    try {
+      final id = _timezoneName ?? (await FlutterTimezone.getLocalTimezone()).identifier;
+      tz.setLocalLocation(tz.getLocation(id));
+    } on Object {
+      tz.setLocalLocation(tz.getLocation('Asia/Tokyo'));
+    }
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const ios = DarwinInitializationSettings(
@@ -56,7 +67,9 @@ class NotificationService {
     if (due == null || todo.isDone) return;
 
     if (todo.notifyPreviousNight) {
-      final when = DateTime(due.year, due.month, due.day, 20).subtract(const Duration(days: 1));
+      final h = settings?.previousNightHour ?? 20;
+      final m = settings?.previousNightMinute ?? 0;
+      final when = DateTime(due.year, due.month, due.day, h, m).subtract(const Duration(days: 1));
       await _scheduleIfFuture(
         _notificationId(todo.id, 1),
         when,
@@ -65,7 +78,9 @@ class NotificationService {
       );
     }
     if (todo.notifySameMorning) {
-      final when = DateTime(due.year, due.month, due.day, 7);
+      final h = settings?.sameMorningHour ?? 7;
+      final m = settings?.sameMorningMinute ?? 0;
+      final when = DateTime(due.year, due.month, due.day, h, m);
       await _scheduleIfFuture(
         _notificationId(todo.id, 2),
         when,
