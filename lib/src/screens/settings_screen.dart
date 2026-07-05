@@ -3,13 +3,22 @@
 // 関連: app_settings.dart, home_screen.dart, notification_service.dart
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../app_state.dart';
 import '../services/app_settings.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.settings});
 
   final AppSettings settings;
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  AppSettings get settings => widget.settings;
 
   @override
   Widget build(BuildContext context) {
@@ -44,8 +53,7 @@ class SettingsScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.all(16),
             child: Text(
-              '通知時刻を変更すると、次回Todo登録・更新時から反映されます。'
-              '既存の予定はキャンセルされません。',
+              '通知時刻を変更すると、登録済みの未完了Todo通知も新しい時刻で再予約されます。',
               style: TextStyle(color: Colors.grey, fontSize: 13),
             ),
           ),
@@ -64,14 +72,22 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       initialTime: TimeOfDay(hour: initialHour, minute: initialMinute),
     );
-    if (time != null) {
+    if (time == null) return;
+
+    try {
       await onSave(time.hour, time.minute);
-      if (context.mounted) {
-        // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('通知時刻を保存しました')),
-        );
-      }
+      if (!mounted) return;
+      setState(() {});
+      await context.read<AppState>().rescheduleAllNotifications();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('通知時刻を保存し、既存Todoの通知も更新しました')),
+      );
+    } on Object catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('通知時刻の保存に失敗しました: $e')),
+      );
     }
   }
 }
