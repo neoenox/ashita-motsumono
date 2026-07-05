@@ -18,4 +18,6 @@ cp "$TMP_DIR/pubspec.yaml" "$ROOT/pubspec.yaml"
 cp "$TMP_DIR/analysis_options.yaml" "$ROOT/analysis_options.yaml"
 rm -rf "$TMP_DIR"
 
-echo "Platform files created. Next: flutter pub get"
+bash tool/configure_android_release.sh
+
+echo "Platform files created and Android OCR/notification settings applied. Next: flutter pub get"

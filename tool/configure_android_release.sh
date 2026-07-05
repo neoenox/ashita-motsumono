@@ -4,13 +4,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-APP_GRADLE_KTS="android/app/build.gradle.kts"
-APP_GRADLE_GROOVY="android/app/build.gradle"
-MANIFEST="android/app/src/main/AndroidManifest.xml"
-PROGUARD_RULES="android/app/proguard-rules.pro"
-
-# Variables are referenced inside the inline Python script below
-
 if [[ ! -d android ]]; then
   echo "android/ was not found. Run tool/create_platforms.sh first." >&2
   exit 1
@@ -26,9 +19,11 @@ app_groovy = root / "android/app/build.gradle"
 manifest = root / "android/app/src/main/AndroidManifest.xml"
 
 OCR_DEP_KTS = 'implementation("com.google.mlkit:text-recognition-japanese:16.0.1")'
-DESUGAR_DEP_KTS = 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")'
+DESUGAR_DEP_KTS = 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")'
+OLD_DESUGAR_DEP_KTS = 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")'
 OCR_DEP_GROOVY = "implementation 'com.google.mlkit:text-recognition-japanese:16.0.1'"
-DESUGAR_DEP_GROOVY = "coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'"
+DESUGAR_DEP_GROOVY = "coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'"
+OLD_DESUGAR_DEP_GROOVY = "coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'"
 
 
 def replace_or_insert(pattern: str, replacement: str, text: str) -> str:
@@ -44,6 +39,14 @@ def ensure_kts():
     text = re.sub(r"minSdk\s*=\s*[^\n]+", "minSdk = 21", text, count=1)
     text = re.sub(r"targetSdk\s*=\s*[^\n]+", "targetSdk = 36", text, count=1)
     text = text.replace("JavaVersion.VERSION_11", "JavaVersion.VERSION_17")
+    text = text.replace(OLD_DESUGAR_DEP_KTS, DESUGAR_DEP_KTS)
+
+    if 'org.jetbrains.kotlin.android' not in text and 'kotlin-android' not in text:
+        text = replace_or_insert(
+            r'id\("com\.android\.application"\)',
+            'id("com.android.application")\n    id("org.jetbrains.kotlin.android")',
+            text,
+        )
 
     if "isCoreLibraryDesugaringEnabled" not in text:
         text = replace_or_insert(
@@ -52,12 +55,10 @@ def ensure_kts():
             text,
         )
 
-    # Remove deprecated kotlinOptions block inside android {}
     text = re.sub(r'\n\s*kotlinOptions\s*\{[^}]*\}', '', text)
 
-    # Add new compilerOptions at top level if not already present
     if 'compilerOptions' not in text:
-        text = text.rstrip() + '\n\nkotlin {\n    compilerOptions {\n        jvmTarget.set(JavaVersion.VERSION_17.toString())\n    }\n}\n'
+        text = text.rstrip() + '\n\nkotlin {\n    compilerOptions {\n        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17\n    }\n}\n'
 
     if "dependencies" not in text:
         text += "\n\ndependencies {\n}\n"
@@ -73,7 +74,6 @@ def ensure_kts():
             text,
         )
 
-    # Reference proguard rules if not already present
     if 'proguard-rules.pro' not in text:
         text = re.sub(
             r'release\s*\{',
@@ -91,6 +91,7 @@ def ensure_groovy():
     text = re.sub(r"minSdk(?:Version)?\s+[^\n]+", "minSdkVersion 21", text, count=1)
     text = re.sub(r"targetSdk(?:Version)?\s+[^\n]+", "targetSdkVersion 36", text, count=1)
     text = text.replace("JavaVersion.VERSION_11", "JavaVersion.VERSION_17")
+    text = text.replace(OLD_DESUGAR_DEP_GROOVY, DESUGAR_DEP_GROOVY)
 
     if "coreLibraryDesugaringEnabled" not in text:
         text = replace_or_insert(
