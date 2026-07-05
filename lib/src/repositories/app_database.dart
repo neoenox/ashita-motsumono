@@ -73,7 +73,9 @@ class DbDocument extends Table {
 
 @DriftDatabase(tables: [DbChild, DbTodo, DbChecklistItem, DbDocument])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(QueryExecutor e) : super(e);
+  AppDatabase(QueryExecutor e, {this.databaseFile}) : super(e);
+
+  final File? databaseFile;
 
   @override
   int get schemaVersion => 1;
@@ -81,9 +83,8 @@ class AppDatabase extends _$AppDatabase {
   /// SharedPreferences から JSON データを SQLite に移行する。
   static Future<AppDatabase> createWithMigration() async {
     final dir = await getApplicationDocumentsDirectory();
-    final db = AppDatabase(
-      NativeDatabase(File(p.join(dir.path, 'ashita_motsumono.db'))),
-    );
+    final file = File(p.join(dir.path, 'ashita_motsumono.db'));
+    final db = AppDatabase(NativeDatabase(file), databaseFile: file);
     // foreign_keys OFF: アプリ内では論理削除を使わず参照整合性をコード側で担保
     await db.customStatement('PRAGMA foreign_keys = OFF');
 
@@ -106,6 +107,16 @@ class AppDatabase extends _$AppDatabase {
     final db = AppDatabase(NativeDatabase.memory());
     await db.customStatement('PRAGMA foreign_keys = OFF');
     return db;
+  }
+
+  Future<String?> backupDatabaseFile() async {
+    final source = databaseFile;
+    if (source == null || !await source.exists()) return null;
+
+    final stamp = DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
+    final backup = File(p.join(source.parent.path, 'ashita_motsumono_corrupt_$stamp.db'));
+    await source.copy(backup.path);
+    return backup.path;
   }
 
   // ── CRUD ──────────────────────────────────────────────
