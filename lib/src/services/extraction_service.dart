@@ -133,12 +133,10 @@ class ExtractionService {
 
   DateTime? _extractRelativeDate(String text, DateTime now) {
     if (text.contains('明後日')) {
-      final d = now.add(const Duration(days: 2));
-      return DateTime(d.year, d.month, d.day);
+      return DateTime(now.year, now.month, now.day + 2);
     }
     if (text.contains('翌日') || text.contains('明日')) {
-      final d = now.add(const Duration(days: 1));
-      return DateTime(d.year, d.month, d.day);
+      return DateTime(now.year, now.month, now.day + 1);
     }
     if (text.contains('今日') || text.contains('本日')) {
       return DateTime(now.year, now.month, now.day);
