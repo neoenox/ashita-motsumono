@@ -129,13 +129,23 @@ def ensure_groovy():
 def ensure_proguard():
     rules = root / "android/app/proguard-rules.pro"
     content = (
-        "# ML Kit optional language packs not included\n"
+        "# ML Kit Text Recognition - R8 keep rules for Japanese OCR\n"
+        "# MlKitInitProvider (ContentProvider) starts during app launch;\n"
+        "# R8 strips mlkit-common DI classes without these rules.\n"
+        "-keep class com.google.mlkit.vision.text.** { *; }\n"
+        "-keep class com.google.android.gms.internal.mlkit_vision_text.** { *; }\n"
+        "-keep class com.google.android.gms.internal.mlkit_vision_text_japanese.** { *; }\n"
+        "-keep class com.google.mlkit.common.** { *; }\n"
         "-dontwarn com.google.mlkit.vision.text.chinese.**\n"
         "-dontwarn com.google.mlkit.vision.text.devanagari.**\n"
         "-dontwarn com.google.mlkit.vision.text.korean.**\n"
     )
     if not rules.exists():
         rules.write_text(content)
+    else:
+        existing = rules.read_text()
+        if 'com.google.mlkit.common.**' not in existing:
+            rules.write_text(content)
 
 
 def ensure_manifest():
