@@ -88,6 +88,21 @@ void main() {
       expect(draft.dueDate, DateTime(2026, 7, 9));
     });
 
+    test('extracts date with weekday in parentheses (半角)', () {
+      final draft = ExtractionService().extract('7月10日(火)までに水着を持参', now: now);
+      expect(draft.dueDate, DateTime(2026, 7, 10));
+    });
+
+    test('extracts date with weekday in full-width parentheses', () {
+      final draft = ExtractionService().extract('7/10（火）までにタオルを持参', now: now);
+      expect(draft.dueDate, DateTime(2026, 7, 10));
+    });
+
+    test('extracts slash date with weekday in parentheses', () {
+      final draft = ExtractionService().extract('7/10(火)までに申込書を提出', now: now);
+      expect(draft.dueDate, DateTime(2026, 7, 10));
+    });
+
     test('returns null when no date found with "前日まで"', () {
       final draft = ExtractionService().extract('運動会の前日までにタオルを持参', now: now);
       expect(draft.dueDate, isNull);
