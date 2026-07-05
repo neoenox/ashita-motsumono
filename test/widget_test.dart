@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ashita_motsumono/src/screens/review_extraction_screen.dart';
 import 'package:ashita_motsumono/src/screens/todo_detail_screen.dart';
 
 /// 現在のモック SharedPreferences から AppSettings を生成する。
@@ -177,6 +178,60 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Todoが見つかりませんでした'), findsOneWidget);
+    });
+  });
+
+  group('ReviewExtractionScreen', () {
+    testWidgets('deletes document when cancelled without save', (tester) async {
+      final appState = await _createAppState();
+      await appState.addChild('長女');
+      final doc = await appState.addDocument(
+        sourceType: 'paste',
+        ocrText: '明日までに水筒を持参',
+      );
+      final docId = doc.id;
+
+      final navigatorKey = GlobalKey<NavigatorState>();
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(
+          value: appState,
+          child: MaterialApp(
+            navigatorKey: navigatorKey,
+            home: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ReviewExtractionScreen(
+                      draft: const ExtractionDraft(
+                        title: '水筒を持参',
+                        category: TodoCategory.item,
+                        items: ['水筒'],
+                      ),
+                      documentId: docId,
+                    ),
+                  ),
+                ),
+                child: const Text('開く'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap to push the review screen
+      await tester.tap(find.text('開く'));
+      await tester.pumpAndSettle();
+
+      // Verify review screen is shown
+      expect(find.text('読み取り結果の確認'), findsOneWidget);
+
+      // Navigate back (cancel) — the document should be deleted on dispose
+      await tester.tap(find.byIcon(Icons.arrow_back));
+      await tester.pumpAndSettle();
+
+      expect(appState.documents.where((d) => d.id == docId), isEmpty);
     });
   });
 }
