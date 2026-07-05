@@ -9,6 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../utils/amount.dart';
+import '../utils/date_picker.dart';
+import '../utils/string_utils.dart';
 import '../app_state.dart';
 import '../models/entities.dart';
 import '../utils/date_formatters.dart';
@@ -64,20 +67,15 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
 
-    final amountText = _amountController.text.replaceAll(',', '').trim();
-    final amount = amountText.isEmpty ? null : int.tryParse(amountText);
-    if (amountText.isNotEmpty && amount == null) {
+    final parsed = parseAmount(_amountController.text);
+    if (!parsed.valid) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('金額は数字で入力してください')));
       return;
     }
 
     final appState = context.read<AppState>();
     final noteText = _noteController.text.trim();
-    final items = _itemsController.text
-        .split(RegExp(r'[,、\n]'))
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .map((label) {
+    final items = splitItems(_itemsController.text).map((label) {
       final existing = todo.items.where((i) => i.label == label).firstOrNull;
       return existing ?? ChecklistItem(id: const Uuid().v4(), label: label);
     }).toList();
@@ -86,8 +84,8 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       category: _category,
       dueDate: _dueDate,
       clearDueDate: _dueDate == null,
-      amount: amount,
-      clearAmount: amountText.isEmpty,
+      amount: parsed.amount,
+      clearAmount: _amountController.text.trim().isEmpty,
       note: noteText.isEmpty ? null : noteText,
       clearNote: noteText.isEmpty,
       items: items,
@@ -310,13 +308,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
   }
 
   Future<void> _selectDueDate() async {
-    final now = DateTime.now();
-    final result = await showDatePicker(
-      context: context,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 3),
-      initialDate: _dueDate ?? now,
-    );
+    final result = await pickDueDate(context, initial: _dueDate);
     if (!mounted || result == null) return;
     setState(() => _dueDate = result);
   }

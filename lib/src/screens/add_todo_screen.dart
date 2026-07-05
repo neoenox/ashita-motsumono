@@ -13,6 +13,9 @@ import '../models/entities.dart';
 import '../services/extraction_service.dart';
 import '../services/image_file_service.dart';
 import '../services/ocr_service.dart';
+import '../utils/amount.dart';
+import '../utils/date_picker.dart';
+import '../utils/string_utils.dart';
 import 'review_extraction_screen.dart';
 
 class AddTodoScreen extends StatefulWidget {
@@ -177,13 +180,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
   }
 
   Future<void> _selectDueDate() async {
-    final now = DateTime.now();
-    final result = await showDatePicker(
-      context: context,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 3),
-      initialDate: _dueDate ?? now,
-    );
+    final result = await pickDueDate(context, initial: _dueDate);
     if (!mounted || result == null) return;
     setState(() => _dueDate = result);
   }
@@ -194,38 +191,26 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('タイトルを入力してください')));
       return;
     }
-    final parsedAmount = _parseAmountOrShowError(_amountController.text);
-    if (!parsedAmount.valid) return;
+    final parsed = parseAmount(_amountController.text);
+    if (!parsed.valid) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('金額は数字で入力してください')));
+      return;
+    }
 
     final appState = context.read<AppState>();
     final navigator = Navigator.of(context);
-    final items = _itemsController.text
-        .split(RegExp(r'[,、\n]'))
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    final items = splitItems(_itemsController.text);
     final draft = ExtractionDraft(
       title: title,
       category: _category,
       dueDate: _dueDate,
-      amount: parsedAmount.amount,
+      amount: parsed.amount,
       items: items,
       note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
     );
     await appState.addTodoFromDraft(draft: draft, childId: _childId);
     if (!mounted) return;
     navigator.pop();
-  }
-
-  ({bool valid, int? amount}) _parseAmountOrShowError(String value) {
-    final amountText = value.replaceAll(',', '').trim();
-    if (amountText.isEmpty) return (valid: true, amount: null);
-    final amount = int.tryParse(amountText);
-    if (amount == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('金額は数字で入力してください')));
-      return (valid: false, amount: null);
-    }
-    return (valid: true, amount: amount);
   }
 
   Future<void> _extractFromText(String text) async {

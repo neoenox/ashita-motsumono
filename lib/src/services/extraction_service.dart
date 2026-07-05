@@ -49,6 +49,10 @@ class ExtractionService {
     '鍵盤ハーモニカ',
   ];
 
+  // 長い語順にソート済み。_extractItems での重複排除に使う。
+  static final _itemDictionaryByLength = List<String>.of(itemDictionary)
+    ..sort((a, b) => b.length.compareTo(a.length));
+
   static const _weekdayMap = <String, int>{
     '月': DateTime.monday,
     '火': DateTime.tuesday,
@@ -207,8 +211,7 @@ class ExtractionService {
 
   List<String> _extractItems(String text) {
     final selected = <String>{};
-    final candidates = [...itemDictionary]..sort((a, b) => b.length.compareTo(a.length));
-    for (final item in candidates) {
+    for (final item in _itemDictionaryByLength) {
       // 長い語を優先し、バスタオル→タオル、お弁当→弁当のような重複を避ける。
       if (text.contains(item) && !selected.any((existing) => existing.contains(item))) {
         selected.add(item);

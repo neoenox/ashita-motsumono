@@ -62,13 +62,14 @@ class AppState extends ChangeNotifier {
       ..sort(_sortTodo);
   }
 
-  List<AppTodo> upcomingTodos() {
+  List<AppTodo> futureTodos() {
     final today = DateTime.now();
-    final start = DateTime(today.year, today.month, today.day);
+    final start = DateTime(today.year, today.month, today.day).add(const Duration(days: 2));
     return _todos
         .where((todo) =>
             todo.status == TodoStatus.active &&
-            (todo.dueDate == null || !todo.dueDate!.isBefore(start)))
+            todo.dueDate != null &&
+            !todo.dueDate!.isBefore(start))
         .toList()
       ..sort(_sortTodo);
   }
@@ -113,8 +114,11 @@ class AppState extends ChangeNotifier {
 
   Future<void> deleteChild(String id) async {
     _children = _children.where((child) => child.id != id).toList();
+    final now = DateTime.now();
     _todos = _todos
-        .map((todo) => todo.childId == id ? todo.copyWith(clearChildId: true) : todo)
+        .map((todo) => todo.childId == id
+            ? todo.copyWith(clearChildId: true, updatedAt: now)
+            : todo)
         .toList();
     await _persist();
     notifyListeners();

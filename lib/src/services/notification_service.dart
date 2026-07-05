@@ -4,7 +4,6 @@
 // 端末のタイムゾーンを自動検出（flutter_timezone）、フォールバックは Asia/Tokyo。
 // 関連: models/entities.dart, app_state.dart
 
-import 'dart:math';
 
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -130,13 +129,6 @@ class NotificationService {
     return '${todo.title}：${parts.join(' / ')}';
   }
 
-  int _notificationId(String id, int salt) {
-    var hash = salt;
-    for (final codeUnit in id.codeUnits) {
-      hash = 0x1fffffff & (hash + codeUnit);
-      hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-      hash ^= hash >> 6;
-    }
-    return max(1, hash.abs());
-  }
+  int _notificationId(String id, int salt) =>
+      (Object.hash(id, salt) & 0x7FFFFFFF).clamp(1, 0x7FFFFFFF);
 }

@@ -37,7 +37,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _notificationDialogShown = false;
   final _searchController = TextEditingController();
   String _searchQuery = '';
-  String _searchQueryRaw = '';
   bool _showCompleted = false;
   String? _filterChildId;
 
@@ -150,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<AppTodo> _filter(List<AppTodo> todos, List<ChildProfile> children) {
+    final childMap = {for (final c in children) c.id: c};
     return todos.where((t) {
       if (!_showCompleted && t.isDone) return false;
       if (_filterChildId != null && t.childId != _filterChildId) return false;
@@ -159,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (t.category.label.contains(q)) return true;
       if (t.note?.toLowerCase().contains(q) == true) return true;
       if (t.amount?.toString().contains(q) == true) return true;
-      final child = children.where((c) => c.id == t.childId).firstOrNull;
+      final child = childMap[t.childId];
       if (child?.name.toLowerCase().contains(q) == true) return true;
       return false;
     }).toList();
@@ -173,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final todayTodos = _filter(state.todosForDate(today), state.children);
     final tomorrowTodos = _filter(state.todosForDate(tomorrow), state.children);
     final undated = _filter(state.undatedTodos(), state.children);
-    final upcoming = _filter(state.upcomingTodos(), state.children);
+    final upcoming = _filter(state.futureTodos(), state.children);
     final allFiltered =
         todayTodos.isEmpty && tomorrowTodos.isEmpty && undated.isEmpty && upcoming.isEmpty;
 
@@ -229,18 +229,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         icon: const Icon(Icons.clear),
                         onPressed: () {
                           _searchController.clear();
-                          setState(() {
-                            _searchQuery = '';
-                            _searchQueryRaw = '';
-                          });
+                          setState(() => _searchQuery = '');
                         },
                       )
                     : null,
               ),
-              onChanged: (v) => setState(() {
-                _searchQueryRaw = v.trim();
-                _searchQuery = v.trim().toLowerCase();
-              }),
+              onChanged: (v) => setState(() => _searchQuery = v.trim()),
             ),
           ),
           _FilterBar(
@@ -262,7 +256,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (state.children.isNotEmpty && allFiltered && _searchQuery.isEmpty && state.todos.isEmpty)
                   _EmptyState(),
                 if (state.children.isNotEmpty && allFiltered && _searchQuery.isNotEmpty)
-                  _NoSearchResults(query: _searchQueryRaw),
+                  _NoSearchResults(query: _searchQuery),
                 if (todayTodos.isNotEmpty || _searchQuery.isEmpty) ...[
                   _TodoSection(title: '今日やること', todos: todayTodos),
                   const SizedBox(height: 16),
@@ -412,11 +406,8 @@ class _UpcomingSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final future = todos
-        .where((todo) => todo.dueDate != null && todo.dueDate!.isAfter(DateTime.now().add(const Duration(days: 1))))
-        .take(10)
-        .toList();
-    if (future.isEmpty) return const SizedBox.shrink();
+    if (todos.isEmpty) return const SizedBox.shrink();
+    final shown = todos.take(10).toList();
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -425,7 +416,7 @@ class _UpcomingSection extends StatelessWidget {
           children: [
             Text('今後の予定', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            ...future.map((todo) => _TodoTile(todo: todo, compact: true)),
+            ...shown.map((todo) => _TodoTile(todo: todo, compact: true)),
           ],
         ),
       ),
