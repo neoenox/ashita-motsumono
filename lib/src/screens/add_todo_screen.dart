@@ -33,6 +33,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
   TodoCategory _category = TodoCategory.item;
   String? _childId;
   bool _busy = false;
+  bool _showManual = false;
 
   @override
   void dispose() {
@@ -97,71 +98,79 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
             label: const Text('貼り付け文からTodo候補を作る'),
           ),
           const Divider(height: 40),
-          Text('手入力', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 12),
-          _ChildDropdown(
-            value: _childId,
-            children: children,
-            onChanged: (value) => setState(() => _childId = value),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _titleController,
-            decoration: const InputDecoration(
-              labelText: 'タイトル',
-              border: OutlineInputBorder(),
-              hintText: '例：集金袋を提出',
+          if (!_showManual)
+            OutlinedButton.icon(
+              onPressed: () => setState(() => _showManual = true),
+              icon: const Icon(Icons.edit),
+              label: const Text('手動で入力する'),
             ),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<TodoCategory>(
-            initialValue: _category,
-            decoration: const InputDecoration(labelText: '種類', border: OutlineInputBorder()),
-            items: TodoCategory.values
-                .map((category) => DropdownMenuItem(value: category, child: Text(category.label)))
-                .toList(),
-            onChanged: (value) => setState(() => _category = value ?? TodoCategory.other),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: _selectDueDate,
-            icon: const Icon(Icons.event),
-            label: Text(_dueDate == null
-                ? '期限を選ぶ'
-                : '${_dueDate!.year}/${_dueDate!.month}/${_dueDate!.day}'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _itemsController,
-            decoration: const InputDecoration(
-              labelText: '持ち物・チェック項目',
-              border: OutlineInputBorder(),
-              hintText: '水筒、体操着、集金袋',
+          if (_showManual) ...[
+            Text('手入力', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            _ChildDropdown(
+              value: _childId,
+              children: children,
+              onChanged: (value) => setState(() => _childId = value),
             ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _amountController,
-            decoration: const InputDecoration(
-              labelText: '金額',
-              border: OutlineInputBorder(),
-              hintText: '500',
+            const SizedBox(height: 12),
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(
+                labelText: 'タイトル',
+                border: OutlineInputBorder(),
+                hintText: '例：集金袋を提出',
+              ),
             ),
-            keyboardType: TextInputType.number,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _noteController,
-            decoration: const InputDecoration(labelText: 'メモ', border: OutlineInputBorder()),
-            minLines: 2,
-            maxLines: 4,
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _saveManual,
-            icon: const Icon(Icons.check),
-            label: const Text('登録'),
-          ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<TodoCategory>(
+              initialValue: _category,
+              decoration: const InputDecoration(labelText: '種類', border: OutlineInputBorder()),
+              items: TodoCategory.values
+                  .map((category) => DropdownMenuItem(value: category, child: Text(category.label)))
+                  .toList(),
+              onChanged: (value) => setState(() => _category = value ?? TodoCategory.other),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _selectDueDate,
+              icon: const Icon(Icons.event),
+              label: Text(_dueDate == null
+                  ? '期限を選ぶ'
+                  : '${_dueDate!.year}/${_dueDate!.month}/${_dueDate!.day}'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _itemsController,
+              decoration: const InputDecoration(
+                labelText: '持ち物・チェック項目',
+                border: OutlineInputBorder(),
+                hintText: '水筒、体操着、集金袋',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _amountController,
+              decoration: const InputDecoration(
+                labelText: '金額',
+                border: OutlineInputBorder(),
+                hintText: '500',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _noteController,
+              decoration: const InputDecoration(labelText: 'メモ', border: OutlineInputBorder()),
+              minLines: 2,
+              maxLines: 4,
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _saveManual,
+              icon: const Icon(Icons.check),
+              label: const Text('登録'),
+            ),
+          ],
         ],
       ),
     );
