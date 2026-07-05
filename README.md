@@ -15,18 +15,20 @@ v0.2 MVPは **Android/iOS専用** です。
 - 画像選択/カメラ撮影
 - ML Kit Text Recognition v2による日本語OCR呼び出し
 - OCR全文貼り付けからの抽出テスト導線
-- 日付・金額・持ち物・提出系キーワード抽出
+- 日付・曜日・金額・持ち物・提出系キーワード抽出
 - 登録前の確認/修正画面
+- 確認画面でキャンセルした場合の一時Document/画像クリーンアップ
 - 今日/明日/未設定/今後のTodo表示（検索フィルター付き）
 - チェックリスト
 - 元画像表示
 - ローカル通知予約（前日夜＋当日朝、端末タイムゾーン自動検出）
 - 通知時刻カスタマイズ（設定画面）
+- 通知時刻変更後の既存Todo通知再予約
 - 端末内保存（Drift/SQLite）
 - SharedPreferences JSON からの自動移行
-- 保存データ破損時の退避データコピー導線
-- 抽出ロジックの単体テスト（33 tests）
-- ウィジェットテスト（8 tests）
+- 保存データ破損時のSQLite DB退避情報コピー導線
+- 抽出ロジックの単体テスト
+- ウィジェットテスト
 
 ## MVPの前提
 
@@ -77,6 +79,10 @@ git push origin v0.2.0
 ワークフロー内では Android 雛形を生成し、`tool/configure_android_release.sh` でAndroid向けのOCR・通知・desugaring設定を反映してから `flutter build apk --release` を実行します。
 
 生成されたAPKは、Actionsのartifact `ashita-motsumono-<tag>-release-apk` からダウンロードできます。
+
+## 今後の作業
+
+今後の作業リストは `docs/TODO.md` にまとめています。
 
 ## まず確認する導線
 
