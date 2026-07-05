@@ -94,6 +94,8 @@ class ExtractionService {
         .replaceAll('／', '/')
         .replaceAll('，', ',')
         .replaceAll('￥', '¥')
+        .replaceAll('O', '0')  // OCR誤認識: O→0
+        .replaceAll('l', '1')  // OCR誤認識: l→1
         .replaceAll('　', ' ')
         .replaceAll(RegExp(r'[ \t]+'), ' ')
         .replaceAll(RegExp(r'\n{3,}'), '\n\n')

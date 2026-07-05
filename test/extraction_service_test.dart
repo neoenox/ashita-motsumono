@@ -108,6 +108,16 @@ void main() {
       expect(draft.dueDate, isNull);
     });
 
+    test('returns null for ambiguous date "今月末"', () {
+      final draft = ExtractionService().extract('今月末までに申込書を提出', now: now);
+      expect(draft.dueDate, isNull);
+    });
+
+    test('returns null for ambiguous date "始業式の日"', () {
+      final draft = ExtractionService().extract('始業式の日までに筆記用具を持参', now: now);
+      expect(draft.dueDate, isNull);
+    });
+
     test('returns null date when no date found', () {
       final draft = ExtractionService().extract('水筒とタオルを持参してください', now: now);
       expect(draft.dueDate, isNull);
@@ -227,6 +237,29 @@ void main() {
 
     test('does not replace Japanese long vowel marks', () {
       expect(ExtractionService().normalize('プールバッグ'), 'プールバッグ');
+    });
+
+    test('corrects OCR misread O→0 in date', () {
+      expect(ExtractionService().normalize('1O月O5日'), '10月05日');
+    });
+
+    test('corrects OCR misread l→1 in date', () {
+      expect(ExtractionService().normalize('7月l0日'), '7月10日');
+    });
+
+    test('extracts date after OCR correction O→0', () {
+      final draft = ExtractionService().extract('1O月O5日までに提出', now: DateTime(2026, 7, 2));
+      expect(draft.dueDate, DateTime(2026, 10, 5));
+    });
+
+    test('extracts date after OCR correction l→1', () {
+      final draft = ExtractionService().extract('7月l0日までに水着を持参', now: DateTime(2026, 7, 2));
+      expect(draft.dueDate, DateTime(2026, 7, 10));
+    });
+
+    test('extracts slash date after OCR correction', () {
+      final draft = ExtractionService().extract('7/lOまでに提出', now: DateTime(2026, 7, 2));
+      expect(draft.dueDate, DateTime(2026, 7, 10));
     });
 
     test('collapses multiple spaces', () {
