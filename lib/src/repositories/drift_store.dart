@@ -12,6 +12,8 @@ class DriftStore implements Store {
   final AppDatabase _db;
 
   bool _lastLoadHadCorruptData = false;
+  String? _corruptBackupInfo;
+
   @override
   bool get lastLoadHadCorruptData => _lastLoadHadCorruptData;
 
@@ -29,10 +31,20 @@ class DriftStore implements Store {
   @override
   Future<AppSnapshot> load() async {
     _lastLoadHadCorruptData = false;
+    _corruptBackupInfo = null;
     try {
       return await _db.loadSnapshot();
-    } on Object {
+    } on Object catch (e) {
       _lastLoadHadCorruptData = true;
+      _corruptBackupInfo = 'SQLiteデータベースの読み込みに失敗しました。原因: $e';
+      try {
+        final path = await _db.backupDatabaseFile();
+        if (path != null) {
+          _corruptBackupInfo = 'SQLiteデータベースの読み込みに失敗したため、退避コピーを作成しました。\n\n$path\n\n原因: $e';
+        }
+      } on Object {
+        // 退避コピーに失敗してもアプリ起動は継続する
+      }
       return AppSnapshot.empty;
     }
   }
@@ -43,7 +55,7 @@ class DriftStore implements Store {
   }
 
   @override
-  String? loadCorruptBackup() => null;
+  String? loadCorruptBackup() => _corruptBackupInfo;
 
   @override
   Future<void> clear() => _db.clearAll();
