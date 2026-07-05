@@ -68,6 +68,31 @@ void main() {
       expect(draft.dueDate, DateTime(2026, 7, 9));
     });
 
+    test('recognizes "明後日" as day after tomorrow', () {
+      final draft = ExtractionService().extract('明後日までに水筒を持参', now: now);
+      expect(draft.dueDate, DateTime(2026, 7, 4));
+    });
+
+    test('recognizes "翌日" as next day', () {
+      final draft = ExtractionService().extract('翌日までに申込書を提出', now: now);
+      expect(draft.dueDate, DateTime(2026, 7, 3));
+    });
+
+    test('subtracts one day for "前日まで" with concrete date', () {
+      final draft = ExtractionService().extract('7月10日 前日までに提出', now: now);
+      expect(draft.dueDate, DateTime(2026, 7, 9));
+    });
+
+    test('subtracts one day for "前日まで" with slash date', () {
+      final draft = ExtractionService().extract('7/10の前日までに申込書を提出', now: now);
+      expect(draft.dueDate, DateTime(2026, 7, 9));
+    });
+
+    test('returns null when no date found with "前日まで"', () {
+      final draft = ExtractionService().extract('運動会の前日までにタオルを持参', now: now);
+      expect(draft.dueDate, isNull);
+    });
+
     test('returns null date when no date found', () {
       final draft = ExtractionService().extract('水筒とタオルを持参してください', now: now);
       expect(draft.dueDate, isNull);

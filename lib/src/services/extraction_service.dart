@@ -101,7 +101,12 @@ class ExtractionService {
   }
 
   DateTime? _extractDate(String text, DateTime now) {
-    if (text.contains('明日')) {
+    // 明後日 (check before 明日 to avoid false match inside 明後日)
+    if (text.contains('明後日')) {
+      final d = now.add(const Duration(days: 2));
+      return DateTime(d.year, d.month, d.day);
+    }
+    if (text.contains('翌日') || text.contains('明日')) {
       final d = now.add(const Duration(days: 1));
       return DateTime(d.year, d.month, d.day);
     }
@@ -112,35 +117,38 @@ class ExtractionService {
     final relativeWeekday = _extractRelativeWeekday(text, now);
     if (relativeWeekday != null) return relativeWeekday;
 
+    DateTime? result;
+
     final full = RegExp(r'(20\d{2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?')
         .firstMatch(text);
     if (full != null) {
-      return _safeDate(
+      result = _safeDate(
         int.parse(full.group(1)!),
         int.parse(full.group(2)!),
         int.parse(full.group(3)!),
       );
     }
 
-    final monthDay = RegExp(r'(\d{1,2})\s*月\s*(\d{1,2})\s*日?').firstMatch(text);
-    if (monthDay != null) {
-      return _futureMonthDay(
-        now,
-        int.parse(monthDay.group(1)!),
-        int.parse(monthDay.group(2)!),
-      );
+    if (result == null) {
+      final monthDay = RegExp(r'(\d{1,2})\s*月\s*(\d{1,2})\s*日?').firstMatch(text);
+      if (monthDay != null) {
+        result = _futureMonthDay(now, int.parse(monthDay.group(1)!), int.parse(monthDay.group(2)!));
+      }
     }
 
-    final slash = RegExp(r'(?<!\d)(\d{1,2})\s*[/\-]\s*(\d{1,2})(?!\d)').firstMatch(text);
-    if (slash != null) {
-      return _futureMonthDay(
-        now,
-        int.parse(slash.group(1)!),
-        int.parse(slash.group(2)!),
-      );
+    if (result == null) {
+      final slash = RegExp(r'(?<!\d)(\d{1,2})\s*[/\-]\s*(\d{1,2})(?!\d)').firstMatch(text);
+      if (slash != null) {
+        result = _futureMonthDay(now, int.parse(slash.group(1)!), int.parse(slash.group(2)!));
+      }
     }
 
-    return null;
+    // 前日まで → if a concrete date was found, use the day before
+    if (result != null && text.contains('前日まで')) {
+      result = result.subtract(const Duration(days: 1));
+    }
+
+    return result;
   }
 
   DateTime? _extractRelativeWeekday(String text, DateTime now) {

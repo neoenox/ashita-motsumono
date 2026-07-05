@@ -38,6 +38,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String _searchQueryRaw = '';
+  bool _showCompleted = false;
+  String? _filterChildId;
 
   @override
   void dispose() {
@@ -148,9 +150,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<AppTodo> _filter(List<AppTodo> todos, List<ChildProfile> children) {
-    if (_searchQuery.isEmpty) return todos;
-    final q = _searchQuery.toLowerCase();
     return todos.where((t) {
+      if (!_showCompleted && t.isDone) return false;
+      if (_filterChildId != null && t.childId != _filterChildId) return false;
+      if (_searchQuery.isEmpty) return true;
+      final q = _searchQuery.toLowerCase();
       if (t.title.toLowerCase().contains(q)) return true;
       if (t.category.label.contains(q)) return true;
       if (t.note?.toLowerCase().contains(q) == true) return true;
@@ -238,6 +242,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 _searchQuery = v.trim().toLowerCase();
               }),
             ),
+          ),
+          _FilterBar(
+            showCompleted: _showCompleted,
+            filterChildId: _filterChildId,
+            children: state.children,
+            onToggleCompleted: (v) => setState(() => _showCompleted = v),
+            onChangeChild: (id) => setState(() => _filterChildId = id),
           ),
           Expanded(
             child: ListView(
@@ -417,6 +428,59 @@ class _UpcomingSection extends StatelessWidget {
             ...future.map((todo) => _TodoTile(todo: todo, compact: true)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _FilterBar extends StatelessWidget {
+  const _FilterBar({
+    required this.showCompleted,
+    required this.filterChildId,
+    required this.children,
+    required this.onToggleCompleted,
+    required this.onChangeChild,
+  });
+
+  final bool showCompleted;
+  final String? filterChildId;
+  final List<ChildProfile> children;
+  final ValueChanged<bool> onToggleCompleted;
+  final ValueChanged<String?> onChangeChild;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        children: [
+          FilterChip(
+            label: const Text('完了済み'),
+            selected: showCompleted,
+            onSelected: onToggleCompleted,
+          ),
+          const SizedBox(width: 8),
+          if (children.length > 1)
+            DropdownButton<String?>(
+              value: filterChildId,
+              hint: const Text('すべての子'),
+              underline: const SizedBox(),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('すべての子')),
+                ...children.map(
+                  (c) => DropdownMenuItem(value: c.id, child: Text(c.name)),
+                ),
+              ],
+              onChanged: onChangeChild,
+            ),
+          if (filterChildId != null)
+            IconButton(
+              icon: const Icon(Icons.clear, size: 18),
+              onPressed: () => onChangeChild(null),
+              tooltip: 'フィルター解除',
+              visualDensity: VisualDensity.compact,
+            ),
+        ],
       ),
     );
   }
