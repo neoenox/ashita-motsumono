@@ -68,6 +68,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     int initialMinute,
     Future<void> Function(int hour, int minute) onSave,
   ) async {
+    final appState = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay(hour: initialHour, minute: initialMinute),
@@ -78,14 +80,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await onSave(time.hour, time.minute);
       if (!mounted) return;
       setState(() {});
-      await context.read<AppState>().rescheduleAllNotifications();
+      await appState.rescheduleAllNotifications();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('通知時刻を保存し、既存Todoの通知も更新しました')),
       );
     } on Object catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('通知時刻の保存に失敗しました: $e')),
       );
     }
