@@ -1,6 +1,6 @@
 # ネイティブ設定メモ
 
-このMVPの対象は Android/iOS のみです。Web、Windows、macOS、Linux は v0.1 の対象外です。
+このMVPの対象は Android/iOS のみです。Web、Windows、macOS、Linux は v0.2 の対象外です。
 
 `flutter create . --platforms=android,ios` 実行後に必要な設定です。
 
@@ -10,14 +10,12 @@
 
 `android/app/build.gradle` または `android/app/build.gradle.kts` で以下を確認します。
 
-```gradle
-minSdkVersion 21
-targetSdkVersion 35
-compileSdkVersion 35
-```
+- minSdkVersion 21
+- targetSdkVersion 36
+- compileSdkVersion 36
 
-ML Kit Text Recognition は Android で `minSdkVersion 21`、`targetSdkVersion 35`、`compileSdkVersion 35` を案内しています。
-`flutter_local_notifications` は `compileSdk` 35以上を要求します。
+このリポジトリの `tool/configure_android_release.sh` は、Androidリリースビルド時に `minSdk 21`、`targetSdk 36`、`compileSdk 36` に揃えます。
+`flutter_local_notifications` は `compileSdk` 35以上を要求するため、36で統一しています。
 
 ### 2. flutter_local_notifications の desugaring
 
@@ -89,14 +87,7 @@ pod 'GoogleMLKit/TextRecognitionJapanese', '~> 9.0.0'
 
 ### 3. Info.plist
 
-`ios/Runner/Info.plist` に追加します。
-
-```xml
-<key>NSCameraUsageDescription</key>
-<string>プリントを撮影して持ち物・提出物を読み取るためにカメラを使用します。</string>
-<key>NSPhotoLibraryUsageDescription</key>
-<string>スクリーンショットやプリント画像を選択するために写真ライブラリを使用します。</string>
-```
+`ios/Runner/Info.plist` にカメラ利用理由と写真ライブラリ利用理由を追加します。
 
 ## よくある問題
 
@@ -109,7 +100,7 @@ pod 'GoogleMLKit/TextRecognitionJapanese', '~> 9.0.0'
 - 端末側で通知許可がOFF
 - Android 13以降の通知権限未許可
 - Androidの省電力制限
-- Xiaomi / Huawei など、バックグラウンド動作を強く制限する端末設定
+- バックグラウンド動作を強く制限する端末設定
 - 期限が過去日時
 - AndroidManifest のスケジュール通知設定不足
 - desugaring 設定不足
