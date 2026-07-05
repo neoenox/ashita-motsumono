@@ -3,6 +3,8 @@
 // OCRは間違う前提で設計。ユーザーが必ず確認してから登録する。
 // 関連: screens/add_todo_screen.dart, services/extraction_service.dart, app_state.dart
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -28,11 +30,13 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   late final TextEditingController _itemsController;
   late final TextEditingController _amountController;
   late final TextEditingController _noteController;
+  late AppState _appState;
   late TodoCategory _category;
   DateTime? _dueDate;
   String? _childId;
   bool _notifyPreviousNight = true;
   bool _notifySameMorning = true;
+  bool _saved = false;
 
   @override
   void initState() {
@@ -46,7 +50,16 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _appState = context.read<AppState>();
+  }
+
+  @override
   void dispose() {
+    if (!_saved && widget.documentId != null) {
+      unawaited(_appState.deleteDocument(widget.documentId!));
+    }
     _titleController.dispose();
     _itemsController.dispose();
     _amountController.dispose();
@@ -199,6 +212,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
       notifyPreviousNight: _notifyPreviousNight,
       notifySameMorning: _notifySameMorning,
     );
+    _saved = true;
     if (!mounted) return;
     navigator.popUntil((route) => route.isFirst);
   }
