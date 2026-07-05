@@ -13,10 +13,12 @@ import 'services/notification_service.dart';
 
 class AppState extends ChangeNotifier {
   AppState({
-    required this._store,
-    required this._notifications,
+    required Store store,
+    required NotificationService notifications,
     Uuid? uuid,
-  }) : _uuid = uuid ?? const Uuid();
+  })  : _store = store,
+        _notifications = notifications,
+        _uuid = uuid ?? const Uuid();
 
   final Store _store;
   final NotificationService _notifications;
@@ -145,6 +147,19 @@ class AppState extends ChangeNotifier {
     return record;
   }
 
+  Future<void> deleteDocument(String id) async {
+    final used = _todos.any((todo) => todo.documentId == id);
+    if (used) return;
+
+    final deleted = _documents.where((document) => document.id == id).toList();
+    if (deleted.isEmpty) return;
+
+    _documents = _documents.where((document) => document.id != id).toList();
+    await _persist();
+    await _deleteDocumentImages(deleted);
+    notifyListeners();
+  }
+
   Future<AppTodo> addTodoFromDraft({
     required ExtractionDraft draft,
     String? childId,
@@ -185,14 +200,34 @@ class AppState extends ChangeNotifier {
 
   Future<void> updateTodo(AppTodo todo) async {
     final updated = todo.copyWith(updatedAt: DateTime.now());
+    await _updateTodo(updated);
+  }
+
+  Future<void> _updateTodo(AppTodo updated, {bool rescheduleNotification = true}) async {
     _todos = _todos.map((e) => e.id == updated.id ? updated : e).toList();
     await _persist();
-    try {
-      await _notifications.scheduleTodo(updated);
-    } on Object {
-      // 通知非対応環境や未設定端末では無視
+    if (rescheduleNotification) {
+      try {
+        await _notifications.scheduleTodo(updated);
+      } on Object {
+        // 通知非対応環境や未設定端末では無視
+      }
     }
     notifyListeners();
+  }
+
+  Future<void> rescheduleAllNotifications() async {
+    for (final todo in _todos) {
+      try {
+        if (todo.status == TodoStatus.active && todo.dueDate != null) {
+          await _notifications.scheduleTodo(todo);
+        } else {
+          await _notifications.cancelTodo(todo.id);
+        }
+      } on Object {
+        // 1件の通知失敗で設定保存全体を失敗させない
+      }
+    }
   }
 
   Future<void> toggleTodoDone(String id) async {
@@ -222,7 +257,10 @@ class AppState extends ChangeNotifier {
     final items = todo.items
         .map((item) => item.id == itemId ? item.copyWith(isChecked: !item.isChecked) : item)
         .toList();
-    await updateTodo(todo.copyWith(items: items));
+    await _updateTodo(
+      todo.copyWith(items: items, updatedAt: DateTime.now()),
+      rescheduleNotification: false,
+    );
   }
 
   Future<void> deleteTodo(String id) async {
