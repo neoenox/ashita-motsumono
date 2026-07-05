@@ -23,7 +23,11 @@ class ExtractionService {
     '連絡帳',
     'プールバッグ',
     '水着',
+    '水泳カード',
+    '検温表',
+    '健康観察カード',
     'ビニール袋',
+    '給食袋',
     '集金袋',
     '申込書',
     '同意書',
@@ -36,7 +40,24 @@ class ExtractionService {
     '傘',
     '長靴',
     'マスク',
+    '雑巾',
+    'エプロン',
+    '三角巾',
+    '白い靴下',
+    '靴下',
+    '名札',
+    '鍵盤ハーモニカ',
   ];
+
+  static const _weekdayMap = <String, int>{
+    '月': DateTime.monday,
+    '火': DateTime.tuesday,
+    '水': DateTime.wednesday,
+    '木': DateTime.thursday,
+    '金': DateTime.friday,
+    '土': DateTime.saturday,
+    '日': DateTime.sunday,
+  };
 
   ExtractionDraft extract(String rawText, {DateTime? now}) {
     final current = now ?? DateTime.now();
@@ -88,6 +109,9 @@ class ExtractionService {
       return DateTime(now.year, now.month, now.day);
     }
 
+    final relativeWeekday = _extractRelativeWeekday(text, now);
+    if (relativeWeekday != null) return relativeWeekday;
+
     final full = RegExp(r'(20\d{2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?')
         .firstMatch(text);
     if (full != null) {
@@ -117,6 +141,26 @@ class ExtractionService {
     }
 
     return null;
+  }
+
+  DateTime? _extractRelativeWeekday(String text, DateTime now) {
+    final match = RegExp(r'(今週|来週|次の)の?\s*([月火水木金土日])曜(?:日)?').firstMatch(text);
+    if (match == null) return null;
+
+    final prefix = match.group(1)!;
+    final weekday = _weekdayMap[match.group(2)!];
+    if (weekday == null) return null;
+
+    final today = DateTime(now.year, now.month, now.day);
+    var delta = weekday - today.weekday;
+    if (prefix == '来週') {
+      delta += 7;
+    } else if (prefix == '次の') {
+      if (delta <= 0) delta += 7;
+    } else if (delta < 0) {
+      delta += 7;
+    }
+    return today.add(Duration(days: delta));
   }
 
   DateTime? _safeDate(int year, int month, int day) {
