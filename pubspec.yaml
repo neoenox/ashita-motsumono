@@ -1,7 +1,7 @@
 name: ashita_motsumono
-version: 0.1.0+1
+version: 0.2.0+1
 publish_to: 'none'
-description: "園・学校・習い事のプリントから今日・明日の持ち物/提出物/集金をTodo化するMVP。"
+description: 園・学校・習い事のプリントから今日・明日の持ち物/提出物/集金をTodo化するMVP。
 
 environment:
   sdk: '>=3.12.0 <4.0.0'
