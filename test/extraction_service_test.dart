@@ -53,6 +53,21 @@ void main() {
       expect(draft.dueDate, DateTime(2026, 7, 2));
     });
 
+    test('recognizes next week weekday expressions', () {
+      final draft = ExtractionService().extract('来週月曜までに水泳カードを提出', now: now);
+      expect(draft.dueDate, DateTime(2026, 7, 6));
+    });
+
+    test('recognizes this week weekday expressions', () {
+      final draft = ExtractionService().extract('今週金曜日までに雑巾を持参', now: now);
+      expect(draft.dueDate, DateTime(2026, 7, 3));
+    });
+
+    test('recognizes next weekday expression on the same weekday', () {
+      final draft = ExtractionService().extract('次の木曜までに提出', now: now);
+      expect(draft.dueDate, DateTime(2026, 7, 9));
+    });
+
     test('returns null date when no date found', () {
       final draft = ExtractionService().extract('水筒とタオルを持参してください', now: now);
       expect(draft.dueDate, isNull);
@@ -133,6 +148,14 @@ void main() {
     test('extracts items from dictionary', () {
       final draft = ExtractionService().extract('水筒、上履き、体操着、マスク', now: now);
       expect(draft.items, containsAll(['水筒', '上履き', '体操着', 'マスク']));
+    });
+
+    test('extracts expanded school item dictionary', () {
+      final draft = ExtractionService().extract('水泳カード、検温表、雑巾、エプロン、三角巾、鍵盤ハーモニカ', now: now);
+      expect(
+        draft.items,
+        containsAll(['水泳カード', '検温表', '雑巾', 'エプロン', '三角巾', '鍵盤ハーモニカ']),
+      );
     });
 
     test('keeps long vowel marks in item names', () {
