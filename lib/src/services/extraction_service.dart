@@ -157,9 +157,11 @@ class ExtractionService {
       }
     }
 
-    // 前日まで → すべての日付タイプ（相対日付・曜日・具体日）に適用
+    // 前日まで → すべての日付タイプ（相対日付・曜日・具体日）に適用。
+    // Duration(days: 1) ではなく DateTime(year, month, day-1) を使い、
+    // DST 遷移時の時刻ズレを回避する。
     if (result != null && text.contains('前日まで')) {
-      result = result.subtract(const Duration(days: 1));
+      result = DateTime(result.year, result.month, result.day - 1);
     }
 
     return result;
