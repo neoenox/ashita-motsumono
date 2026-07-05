@@ -4,6 +4,8 @@
 // 関連: services/ocr_service.dart, services/extraction_service.dart,
 //       services/image_file_service.dart, screens/review_extraction_screen.dart
 
+import 'dart:io' show File;
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -230,13 +232,14 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
 
   Future<void> _pickAndOcr(ImageSource source) async {
     setState(() => _busy = true);
+    File? imageFile;
     try {
       final appState = context.read<AppState>();
       final navigator = Navigator.of(context);
       final picker = ImagePicker();
       final picked = await picker.pickImage(source: source, imageQuality: 92);
       if (picked == null) return;
-      final imageFile = await ImageFileService().copyFromXFile(picked);
+      imageFile = await ImageFileService().copyFromXFile(picked);
       final ocrText = await OcrService().recognize(imageFile);
       if (!mounted) return;
       if (ocrText.trim().isEmpty) {
@@ -244,6 +247,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
           const SnackBar(content: Text('文字を読み取れませんでした。撮り直すか、テキスト貼り付けを使ってください。')),
         );
         await ImageFileService.deleteIfExists(imageFile.path);
+        imageFile = null;
         return;
       }
       final document = await appState.addDocument(
@@ -251,6 +255,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
         localImagePath: imageFile.path,
         ocrText: ocrText,
       );
+      imageFile = null;
       final draft = ExtractionService().extract(ocrText);
       if (!mounted) return;
       await navigator.pushReplacement(
@@ -258,19 +263,34 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
           builder: (_) => ReviewExtractionScreen(draft: draft, documentId: document.id),
         ),
       );
+    } on OcrException catch (e) {
+      debugPrint('OCR error: ${e.cause ?? e}');
+      await _deleteTemporaryImage(imageFile);
+      imageFile = null;
+      _showOcrError(e.message);
     } on Object catch (e) {
       debugPrint('OCR error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('読み取りに失敗しました: $e'),
-            duration: const Duration(seconds: 10),
-          ),
-        );
-      }
+      await _deleteTemporaryImage(imageFile);
+      imageFile = null;
+      _showOcrError('読み取りに失敗しました。画像を撮り直すか、テキスト貼り付けを使ってください。');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _deleteTemporaryImage(File? imageFile) async {
+    if (imageFile == null) return;
+    await ImageFileService.deleteIfExists(imageFile.path);
+  }
+
+  void _showOcrError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 10),
+      ),
+    );
   }
 }
 
