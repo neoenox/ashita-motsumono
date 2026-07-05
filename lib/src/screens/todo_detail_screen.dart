@@ -85,7 +85,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       dueDate: _dueDate,
       clearDueDate: _dueDate == null,
       amount: parsed.amount,
-      clearAmount: _amountController.text.trim().isEmpty,
+      clearAmount: parsed.amount == null,
       note: noteText.isEmpty ? null : noteText,
       clearNote: noteText.isEmpty,
       items: items,

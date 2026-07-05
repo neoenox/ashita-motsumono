@@ -13,12 +13,10 @@ import 'services/notification_service.dart';
 
 class AppState extends ChangeNotifier {
   AppState({
-    required Store store,
-    required NotificationService notifications,
+    required this._store,
+    required this._notifications,
     Uuid? uuid,
-  })  : _store = store,
-        _notifications = notifications,
-        _uuid = uuid ?? const Uuid();
+  }) : _uuid = uuid ?? const Uuid();
 
   final Store _store;
   final NotificationService _notifications;
@@ -83,18 +81,12 @@ class AppState extends ChangeNotifier {
 
   ChildProfile? childById(String? id) {
     if (id == null) return null;
-    for (final child in _children) {
-      if (child.id == id) return child;
-    }
-    return null;
+    return _children.where((c) => c.id == id).firstOrNull;
   }
 
   DocumentRecord? documentById(String? id) {
     if (id == null) return null;
-    for (final document in _documents) {
-      if (document.id == id) return document;
-    }
-    return null;
+    return _documents.where((d) => d.id == id).firstOrNull;
   }
 
   Future<ChildProfile> addChild(String name) async {
@@ -223,11 +215,7 @@ class AppState extends ChangeNotifier {
   Future<void> rescheduleAllNotifications() async {
     for (final todo in _todos) {
       try {
-        if (todo.status == TodoStatus.active && todo.dueDate != null) {
-          await _notifications.scheduleTodo(todo);
-        } else {
-          await _notifications.cancelTodo(todo.id);
-        }
+        await _notifications.scheduleTodo(todo);
       } on Object {
         // 1件の通知失敗で設定保存全体を失敗させない
       }

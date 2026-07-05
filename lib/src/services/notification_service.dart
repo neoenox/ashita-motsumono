@@ -15,7 +15,7 @@ import 'app_settings.dart';
 
 class NotificationService {
   /// [timezoneName] を指定すると flutter_timezone による自動検出をスキップする（テスト用）。
-  NotificationService({this.settings, String? timezoneName}) : _timezoneName = timezoneName;
+  NotificationService({this.settings, this._timezoneName});
 
   final AppSettings? settings;
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();

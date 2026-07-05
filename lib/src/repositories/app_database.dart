@@ -73,7 +73,7 @@ class DbDocument extends Table {
 
 @DriftDatabase(tables: [DbChild, DbTodo, DbChecklistItem, DbDocument])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(QueryExecutor e, {this.databaseFile}) : super(e);
+  AppDatabase(super.e, {this.databaseFile});
 
   final File? databaseFile;
 

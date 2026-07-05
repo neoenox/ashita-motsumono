@@ -53,6 +53,15 @@ class ExtractionService {
   static final _itemDictionaryByLength = List<String>.of(itemDictionary)
     ..sort((a, b) => b.length.compareTo(a.length));
 
+  static final _fullDatePattern = RegExp(r'(20\d{2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?');
+  static final _monthDayPattern = RegExp(r'(\d{1,2})\s*月\s*(\d{1,2})\s*日?');
+  static final _slashDatePattern = RegExp(r'(?<!\d)(\d{1,2})\s*[/\-]\s*(\d{1,2})(?!\d)');
+  static final _relativeWeekdayPattern = RegExp(r'(今週|来週|次の)の?\s*([月火水木金土日])曜(?:日)?');
+  static final _yenAmountPattern = RegExp(r'¥\s*([0-9,]+)');
+  static final _yenSuffixPattern = RegExp(r'([0-9,]+)\s*円');
+  static final _multiSpacePattern = RegExp(r'[ \t]+');
+  static final _multiNewlinePattern = RegExp(r'\n{3,}');
+
   static const _weekdayMap = <String, int>{
     '月': DateTime.monday,
     '火': DateTime.tuesday,
@@ -101,55 +110,54 @@ class ExtractionService {
         .replaceAll('O', '0')  // OCR誤認識: O→0
         .replaceAll('l', '1')  // OCR誤認識: l→1
         .replaceAll('　', ' ')
-        .replaceAll(RegExp(r'[ \t]+'), ' ')
-        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+        .replaceAll(_multiSpacePattern, ' ')
+        .replaceAll(_multiNewlinePattern, '\n\n')
         .trim();
   }
 
   DateTime? _extractDate(String text, DateTime now) {
-    // 明後日 (check before 明日 to avoid false match inside 明後日)
-    if (text.contains('明後日')) {
-      final d = now.add(const Duration(days: 2));
-      return DateTime(d.year, d.month, d.day);
-    }
-    if (text.contains('翌日') || text.contains('明日')) {
-      final d = now.add(const Duration(days: 1));
-      return DateTime(d.year, d.month, d.day);
-    }
-    if (text.contains('今日') || text.contains('本日')) {
-      return DateTime(now.year, now.month, now.day);
-    }
-
-    final relativeWeekday = _extractRelativeWeekday(text, now);
-    if (relativeWeekday != null) return relativeWeekday;
-
     DateTime? result;
 
-    final full = RegExp(r'(20\d{2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?')
-        .firstMatch(text);
-    if (full != null) {
-      result = _safeDate(
-        int.parse(full.group(1)!),
-        int.parse(full.group(2)!),
-        int.parse(full.group(3)!),
-      );
+    // 相対日付（明後日/翌日/今日）→ 早期 return せず result に格納し、
+    // 後続の「前日まで」処理に委ねる。
+    if (text.contains('明後日')) {
+      final d = now.add(const Duration(days: 2));
+      result = DateTime(d.year, d.month, d.day);
+    } else if (text.contains('翌日') || text.contains('明日')) {
+      final d = now.add(const Duration(days: 1));
+      result = DateTime(d.year, d.month, d.day);
+    } else if (text.contains('今日') || text.contains('本日')) {
+      result = DateTime(now.year, now.month, now.day);
+    }
+
+    result ??= _extractRelativeWeekday(text, now);
+
+    if (result == null) {
+      final full = _fullDatePattern.firstMatch(text);
+      if (full != null) {
+        result = _safeDate(
+          int.parse(full.group(1)!),
+          int.parse(full.group(2)!),
+          int.parse(full.group(3)!),
+        );
+      }
     }
 
     if (result == null) {
-      final monthDay = RegExp(r'(\d{1,2})\s*月\s*(\d{1,2})\s*日?').firstMatch(text);
+      final monthDay = _monthDayPattern.firstMatch(text);
       if (monthDay != null) {
         result = _futureMonthDay(now, int.parse(monthDay.group(1)!), int.parse(monthDay.group(2)!));
       }
     }
 
     if (result == null) {
-      final slash = RegExp(r'(?<!\d)(\d{1,2})\s*[/\-]\s*(\d{1,2})(?!\d)').firstMatch(text);
+      final slash = _slashDatePattern.firstMatch(text);
       if (slash != null) {
         result = _futureMonthDay(now, int.parse(slash.group(1)!), int.parse(slash.group(2)!));
       }
     }
 
-    // 前日まで → if a concrete date was found, use the day before
+    // 前日まで → すべての日付タイプ（相対日付・曜日・具体日）に適用
     if (result != null && text.contains('前日まで')) {
       result = result.subtract(const Duration(days: 1));
     }
@@ -158,7 +166,7 @@ class ExtractionService {
   }
 
   DateTime? _extractRelativeWeekday(String text, DateTime now) {
-    final match = RegExp(r'(今週|来週|次の)の?\s*([月火水木金土日])曜(?:日)?').firstMatch(text);
+    final match = _relativeWeekdayPattern.firstMatch(text);
     if (match == null) return null;
 
     final prefix = match.group(1)!;
@@ -196,11 +204,7 @@ class ExtractionService {
   }
 
   int? _extractAmount(String text) {
-    final patterns = [
-      RegExp(r'¥\s*([0-9,]+)'),
-      RegExp(r'([0-9,]+)\s*円'),
-    ];
-    for (final pattern in patterns) {
+    for (final pattern in [_yenAmountPattern, _yenSuffixPattern]) {
       final match = pattern.firstMatch(text);
       if (match != null) {
         return int.tryParse(match.group(1)!.replaceAll(',', ''));
