@@ -116,46 +116,11 @@ class ExtractionService {
   }
 
   DateTime? _extractDate(String text, DateTime now) {
-    DateTime? result;
-
-    // 相対日付（明後日/翌日/今日）→ 早期 return せず result に格納し、
-    // 後続の「前日まで」処理に委ねる。
-    if (text.contains('明後日')) {
-      final d = now.add(const Duration(days: 2));
-      result = DateTime(d.year, d.month, d.day);
-    } else if (text.contains('翌日') || text.contains('明日')) {
-      final d = now.add(const Duration(days: 1));
-      result = DateTime(d.year, d.month, d.day);
-    } else if (text.contains('今日') || text.contains('本日')) {
-      result = DateTime(now.year, now.month, now.day);
-    }
-
+    DateTime? result = _extractRelativeDate(text, now);
     result ??= _extractRelativeWeekday(text, now);
-
-    if (result == null) {
-      final full = _fullDatePattern.firstMatch(text);
-      if (full != null) {
-        result = _safeDate(
-          int.parse(full.group(1)!),
-          int.parse(full.group(2)!),
-          int.parse(full.group(3)!),
-        );
-      }
-    }
-
-    if (result == null) {
-      final monthDay = _monthDayPattern.firstMatch(text);
-      if (monthDay != null) {
-        result = _futureMonthDay(now, int.parse(monthDay.group(1)!), int.parse(monthDay.group(2)!));
-      }
-    }
-
-    if (result == null) {
-      final slash = _slashDatePattern.firstMatch(text);
-      if (slash != null) {
-        result = _futureMonthDay(now, int.parse(slash.group(1)!), int.parse(slash.group(2)!));
-      }
-    }
+    result ??= _extractConcreteDate(text);
+    result ??= _extractMonthDayDate(text, now);
+    result ??= _extractSlashDate(text, now);
 
     // 前日まで → すべての日付タイプ（相対日付・曜日・具体日）に適用。
     // Duration(days: 1) ではなく DateTime(year, month, day-1) を使い、
@@ -163,8 +128,44 @@ class ExtractionService {
     if (result != null && text.contains('前日まで')) {
       result = DateTime(result.year, result.month, result.day - 1);
     }
-
     return result;
+  }
+
+  DateTime? _extractRelativeDate(String text, DateTime now) {
+    if (text.contains('明後日')) {
+      final d = now.add(const Duration(days: 2));
+      return DateTime(d.year, d.month, d.day);
+    }
+    if (text.contains('翌日') || text.contains('明日')) {
+      final d = now.add(const Duration(days: 1));
+      return DateTime(d.year, d.month, d.day);
+    }
+    if (text.contains('今日') || text.contains('本日')) {
+      return DateTime(now.year, now.month, now.day);
+    }
+    return null;
+  }
+
+  DateTime? _extractConcreteDate(String text) {
+    final full = _fullDatePattern.firstMatch(text);
+    if (full == null) return null;
+    return _safeDate(
+      int.parse(full.group(1)!),
+      int.parse(full.group(2)!),
+      int.parse(full.group(3)!),
+    );
+  }
+
+  DateTime? _extractMonthDayDate(String text, DateTime now) {
+    final match = _monthDayPattern.firstMatch(text);
+    if (match == null) return null;
+    return _futureMonthDay(now, int.parse(match.group(1)!), int.parse(match.group(2)!));
+  }
+
+  DateTime? _extractSlashDate(String text, DateTime now) {
+    final match = _slashDatePattern.firstMatch(text);
+    if (match == null) return null;
+    return _futureMonthDay(now, int.parse(match.group(1)!), int.parse(match.group(2)!));
   }
 
   DateTime? _extractRelativeWeekday(String text, DateTime now) {
