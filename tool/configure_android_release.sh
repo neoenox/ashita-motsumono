@@ -139,6 +139,10 @@ def ensure_proguard():
         "-dontwarn com.google.mlkit.vision.text.chinese.**\n"
         "-dontwarn com.google.mlkit.vision.text.devanagari.**\n"
         "-dontwarn com.google.mlkit.vision.text.korean.**\n"
+        "# google_mobile_ads / GMA SDK - WorkManager + Room initialization\n"
+        "-keep class androidx.work.** { *; }\n"
+        "-keep class * extends androidx.room.RoomDatabase { *; }\n"
+        "-keep @androidx.room.Database class * { *; }\n"
     )
     if not rules.exists():
         rules.write_text(content)
