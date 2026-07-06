@@ -18,8 +18,7 @@ class TodoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final child = state.childById(todo.childId);
+    final child = context.select<AppState, ChildProfile?>((s) => s.childById(todo.childId));
     final subtitle = [
       todo.category.label,
       formatDueDate(todo.dueDate),

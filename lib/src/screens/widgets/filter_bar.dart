@@ -40,7 +40,7 @@ class FilterBar extends StatelessWidget {
               hint: const Text('すべて'),
               underline: const SizedBox(),
               items: [
-                const DropdownMenuItem(value: null, child: Text('すべて')),
+                const DropdownMenuItem<String?>(value: null, child: Text('すべて')),
                 ...children.map(
                   (c) => DropdownMenuItem(value: c.id, child: Text(c.name)),
                 ),
