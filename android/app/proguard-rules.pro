@@ -12,3 +12,9 @@
 -dontwarn com.google.mlkit.vision.text.chinese.**
 -dontwarn com.google.mlkit.vision.text.devanagari.**
 -dontwarn com.google.mlkit.vision.text.korean.**
+
+# google_mobile_ads / GMA SDK — WorkManager + Room 初期化に必要
+# リリースビルドで ProGuard が WorkDatabase や Room 実装クラスを削除するのを防ぐ
+-keep class androidx.work.** { *; }
+-keep class * extends androidx.room.RoomDatabase { *; }
+-keep @androidx.room.Database class * { *; }
