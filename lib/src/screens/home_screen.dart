@@ -191,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           IconButton(
             tooltip: '人物を追加',
-            icon: const Icon(Icons.child_care),
+            icon: const Icon(Icons.person_add),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const AddChildScreen()),
             ),
