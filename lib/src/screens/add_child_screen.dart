@@ -1,6 +1,6 @@
 // lib/src/screens/add_child_screen.dart
-// 子どもを追加・削除する画面。名前入力と登録済み一覧表示。
-// 削除は確認ダイアログで実行。関連するTodoの子ども指定はクリアされる。
+// 人物を追加・削除する画面。名前入力と登録済み一覧表示。
+// 削除は確認ダイアログで実行。関連するTodoの人物指定はクリアされる。
 // 関連: screens/home_screen.dart, app_state.dart
 
 import 'package:flutter/material.dart';
@@ -29,14 +29,14 @@ class _AddChildScreenState extends State<AddChildScreen> {
   Widget build(BuildContext context) {
     final children = context.watch<AppState>().children;
     return Scaffold(
-      appBar: AppBar(title: const Text('子ども管理')),
+      appBar: AppBar(title: const Text('人物管理')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           TextField(
             controller: _controller,
             decoration: const InputDecoration(
-              labelText: '子どもの名前',
+              labelText: '名前',
               hintText: '例：長女、太郎、保育園用',
               border: OutlineInputBorder(),
             ),
@@ -106,7 +106,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(
-            labelText: '子どもの名前',
+            labelText: '名前',
             border: OutlineInputBorder(),
           ),
           autofocus: true,
@@ -141,7 +141,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('削除確認'),
-        content: Text('$name を削除しますか？\n関連するTodoは対象の子ども指定がクリアされます。'),
+        content: Text('$name を削除しますか？\n関連するTodoは対象の人物指定がクリアされます。'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
           TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('削除')),

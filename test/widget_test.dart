@@ -109,7 +109,7 @@ void main() {
       await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.child_care));
+      await tester.tap(find.byIcon(Icons.person_add));
       await tester.pumpAndSettle();
 
       expect(find.text('まだ登録されていません。'), findsOneWidget);
@@ -129,7 +129,7 @@ void main() {
       await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.child_care));
+      await tester.tap(find.byIcon(Icons.person_add));
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField), '長女');
