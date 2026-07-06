@@ -20,7 +20,7 @@ jobs:
           ls -la android/app/keystore.jks
       - name: Set signing env vars
         run: |
-          echo "KEYSTORE_PATH=android/app/keystore.jks" >> $GITHUB_ENV
+          echo "KEYSTORE_PATH=app/keystore.jks" >> $GITHUB_ENV
           echo "KEYSTORE_STORE_PASSWORD=${{ secrets.KEYSTORE_STORE_PASSWORD }}" >> $GITHUB_ENV
           echo "KEYSTORE_KEY_PASSWORD=${{ secrets.KEYSTORE_KEY_PASSWORD }}" >> $GITHUB_ENV
           echo "KEYSTORE_KEY_ALIAS=${{ secrets.KEYSTORE_KEY_ALIAS }}" >> $GITHUB_ENV
