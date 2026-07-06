@@ -17,21 +17,42 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.ashita_motsumono"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            // key.properties（ローカル）または環境変数（CI）から署名情報を読み込む
+            val props = java.util.Properties()
+            val propsFile = rootProject.file("key.properties")
+            if (propsFile.exists()) {
+                props.load(propsFile.inputStream())
+            } else {
+                props["storeFile"] = System.getenv("KEYSTORE_PATH") ?: ""
+                props["storePassword"] = System.getenv("KEYSTORE_STORE_PASSWORD") ?: ""
+                props["keyAlias"] = System.getenv("KEYSTORE_KEY_ALIAS") ?: ""
+                props["keyPassword"] = System.getenv("KEYSTORE_KEY_PASSWORD") ?: ""
+            }
+            val storeFilePath = props.getProperty("storeFile") ?: ""
+            if (storeFilePath.isNotEmpty()) {
+                val keystoreFile = rootProject.file(storeFilePath)
+                if (keystoreFile.exists()) {
+                    storeFile = keystoreFile
+                    storePassword = props.getProperty("storePassword")
+                    keyAlias = props.getProperty("keyAlias")
+                    keyPassword = props.getProperty("keyPassword")
+                }
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
