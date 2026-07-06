@@ -57,7 +57,10 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('追加')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(
+            16, 16, 16,
+            16 + MediaQuery.of(context).viewPadding.bottom,
+          ),
         children: [
           Text('画像・スクショから登録', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
@@ -170,7 +173,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
               minLines: 2,
               maxLines: 4,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: _saveManual,
               icon: const Icon(Icons.check),
