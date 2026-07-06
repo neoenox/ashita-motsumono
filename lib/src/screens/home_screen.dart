@@ -39,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   bool _showCompleted = false;
-  String? _filterChildId;
+  String? _filterPersonId;
 
   @override
   void dispose() {
@@ -149,18 +149,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  List<AppTodo> _filter(List<AppTodo> todos, List<ChildProfile> children) {
+  List<AppTodo> _filter(List<AppTodo> todos, List<PersonProfile> children) {
     final childMap = {for (final c in children) c.id: c};
     return todos.where((t) {
       if (!_showCompleted && t.isDone) return false;
-      if (_filterChildId != null && t.childId != _filterChildId) return false;
+      if (_filterPersonId != null && t.personId != _filterPersonId) return false;
       if (_searchQuery.isEmpty) return true;
       final q = _searchQuery.toLowerCase();
       if (t.title.toLowerCase().contains(q)) return true;
       if (t.category.label.contains(q)) return true;
       if (t.note?.toLowerCase().contains(q) == true) return true;
       if (t.amount?.toString().contains(q) == true) return true;
-      final child = childMap[t.childId];
+      final child = childMap[t.personId];
       if (child?.name.toLowerCase().contains(q) == true) return true;
       return false;
     }).toList();
@@ -240,10 +240,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           FilterBar(
             showCompleted: _showCompleted,
-            filterChildId: _filterChildId,
+            filterPersonId: _filterPersonId,
             children: state.children,
             onToggleCompleted: (v) => setState(() => _showCompleted = v),
-            onChangeChild: (id) => setState(() => _filterChildId = id),
+            onChangeChild: (id) => setState(() => _filterPersonId = id),
           ),
           Expanded(
             child: ListView(

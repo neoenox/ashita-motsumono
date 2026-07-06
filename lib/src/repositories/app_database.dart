@@ -133,7 +133,7 @@ class AppDatabase extends _$AppDatabase {
     }
 
     return AppSnapshot(
-      children: childRows.map(_toChildProfile).toList(),
+      children: childRows.map(_toPersonProfile).toList(),
       todos: todoRows.map((r) => _toAppTodo(r, itemsByTodo[r.id] ?? [])).toList(),
       documents: docRows.map(_toDocumentRecord).toList(),
     );
@@ -147,7 +147,7 @@ class AppDatabase extends _$AppDatabase {
       b.deleteAll(dbDocument);
 
       for (final child in snapshot.children) {
-        b.insert(dbChild, _fromChildProfile(child));
+        b.insert(dbChild, _fromPersonProfile(child));
       }
       for (final todo in snapshot.todos) {
         b.insert(dbTodo, _fromAppTodo(todo));
@@ -172,7 +172,7 @@ class AppDatabase extends _$AppDatabase {
 
   // ── 変換 ─────────────────────────────────────────────
 
-  ChildProfile _toChildProfile(DbChildData c) => ChildProfile(
+  PersonProfile _toPersonProfile(DbChildData c) => PersonProfile(
         id: c.id,
         name: c.name,
         colorValue: c.colorValue,
@@ -180,7 +180,7 @@ class AppDatabase extends _$AppDatabase {
         updatedAt: c.updatedAt,
       );
 
-  DbChildCompanion _fromChildProfile(ChildProfile c) => DbChildCompanion(
+  DbChildCompanion _fromPersonProfile(PersonProfile c) => DbChildCompanion(
         id: Value(c.id),
         name: Value(c.name),
         colorValue: Value(c.colorValue),
@@ -191,7 +191,7 @@ class AppDatabase extends _$AppDatabase {
   AppTodo _toAppTodo(DbTodoData r, List<DbChecklistItemData> items) => AppTodo(
         id: r.id,
         title: r.title,
-        childId: r.childId,
+        personId: r.childId,
         documentId: r.documentId,
         dueDate: r.dueDate,
         category: TodoCategory.fromName(r.category),
@@ -210,7 +210,7 @@ class AppDatabase extends _$AppDatabase {
   DbTodoCompanion _fromAppTodo(AppTodo t) => DbTodoCompanion(
         id: Value(t.id),
         title: Value(t.title),
-        childId: Value(t.childId),
+        childId: Value(t.personId),
         documentId: Value(t.documentId),
         dueDate: Value(t.dueDate),
         category: Value(t.category.name),

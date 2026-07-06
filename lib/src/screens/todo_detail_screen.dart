@@ -131,7 +131,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       );
     }
 
-    final child = state.childById(todo.childId);
+    final child = state.personById(todo.personId);
     final document = state.documentById(todo.documentId);
 
     return Scaffold(
@@ -157,7 +157,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     );
   }
 
-  Widget _buildDetail(AppTodo todo, ChildProfile? child, DocumentRecord? document) {
+  Widget _buildDetail(AppTodo todo, PersonProfile? child, DocumentRecord? document) {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [

@@ -37,7 +37,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   late AppState _appState;
   late TodoCategory _category;
   DateTime? _dueDate;
-  String? _childId;
+  String? _personId;
   bool _notifyPreviousNight = true;
   bool _notifySameMorning = true;
   bool _saved = false;
@@ -84,9 +84,9 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
           const Text('OCRは間違う前提です。登録前に内容を確認してください。'),
           const SizedBox(height: 16),
           ChildDropdown(
-            value: _childId,
+            value: _personId,
             children: children,
-            onChanged: (value) => setState(() => _childId = value),
+            onChanged: (value) => setState(() => _personId = value),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -202,7 +202,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
     );
     await appState.addTodoFromDraft(
       draft: draft,
-      childId: _childId,
+      personId: _personId,
       documentId: widget.documentId,
       notifyPreviousNight: _notifyPreviousNight,
       notifySameMorning: _notifySameMorning,

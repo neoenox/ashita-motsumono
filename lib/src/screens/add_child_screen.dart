@@ -95,7 +95,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
     }
   }
 
-  Future<void> _startEdit(BuildContext context, ChildProfile child) async {
+  Future<void> _startEdit(BuildContext context, PersonProfile child) async {
     final appState = context.read<AppState>();
     final messenger = ScaffoldMessenger.of(context);
     final controller = TextEditingController(text: child.name);
@@ -131,7 +131,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
     await appState.updateChild(child.copyWith(name: result));
   }
 
-  bool _hasDuplicateName(List<ChildProfile> children, String name, {String? exceptId}) {
+  bool _hasDuplicateName(List<PersonProfile> children, String name, {String? exceptId}) {
     return children.any((child) => child.id != exceptId && child.name == name);
   }
 

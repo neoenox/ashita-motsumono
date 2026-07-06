@@ -15,7 +15,7 @@ class ChildDropdown extends StatelessWidget {
   });
 
   final String? value;
-  final List<ChildProfile> children;
+  final List<PersonProfile> children;
   final ValueChanged<String?> onChanged;
 
   @override

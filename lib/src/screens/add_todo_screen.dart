@@ -37,7 +37,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
 
   DateTime? _dueDate;
   TodoCategory _category = TodoCategory.item;
-  String? _childId;
+  String? _personId;
   bool _busy = false;
   bool _showManual = false;
 
@@ -114,9 +114,9 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
             Text('手入力', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
             ChildDropdown(
-              value: _childId,
+              value: _personId,
               children: children,
-              onChanged: (value) => setState(() => _childId = value),
+              onChanged: (value) => setState(() => _personId = value),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -211,7 +211,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
       items: items,
       note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
     );
-    await appState.addTodoFromDraft(draft: draft, childId: _childId);
+    await appState.addTodoFromDraft(draft: draft, personId: _personId);
     if (!mounted) return;
     navigator.pop();
   }

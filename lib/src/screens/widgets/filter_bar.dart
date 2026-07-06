@@ -10,15 +10,15 @@ class FilterBar extends StatelessWidget {
   const FilterBar({
     super.key,
     required this.showCompleted,
-    required this.filterChildId,
+    required this.filterPersonId,
     required this.children,
     required this.onToggleCompleted,
     required this.onChangeChild,
   });
 
   final bool showCompleted;
-  final String? filterChildId;
-  final List<ChildProfile> children;
+  final String? filterPersonId;
+  final List<PersonProfile> children;
   final ValueChanged<bool> onToggleCompleted;
   final ValueChanged<String?> onChangeChild;
 
@@ -36,7 +36,7 @@ class FilterBar extends StatelessWidget {
           const SizedBox(width: 8),
           if (children.length > 1)
             DropdownButton<String?>(
-              value: filterChildId,
+              value: filterPersonId,
               hint: const Text('すべて'),
               underline: const SizedBox(),
               items: [
@@ -47,7 +47,7 @@ class FilterBar extends StatelessWidget {
               ],
               onChanged: onChangeChild,
             ),
-          if (filterChildId != null)
+          if (filterPersonId != null)
             IconButton(
               icon: const Icon(Icons.clear, size: 18),
               onPressed: () => onChangeChild(null),

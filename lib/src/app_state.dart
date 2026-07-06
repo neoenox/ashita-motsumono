@@ -26,11 +26,11 @@ class AppState extends ChangeNotifier {
   bool get loaded => _loaded;
   bool get lastLoadHadCorruptData => _store.lastLoadHadCorruptData;
 
-  List<ChildProfile> _children = [];
+  List<PersonProfile> _children = [];
   List<AppTodo> _todos = [];
   List<DocumentRecord> _documents = [];
 
-  List<ChildProfile> get children => List.unmodifiable(_children);
+  List<PersonProfile> get children => List.unmodifiable(_children);
   List<AppTodo> get todos => List.unmodifiable(_todos);
   List<DocumentRecord> get documents => List.unmodifiable(_documents);
 
@@ -79,7 +79,7 @@ class AppState extends ChangeNotifier {
       ..sort(_sortTodo);
   }
 
-  ChildProfile? childById(String? id) {
+  PersonProfile? personById(String? id) {
     if (id == null) return null;
     return _children.where((c) => c.id == id).firstOrNull;
   }
@@ -89,9 +89,9 @@ class AppState extends ChangeNotifier {
     return _documents.where((d) => d.id == id).firstOrNull;
   }
 
-  Future<ChildProfile> addChild(String name) async {
+  Future<PersonProfile> addChild(String name) async {
     final now = DateTime.now();
-    final child = ChildProfile(
+    final child = PersonProfile(
       id: _uuid.v4(),
       name: name.trim(),
       colorValue: Colors.primaries[_children.length % Colors.primaries.length].toARGB32(),
@@ -108,15 +108,15 @@ class AppState extends ChangeNotifier {
     _children = _children.where((child) => child.id != id).toList();
     final now = DateTime.now();
     _todos = _todos
-        .map((todo) => todo.childId == id
-            ? todo.copyWith(clearChildId: true, updatedAt: now)
+        .map((todo) => todo.personId == id
+            ? todo.copyWith(clearPersonId: true, updatedAt: now)
             : todo)
         .toList();
     await _persist();
     notifyListeners();
   }
 
-  Future<void> updateChild(ChildProfile child) async {
+  Future<void> updateChild(PersonProfile child) async {
     final updated = child.copyWith(updatedAt: DateTime.now());
     _children = _children.map((e) => e.id == updated.id ? updated : e).toList();
     await _persist();
@@ -158,7 +158,7 @@ class AppState extends ChangeNotifier {
 
   Future<AppTodo> addTodoFromDraft({
     required ExtractionDraft draft,
-    String? childId,
+    String? personId,
     String? documentId,
     bool notifyPreviousNight = true,
     bool notifySameMorning = true,
@@ -167,7 +167,7 @@ class AppState extends ChangeNotifier {
     final todo = AppTodo(
       id: _uuid.v4(),
       title: draft.title.trim().isEmpty ? 'プリントを確認' : draft.title.trim(),
-      childId: childId,
+      personId: personId,
       documentId: documentId,
       dueDate: draft.dueDate,
       category: draft.category,
