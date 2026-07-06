@@ -13,6 +13,7 @@ import '../utils/date_picker.dart';
 import '../utils/string_utils.dart';
 import '../app_state.dart';
 import '../models/entities.dart';
+import 'widgets/child_dropdown.dart';
 
 class ReviewExtractionScreen extends StatefulWidget {
   const ReviewExtractionScreen({
@@ -82,13 +83,9 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
         children: [
           const Text('OCRは間違う前提です。登録前に内容を確認してください。'),
           const SizedBox(height: 16),
-          DropdownButtonFormField<String?>(
-            initialValue: _childId,
-            decoration: const InputDecoration(labelText: '対象', border: OutlineInputBorder()),
-            items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('未指定')),
-              ...children.map((child) => DropdownMenuItem<String?>(value: child.id, child: Text(child.name))),
-            ],
+          ChildDropdown(
+            value: _childId,
+            children: children,
             onChanged: (value) => setState(() => _childId = value),
           ),
           const SizedBox(height: 12),

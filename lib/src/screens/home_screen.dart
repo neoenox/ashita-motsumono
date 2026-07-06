@@ -16,11 +16,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../app_state.dart';
 import '../models/entities.dart';
 import '../services/app_settings.dart';
-import '../utils/date_formatters.dart';
 import 'add_child_screen.dart';
 import 'add_todo_screen.dart';
 import 'settings_screen.dart';
-import 'todo_detail_screen.dart';
+import 'widgets/filter_bar.dart';
+import 'widgets/home_status_cards.dart';
+import 'widgets/todo_section.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.settings});
@@ -112,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) => AlertDialog(
         title: const Text('データをエクスポート'),
         content: const Text(
-          '子ども名、Todo、OCR全文、端末内画像パスを含むJSONをクリップボードにコピーします。'
+          '人物名、Todo、OCR全文、端末内画像パスを含むJSONをクリップボードにコピーします。'
           '他のアプリに貼り付けると個人情報が含まれる可能性があります。',
         ),
         actions: [
@@ -189,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           IconButton(
-            tooltip: '子どもを追加',
+            tooltip: '人物を追加',
             icon: const Icon(Icons.child_care),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const AddChildScreen()),
@@ -237,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onChanged: (v) => setState(() => _searchQuery = v.trim()),
             ),
           ),
-          _FilterBar(
+          FilterBar(
             showCompleted: _showCompleted,
             filterChildId: _filterChildId,
             children: state.children,
@@ -249,23 +250,23 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
               children: [
                 if (state.lastLoadHadCorruptData) ...[
-                  _CorruptDataCard(onCopy: () => unawaited(_copyCorruptBackup(state))),
+                  CorruptDataCard(onCopy: () => unawaited(_copyCorruptBackup(state))),
                   const SizedBox(height: 12),
                 ],
-                if (state.children.isEmpty) const _FirstRunCard(),
+                if (state.children.isEmpty) const FirstRunCard(),
                 if (state.children.isNotEmpty && allFiltered && _searchQuery.isEmpty && state.todos.isEmpty)
-                  _EmptyState(),
+                  const EmptyState(),
                 if (state.children.isNotEmpty && allFiltered && _searchQuery.isNotEmpty)
-                  _NoSearchResults(query: _searchQuery),
+                  NoSearchResults(query: _searchQuery),
                 if (todayTodos.isNotEmpty || _searchQuery.isEmpty) ...[
-                  _TodoSection(title: '今日やること', todos: todayTodos),
+                  TodoSection(title: '今日やること', todos: todayTodos),
                   const SizedBox(height: 16),
                 ],
-                _TodoSection(title: '明日の持ち物・提出', todos: tomorrowTodos),
+                TodoSection(title: '明日の持ち物・提出', todos: tomorrowTodos),
                 const SizedBox(height: 16),
-                _TodoSection(title: '期限未設定・要確認', todos: undated),
+                TodoSection(title: '期限未設定・要確認', todos: undated),
                 const SizedBox(height: 16),
-                _UpcomingSection(todos: upcoming),
+                UpcomingSection(todos: upcoming),
               ],
             ),
           ),
@@ -277,263 +278,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         icon: const Icon(Icons.add),
         label: const Text('追加'),
-      ),
-    );
-  }
-}
-
-class _CorruptDataCard extends StatelessWidget {
-  const _CorruptDataCard({required this.onCopy});
-
-  final VoidCallback onCopy;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: Theme.of(context).colorScheme.errorContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('保存データの読み込みに失敗しました', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            const Text('破損していた保存データは退避されています。復旧確認用にコピーできます。'),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: onCopy,
-              icon: const Icon(Icons.copy),
-              label: const Text('退避データをコピー'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NoSearchResults extends StatelessWidget {
-  const _NoSearchResults({required this.query});
-
-  final String query;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 48),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 16),
-            Text('「$query」に一致するTodoはありません', style: TextStyle(color: Colors.grey[500])),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FirstRunCard extends StatelessWidget {
-  const _FirstRunCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('まず子どもを登録', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            const Text('Todoは子ども別に整理できます。MVPではログインなし・端末内保存です。'),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AddChildScreen()),
-              ),
-              icon: const Icon(Icons.add),
-              label: const Text('子どもを追加'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TodoSection extends StatelessWidget {
-  const _TodoSection({required this.title, required this.todos});
-
-  final String title;
-  final List<AppTodo> todos;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            if (todos.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle_outline, size: 20, color: Colors.grey[400]),
-                    const SizedBox(width: 8),
-                    Text('すべて完了', style: TextStyle(color: Colors.grey[500])),
-                  ],
-                ),
-              )
-            else
-              ...todos.map((todo) => _TodoTile(todo: todo)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _UpcomingSection extends StatelessWidget {
-  const _UpcomingSection({required this.todos});
-
-  final List<AppTodo> todos;
-
-  @override
-  Widget build(BuildContext context) {
-    if (todos.isEmpty) return const SizedBox.shrink();
-    final shown = todos.take(10).toList();
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('今後の予定', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            ...shown.map((todo) => _TodoTile(todo: todo, compact: true)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FilterBar extends StatelessWidget {
-  const _FilterBar({
-    required this.showCompleted,
-    required this.filterChildId,
-    required this.children,
-    required this.onToggleCompleted,
-    required this.onChangeChild,
-  });
-
-  final bool showCompleted;
-  final String? filterChildId;
-  final List<ChildProfile> children;
-  final ValueChanged<bool> onToggleCompleted;
-  final ValueChanged<String?> onChangeChild;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: Row(
-        children: [
-          FilterChip(
-            label: const Text('完了済み'),
-            selected: showCompleted,
-            onSelected: onToggleCompleted,
-          ),
-          const SizedBox(width: 8),
-          if (children.length > 1)
-            DropdownButton<String?>(
-              value: filterChildId,
-              hint: const Text('すべての子'),
-              underline: const SizedBox(),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('すべての子')),
-                ...children.map(
-                  (c) => DropdownMenuItem(value: c.id, child: Text(c.name)),
-                ),
-              ],
-              onChanged: onChangeChild,
-            ),
-          if (filterChildId != null)
-            IconButton(
-              icon: const Icon(Icons.clear, size: 18),
-              onPressed: () => onChangeChild(null),
-              tooltip: 'フィルター解除',
-              visualDensity: VisualDensity.compact,
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 48),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 16),
-            Text('Todoがありません', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey[500])),
-            const SizedBox(height: 8),
-            Text('「追加」ボタンから新しくTodoを作成できます', style: TextStyle(color: Colors.grey[400])),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TodoTile extends StatelessWidget {
-  const _TodoTile({required this.todo, this.compact = false});
-
-  final AppTodo todo;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final child = state.childById(todo.childId);
-    final subtitle = [
-      todo.category.label,
-      formatDueDate(todo.dueDate),
-      if (child != null) child.name,
-      if (todo.amount != null) '${todo.amount}円',
-    ].join(' / ');
-
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Checkbox(
-        value: todo.isDone,
-        onChanged: (_) => context.read<AppState>().toggleTodoDone(todo.id),
-      ),
-      title: Text(
-        todo.title,
-        maxLines: compact ? 1 : 2,
-        overflow: TextOverflow.ellipsis,
-        style: todo.isDone
-            ? const TextStyle(decoration: TextDecoration.lineThrough)
-            : null,
-      ),
-      subtitle: Text(subtitle),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => TodoDetailScreen(todoId: todo.id)),
       ),
     );
   }

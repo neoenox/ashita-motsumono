@@ -19,6 +19,7 @@ import '../utils/amount.dart';
 import '../utils/date_picker.dart';
 import '../utils/string_utils.dart';
 import 'review_extraction_screen.dart';
+import 'widgets/child_dropdown.dart';
 
 class AddTodoScreen extends StatefulWidget {
   const AddTodoScreen({super.key});
@@ -112,7 +113,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
           if (_showManual) ...[
             Text('手入力', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
-            _ChildDropdown(
+            ChildDropdown(
               value: _childId,
               children: children,
               onChanged: (value) => setState(() => _childId = value),
@@ -294,23 +295,4 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
   }
 }
 
-class _ChildDropdown extends StatelessWidget {
-  const _ChildDropdown({required this.value, required this.children, required this.onChanged});
 
-  final String? value;
-  final List<ChildProfile> children;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return DropdownButtonFormField<String?>(
-      initialValue: value,
-      decoration: const InputDecoration(labelText: '対象', border: OutlineInputBorder()),
-      items: [
-        const DropdownMenuItem<String?>(value: null, child: Text('未指定')),
-        ...children.map((child) => DropdownMenuItem<String?>(value: child.id, child: Text(child.name))),
-      ],
-      onChanged: onChanged,
-    );
-  }
-}
