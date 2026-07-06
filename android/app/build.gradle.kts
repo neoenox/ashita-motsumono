@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,6 +7,7 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+@Suppress("UnstableApiUsage")
 android {
     namespace = "com.example.ashita_motsumono"
     compileSdk = flutter.compileSdkVersion
@@ -27,7 +30,7 @@ android {
     signingConfigs {
         create("release") {
             // key.properties（ローカル）または環境変数（CI）から署名情報を読み込む
-            val props = java.util.Properties()
+            val props = Properties()
             val propsFile = rootProject.file("key.properties")
             if (propsFile.exists()) {
                 props.load(propsFile.inputStream())
