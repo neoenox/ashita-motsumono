@@ -238,18 +238,202 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tap to push the review screen
       await tester.tap(find.text('開く'));
       await tester.pumpAndSettle();
 
-      // Verify review screen is shown
       expect(find.text('読み取り結果の確認'), findsOneWidget);
 
-      // Navigate back (cancel) — the document should be deleted on dispose
       await tester.tap(find.byIcon(Icons.arrow_back));
       await tester.pumpAndSettle();
 
       expect(appState.documents.where((d) => d.id == docId), isEmpty);
+    });
+  });
+
+  group('SettingsScreen', () {
+    testWidgets('shows notification time tiles', (tester) async {
+      final appState = await _createAppState();
+      final settings = await _createSettings();
+
+      await tester.pumpWidget(AshitaMotsumonoApp(
+        appState: appState,
+        settings: settings,
+        purchaseProvider: _TestPurchaseProvider(),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.settings));
+      await tester.pumpAndSettle();
+
+      expect(find.text('設定'), findsOneWidget);
+      expect(find.text('通知時刻'), findsOneWidget);
+      expect(find.textContaining('前日（夜）'), findsOneWidget);
+      expect(find.textContaining('当日（朝）'), findsOneWidget);
+      expect(find.text('広告'), findsOneWidget);
+    });
+
+    testWidgets('shows purchase section', (tester) async {
+      final appState = await _createAppState();
+      final settings = await _createSettings();
+
+      await tester.pumpWidget(AshitaMotsumonoApp(
+        appState: appState,
+        settings: settings,
+        purchaseProvider: _TestPurchaseProvider(),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.settings));
+      await tester.pumpAndSettle();
+
+      expect(find.text('広告を除去する'), findsOneWidget);
+      expect(find.text('買い切り 190円（税込）'), findsOneWidget);
+    });
+  });
+
+  group('AddTodoScreen', () {
+    testWidgets('shows add screen with OCR and paste options', (tester) async {
+      final appState = await _createAppState();
+      final settings = await _createSettings();
+      await appState.addChild('長女');
+
+      await tester.pumpWidget(AshitaMotsumonoApp(
+        appState: appState,
+        settings: settings,
+        purchaseProvider: _TestPurchaseProvider(),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('追加'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('画像・スクショから登録'), findsOneWidget);
+      expect(find.text('写真を撮る'), findsOneWidget);
+      expect(find.text('画像を選ぶ'), findsOneWidget);
+      expect(find.text('OCRテキストを貼り付けて抽出'), findsOneWidget);
+      expect(find.text('手動で入力する'), findsOneWidget);
+    });
+
+    testWidgets('shows manual input form when toggled', (tester) async {
+      final appState = await _createAppState();
+      final settings = await _createSettings();
+      await appState.addChild('長女');
+
+      await tester.pumpWidget(AshitaMotsumonoApp(
+        appState: appState,
+        settings: settings,
+        purchaseProvider: _TestPurchaseProvider(),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('追加'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('手動で入力する'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('手入力'), findsOneWidget);
+      expect(find.text('タイトル'), findsOneWidget);
+    });
+
+    testWidgets('validates empty title on manual save', (tester) async {
+      final appState = await _createAppState();
+      final settings = await _createSettings();
+      await appState.addChild('長女');
+
+      await tester.pumpWidget(AshitaMotsumonoApp(
+        appState: appState,
+        settings: settings,
+        purchaseProvider: _TestPurchaseProvider(),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('追加'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('手動で入力する'));
+      await tester.pumpAndSettle();
+
+      // Scroll to find the register button
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pumpAndSettle();
+
+      // Tap register with empty title
+      await tester.tap(find.text('登録'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('タイトルを入力してください'), findsOneWidget);
+    });
+  });
+
+  group('HomeScreen search', () {
+    testWidgets('filters todos by search query', (tester) async {
+      final appState = await _createAppState();
+      final settings = await _createSettings();
+      await appState.addChild('長女');
+      await appState.addTodoFromDraft(
+        draft: ExtractionDraft(
+          title: '水筒を持参',
+          category: TodoCategory.item,
+          items: ['水筒'],
+          dueDate: DateTime.now(),
+        ),
+      );
+      await appState.addTodoFromDraft(
+        draft: ExtractionDraft(
+          title: '集金袋を提出',
+          category: TodoCategory.submit,
+          items: ['集金袋'],
+          amount: 3000,
+          dueDate: DateTime.now(),
+        ),
+      );
+
+      await tester.pumpWidget(AshitaMotsumonoApp(
+        appState: appState,
+        settings: settings,
+        purchaseProvider: _TestPurchaseProvider(),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('水筒を持参'), findsOneWidget);
+      expect(find.text('集金袋を提出'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), '水筒');
+      await tester.pumpAndSettle();
+
+      expect(find.text('水筒を持参'), findsOneWidget);
+      expect(find.text('集金袋を提出'), findsNothing);
+    });
+  });
+
+  group('HomeScreen todo completion', () {
+    testWidgets('toggles todo completion via checkbox', (tester) async {
+      final appState = await _createAppState();
+      final settings = await _createSettings();
+      await appState.addChild('長女');
+      await appState.addTodoFromDraft(
+        draft: ExtractionDraft(
+          title: '水筒を持参',
+          category: TodoCategory.item,
+          items: ['水筒'],
+          dueDate: DateTime.now(),
+        ),
+      );
+
+      await tester.pumpWidget(AshitaMotsumonoApp(
+        appState: appState,
+        settings: settings,
+        purchaseProvider: _TestPurchaseProvider(),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('水筒を持参'), findsOneWidget);
+
+      await tester.tap(find.byType(Checkbox));
+      await tester.pumpAndSettle();
+
+      expect(appState.todos.first.isDone, isTrue);
     });
   });
 }
