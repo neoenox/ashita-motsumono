@@ -9,6 +9,7 @@ import 'package:ashita_motsumono/src/models/entities.dart';
 import 'package:ashita_motsumono/src/repositories/drift_store.dart';
 import 'package:ashita_motsumono/src/services/app_settings.dart';
 import 'package:ashita_motsumono/src/services/notification_service.dart';
+import 'package:ashita_motsumono/src/services/purchase_provider.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,6 +23,19 @@ import 'package:ashita_motsumono/src/screens/todo_detail_screen.dart';
 Future<AppSettings> _createSettings() async {
   final prefs = await SharedPreferences.getInstance();
   return AppSettings(prefs);
+}
+
+/// テスト用の PurchaseProvider（実際の課金処理は行わない）。
+class _TestPurchaseProvider extends ChangeNotifier
+    implements PurchaseProvider {
+  @override
+  bool get adRemoved => false;
+
+  @override
+  bool get busy => false;
+
+  @override
+  Future<void> purchase() async {}
 }
 
 /// 通知説明ダイアログをスキップした AppState を生成する。
@@ -52,7 +66,7 @@ void main() {
       );
       await appState.load();
 
-      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings));
+      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings, purchaseProvider: _TestPurchaseProvider()));
       await tester.pumpAndSettle();
 
       expect(find.text('あした持つもの'), findsOneWidget);
@@ -68,7 +82,7 @@ void main() {
       final settings = await _createSettings();
       await appState.addChild('長女');
 
-      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings));
+      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings, purchaseProvider: _TestPurchaseProvider()));
       await tester.pumpAndSettle();
 
       expect(find.text('まず人物を登録'), findsNothing);
@@ -89,7 +103,7 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings));
+      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings, purchaseProvider: _TestPurchaseProvider()));
       await tester.pumpAndSettle();
 
       expect(find.text('今日やること'), findsOneWidget);
@@ -106,7 +120,7 @@ void main() {
     testWidgets('shows empty state and can add a child', (tester) async {
       final appState = await _createAppState();
       final settings = await _createSettings();
-      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings));
+      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings, purchaseProvider: _TestPurchaseProvider()));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.person_add));
@@ -126,7 +140,7 @@ void main() {
       final appState = await _createAppState();
       final settings = await _createSettings();
       await appState.addChild('長女');
-      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings));
+      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings, purchaseProvider: _TestPurchaseProvider()));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.person_add));
@@ -155,7 +169,7 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings));
+      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings, purchaseProvider: _TestPurchaseProvider()));
       await tester.pumpAndSettle();
 
       expect(find.text('今日やること'), findsOneWidget);
@@ -170,7 +184,7 @@ void main() {
     testWidgets('shows not found when todo is missing', (tester) async {
       final appState = await _createAppState();
       final settings = await _createSettings();
-      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings));
+      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings, purchaseProvider: _TestPurchaseProvider()));
       await tester.pumpWidget(
         MaterialApp(
           home: ChangeNotifierProvider.value(

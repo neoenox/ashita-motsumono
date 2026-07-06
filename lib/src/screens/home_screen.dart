@@ -10,12 +10,15 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_state.dart';
 import '../models/entities.dart';
+import '../services/ad_service.dart';
 import '../services/app_settings.dart';
+import '../services/purchase_provider.dart';
 import 'add_child_screen.dart';
 import 'add_todo_screen.dart';
 import 'settings_screen.dart';
@@ -270,6 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+          if (!context.watch<PurchaseProvider>().adRemoved) const _AdBanner(),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -278,6 +282,50 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         icon: const Icon(Icons.add),
         label: const Text('追加'),
+      ),
+    );
+  }
+}
+
+class _AdBanner extends StatefulWidget {
+  const _AdBanner();
+
+  @override
+  State<_AdBanner> createState() => _AdBannerState();
+}
+
+class _AdBannerState extends State<_AdBanner> {
+  BannerAd? _ad;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    final size = AdSize.fullBanner;
+    final ad = AdService.createBannerAd(size: size);
+    ad.load();
+    setState(() => _ad = ad);
+  }
+
+  @override
+  void dispose() {
+    _ad?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ad = _ad;
+    if (ad == null) return const SizedBox.shrink();
+    return Container(
+      color: Colors.grey.shade100,
+      child: SizedBox(
+        width: ad.size.width.toDouble(),
+        height: ad.size.height.toDouble(),
+        child: AdWidget(ad: ad),
       ),
     );
   }

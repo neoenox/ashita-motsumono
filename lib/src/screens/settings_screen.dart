@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../app_state.dart';
 import '../services/app_settings.dart';
+import '../services/purchase_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.settings});
@@ -56,6 +57,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
               '通知時刻を変更すると、登録済みの未完了Todo通知も新しい時刻で再予約されます。',
               style: TextStyle(color: Colors.grey, fontSize: 13),
             ),
+          ),
+          const Divider(),
+          const _SectionHeader('広告'),
+          Consumer<PurchaseProvider>(
+            builder: (context, purchase, _) {
+              if (purchase.adRemoved) {
+                return const ListTile(
+                  leading: Icon(Icons.check_circle, color: Colors.green),
+                  title: Text('広告除去済み'),
+                  subtitle: Text('ご購入ありがとうございます'),
+                );
+              }
+              return ListTile(
+                leading: const Icon(Icons.ads_click),
+                title: const Text('広告を除去する'),
+                subtitle: const Text('買い切り 190円（税込）'),
+                trailing: purchase.busy
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.chevron_right),
+                onTap: purchase.busy ? null : () => purchase.purchase(),
+              );
+            },
           ),
         ],
       ),

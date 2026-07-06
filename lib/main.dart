@@ -1,6 +1,8 @@
 // lib/main.dart
-// アプリのエントリポイント。Provider で AppState を DI し、MaterialApp を起動する。
-// 関連: src/app_state.dart, src/screens/home_screen.dart
+// アプリのエントリポイント。Provider で AppState と PurchaseProvider を DI し、MaterialApp を起動する。
+// 関連: src/app_state.dart, src/screens/home_screen.dart, src/services/purchase_provider.dart
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -10,8 +12,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'src/app_state.dart';
 import 'src/repositories/drift_store.dart';
 import 'src/screens/home_screen.dart';
+import 'src/services/ad_service.dart';
 import 'src/services/app_settings.dart';
 import 'src/services/notification_service.dart';
+import 'src/services/purchase_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,19 +25,33 @@ Future<void> main() async {
   final notifications = NotificationService(settings: settings);
   final appState = AppState(store: store, notifications: notifications);
   await appState.load();
-  runApp(AshitaMotsumonoApp(appState: appState, settings: settings));
+  unawaited(AdService.initialize());
+  runApp(AshitaMotsumonoApp(
+    appState: appState,
+    settings: settings,
+    purchaseProvider: PurchaseProvider(settings),
+  ));
 }
 
 class AshitaMotsumonoApp extends StatelessWidget {
-  const AshitaMotsumonoApp({super.key, required this.appState, required this.settings});
+  const AshitaMotsumonoApp({
+    super.key,
+    required this.appState,
+    required this.settings,
+    required this.purchaseProvider,
+  });
 
   final AppState appState;
   final AppSettings settings;
+  final PurchaseProvider purchaseProvider;
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: appState,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: appState),
+        ChangeNotifierProvider.value(value: purchaseProvider),
+      ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'あした持つもの',

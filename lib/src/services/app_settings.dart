@@ -14,10 +14,14 @@ class AppSettings {
   int get sameMorningHour => _prefs.getInt(_keySameMorningHour) ?? 7;
   int get sameMorningMinute => _prefs.getInt(_keySameMorningMinute) ?? 0;
 
+  /// 広告除去購入済みなら true
+  bool get adRemoved => _prefs.getBool(_keyAdRemoved) ?? false;
+
   static const _keyPreviousNightHour = 'notification_previous_night_hour';
   static const _keyPreviousNightMinute = 'notification_previous_night_minute';
   static const _keySameMorningHour = 'notification_same_morning_hour';
   static const _keySameMorningMinute = 'notification_same_morning_minute';
+  static const _keyAdRemoved = 'purchase_ad_removed';
 
   Future<void> setPreviousNightTime(int hour, int minute) async {
     await _prefs.setInt(_keyPreviousNightHour, hour);
@@ -27,5 +31,9 @@ class AppSettings {
   Future<void> setSameMorningTime(int hour, int minute) async {
     await _prefs.setInt(_keySameMorningHour, hour);
     await _prefs.setInt(_keySameMorningMinute, minute);
+  }
+
+  Future<void> setAdRemoved(bool removed) async {
+    await _prefs.setBool(_keyAdRemoved, removed);
   }
 }
