@@ -59,7 +59,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
       body: ListView(
         padding: EdgeInsets.fromLTRB(
             16, 16, 16,
-            16 + MediaQuery.of(context).viewPadding.bottom,
+            16 + MediaQuery.paddingOf(context).bottom,
           ),
         children: [
           Text('画像・スクショから登録', style: Theme.of(context).textTheme.titleMedium),
