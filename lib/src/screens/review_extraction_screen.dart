@@ -159,13 +159,17 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
             minLines: 6,
             maxLines: 12,
           ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
+        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.check),
             label: const Text('登録する'),
           ),
-        ],
+        ),
       ),
     );
   }
