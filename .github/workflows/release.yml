@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.31'
+          flutter-version: '3.31.0'
       - run: flutter pub get
       - name: Decode keystore
         run: |
