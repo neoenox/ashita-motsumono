@@ -9,6 +9,7 @@ import 'package:ashita_motsumono/src/models/entities.dart';
 import 'package:ashita_motsumono/src/repositories/drift_store.dart';
 import 'package:ashita_motsumono/src/services/app_settings.dart';
 import 'package:ashita_motsumono/src/services/notification_service.dart';
+import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -36,6 +37,9 @@ Future<AppState> _createAppState() async {
 }
 
 void main() {
+  // 各テストが独立したインメモリDBを使うため、複数インスタンス警告は抑制
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+
   group('HomeScreen', () {
     testWidgets('shows home screen and first run card', (tester) async {
       // 初回起動（通知フラグなし）→ ダイアログが出るがcardは見えている
@@ -52,9 +56,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('あした持つもの'), findsOneWidget);
-      expect(find.text('まず子どもを登録'), findsOneWidget);
+      expect(find.text('まず人物を登録'), findsOneWidget);
       expect(
-        find.text('Todoは子ども別に整理できます。MVPではログインなし・端末内保存です。'),
+        find.text('Todoは人物別に整理できます。MVPではログインなし・端末内保存です。'),
         findsOneWidget,
       );
     });
@@ -67,7 +71,7 @@ void main() {
       await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings));
       await tester.pumpAndSettle();
 
-      expect(find.text('まず子どもを登録'), findsNothing);
+      expect(find.text('まず人物を登録'), findsNothing);
       expect(find.text('Todoがありません'), findsOneWidget);
       expect(find.text('「追加」ボタンから新しくTodoを作成できます'), findsOneWidget);
     });
