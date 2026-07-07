@@ -1,9 +1,10 @@
 // lib/src/screens/widgets/home_status_cards.dart
 // 初回起動カード、空状態、検索0件、データ破損カード。
-// 関連: home_screen.dart, add_child_screen.dart
+// 関連: home_screen.dart, add_child_screen.dart, theme/app_theme.dart
 
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
 import '../add_child_screen.dart';
 
 class FirstRunCard extends StatelessWidget {
@@ -42,21 +43,22 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 48),
+      padding: const EdgeInsets.symmetric(vertical: Spacing.xl),
       child: Center(
         child: Column(
           children: [
-            Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 16),
+            const Text('🎒', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: Spacing.md),
             Text('Todoがありません',
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
-                    ?.copyWith(color: Colors.grey[500])),
-            const SizedBox(height: 8),
+                    ?.copyWith(color: cs.onSurfaceVariant)),
+            const SizedBox(height: Spacing.sm),
             Text('「追加」ボタンから新しくTodoを作成できます',
-                style: TextStyle(color: Colors.grey[400])),
+                style: TextStyle(color: cs.onSurfaceVariant.withValues(alpha: 0.7))),
           ],
         ),
       ),
@@ -71,15 +73,16 @@ class NoSearchResults extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 48),
+      padding: const EdgeInsets.symmetric(vertical: Spacing.xl),
       child: Center(
         child: Column(
           children: [
-            Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 16),
+            const Text('🔍', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: Spacing.md),
             Text('「$query」に一致するTodoはありません',
-                style: TextStyle(color: Colors.grey[500])),
+                style: TextStyle(color: cs.onSurfaceVariant)),
           ],
         ),
       ),
