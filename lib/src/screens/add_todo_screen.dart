@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 
 import '../app_state.dart';
 import '../models/entities.dart';
+
 import '../services/extraction_service.dart';
 import '../services/image_file_service.dart';
 import '../services/ocr_service.dart';

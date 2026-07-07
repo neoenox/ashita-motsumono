@@ -72,7 +72,7 @@ void main() {
       expect(find.text('あした持つもの'), findsOneWidget);
       expect(find.text('まず人物を登録'), findsOneWidget);
       expect(
-        find.text('Todoは人物別に整理できます。MVPではログインなし・端末内保存です。'),
+        find.text('Todoは人物別に整理できます。\nログイン不要・端末内保存です。'),
         findsOneWidget,
       );
     });

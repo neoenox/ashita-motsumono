@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../app_state.dart';
 import '../services/app_settings.dart';
+
 import '../services/purchase_provider.dart';
 
 class SettingsScreen extends StatefulWidget {

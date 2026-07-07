@@ -10,17 +10,21 @@ class AppTheme {
 
   static ThemeData light() {
     const seedColor = Color(0xFF2F7D6E);
+    final cs = ColorScheme.fromSeed(
+      seedColor: seedColor,
+      brightness: Brightness.light,
+    );
 
     return ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: seedColor,
-        brightness: Brightness.light,
-      ),
-      appBarTheme: const AppBarTheme(
+      colorScheme: cs,
+      fontFamily: 'NotoSansJP',
+      appBarTheme: AppBarTheme(
         centerTitle: false,
         elevation: 0,
         scrolledUnderElevation: 0,
+        backgroundColor: cs.primary,
+        foregroundColor: cs.onPrimary,
       ),
       cardTheme: CardThemeData(
         elevation: 1,

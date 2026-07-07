@@ -14,16 +14,20 @@ class FirstRunCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Card(
+      color: cs.surfaceContainerHighest,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Spacing.md),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            const Text('📋', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: Spacing.sm),
             Text('まず人物を登録', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            const Text('Todoは人物別に整理できます。MVPではログインなし・端末内保存です。'),
-            const SizedBox(height: 12),
+            const SizedBox(height: Spacing.xs),
+            const Text('Todoは人物別に整理できます。\nログイン不要・端末内保存です。'),
+            const SizedBox(height: Spacing.md),
             FilledButton.icon(
               onPressed: onAddPerson ?? () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const AddChildScreen()),
