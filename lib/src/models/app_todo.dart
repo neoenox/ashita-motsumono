@@ -100,8 +100,8 @@ class AppTodo {
       };
 
   factory AppTodo.fromJson(Map<String, dynamic> json) => AppTodo(
-        id: json['id'] as String,
-        title: json['title'] as String,
+        id: (json['id'] as String?) ?? '',
+        title: (json['title'] as String?) ?? '',
         personId: json['childId'] as String?,
         documentId: json['documentId'] as String?,
         dueDate: (json['dueDate'] as String?) == null
@@ -116,7 +116,7 @@ class AppTodo {
             .toList(),
         notifyPreviousNight: json['notifyPreviousNight'] as bool? ?? true,
         notifySameMorning: json['notifySameMorning'] as bool? ?? true,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        updatedAt: DateTime.parse(json['updatedAt'] as String),
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
       );
 }

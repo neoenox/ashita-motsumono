@@ -61,6 +61,11 @@ class UpcomingSection extends StatelessWidget {
             Text('今後の予定', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             ...shown.map((todo) => TodoTile(todo: todo, compact: true)),
+            if (todos.length > 10) ...[
+              const SizedBox(height: 8),
+              Text('他 ${todos.length - 10} 件',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+            ],
           ],
         ),
       ),

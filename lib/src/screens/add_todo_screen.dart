@@ -225,7 +225,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
     if (trimmed.isEmpty) return;
     final appState = context.read<AppState>();
     final navigator = Navigator.of(context);
-    final draft = ExtractionService().extract(trimmed);
+    final draft = ExtractionService.extract(trimmed);
     final document = await appState.addDocument(sourceType: 'text', ocrText: trimmed);
     if (!mounted) return;
     await navigator.pushReplacement(
@@ -261,7 +261,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
         ocrText: ocrText,
       );
       imageFile = null;
-      final draft = ExtractionService().extract(ocrText);
+      final draft = ExtractionService.extract(ocrText);
       if (!mounted) return;
       await navigator.pushReplacement(
         MaterialPageRoute(

@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 import '../add_child_screen.dart';
 
 class FirstRunCard extends StatelessWidget {
-  const FirstRunCard({super.key});
+  const FirstRunCard({super.key, this.onAddPerson});
+
+  final VoidCallback? onAddPerson;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +24,7 @@ class FirstRunCard extends StatelessWidget {
             const Text('Todoは人物別に整理できます。MVPではログインなし・端末内保存です。'),
             const SizedBox(height: 12),
             FilledButton.icon(
-              onPressed: () => Navigator.of(context).push(
+              onPressed: onAddPerson ?? () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const AddChildScreen()),
               ),
               icon: const Icon(Icons.add),

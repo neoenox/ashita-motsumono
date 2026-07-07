@@ -6,6 +6,7 @@
 
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -37,7 +38,7 @@ class ImageFileService {
         await file.delete();
       }
     } on Object {
-      // 削除に失敗しても呼び出し元に影響させない
+      if (kDebugMode) debugPrint('ImageFileService: failed to delete file');
     }
   }
 }

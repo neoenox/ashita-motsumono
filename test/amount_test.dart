@@ -36,5 +36,17 @@ void main() {
       expect(r.valid, isFalse);
       expect(r.amount, isNull);
     });
+
+    test('parses amount with 円 suffix', () {
+      final r = parseAmount('500円');
+      expect(r.valid, isTrue);
+      expect(r.amount, 500);
+    });
+
+    test('parses amount with ¥ prefix and comma', () {
+      final r = parseAmount('¥1,200');
+      expect(r.valid, isTrue);
+      expect(r.amount, 1200);
+    });
   });
 }

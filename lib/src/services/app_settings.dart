@@ -9,13 +9,18 @@ class AppSettings {
 
   final SharedPreferences _prefs;
 
-  int get previousNightHour => _prefs.getInt(_keyPreviousNightHour) ?? 20;
-  int get previousNightMinute => _prefs.getInt(_keyPreviousNightMinute) ?? 0;
-  int get sameMorningHour => _prefs.getInt(_keySameMorningHour) ?? 7;
-  int get sameMorningMinute => _prefs.getInt(_keySameMorningMinute) ?? 0;
+  int get previousNightHour => _prefs.getInt(_keyPreviousNightHour) ?? defaultPreviousNightHour;
+  int get previousNightMinute => _prefs.getInt(_keyPreviousNightMinute) ?? defaultPreviousNightMinute;
+  int get sameMorningHour => _prefs.getInt(_keySameMorningHour) ?? defaultSameMorningHour;
+  int get sameMorningMinute => _prefs.getInt(_keySameMorningMinute) ?? defaultSameMorningMinute;
 
   /// 広告除去購入済みなら true
   bool get adRemoved => _prefs.getBool(_keyAdRemoved) ?? false;
+
+  static const defaultPreviousNightHour = 20;
+  static const defaultPreviousNightMinute = 0;
+  static const defaultSameMorningHour = 7;
+  static const defaultSameMorningMinute = 0;
 
   static const _keyPreviousNightHour = 'notification_previous_night_hour';
   static const _keyPreviousNightMinute = 'notification_previous_night_minute';

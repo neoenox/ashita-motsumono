@@ -3,6 +3,7 @@
 // 子ども・Todo・ドキュメントの CRUD、通知スケジュール、永続化を統括する。
 // 関連: models/entities.dart, repositories/store.dart, services/notification_service.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
@@ -143,17 +144,18 @@ class AppState extends ChangeNotifier {
     return record;
   }
 
-  Future<void> deleteDocument(String id) async {
+  Future<bool> deleteDocument(String id) async {
     final used = _todos.any((todo) => todo.documentId == id);
-    if (used) return;
+    if (used) return false;
 
     final deleted = _documents.where((document) => document.id == id).toList();
-    if (deleted.isEmpty) return;
+    if (deleted.isEmpty) return false;
 
     _documents = _documents.where((document) => document.id != id).toList();
     await _persist();
     await _deleteDocumentImages(deleted);
     notifyListeners();
+    return true;
   }
 
   Future<AppTodo> addTodoFromDraft({
@@ -188,7 +190,7 @@ class AppState extends ChangeNotifier {
     try {
       await _notifications.scheduleTodo(todo);
     } on Object {
-      // 通知非対応環境や未設定端末では無視
+      if (kDebugMode) debugPrint('AppState error: failed to schedule notification');
     }
     notifyListeners();
     return todo;
@@ -206,7 +208,7 @@ class AppState extends ChangeNotifier {
       try {
         await _notifications.scheduleTodo(updated);
       } on Object {
-        // 通知非対応環境や未設定端末では無視
+        if (kDebugMode) debugPrint('AppState error: failed to reschedule notification');
       }
     }
     notifyListeners();
@@ -217,7 +219,7 @@ class AppState extends ChangeNotifier {
       try {
         await _notifications.scheduleTodo(todo);
       } on Object {
-        // 1件の通知失敗で設定保存全体を失敗させない
+        if (kDebugMode) debugPrint('AppState error: failed to reschedule a notification');
       }
     }
   }
@@ -238,7 +240,7 @@ class AppState extends ChangeNotifier {
         await _notifications.scheduleTodo(updated);
       }
     } on Object {
-      // 通知非対応環境や未設定端末では無視
+      if (kDebugMode) debugPrint('AppState error: failed to toggle notification');
     }
     notifyListeners();
   }
@@ -262,7 +264,7 @@ class AppState extends ChangeNotifier {
     try {
       await _notifications.cancelTodo(id);
     } on Object {
-      // 通知非対応環境や未設定端末では無視
+      if (kDebugMode) debugPrint('AppState error: failed to cancel notification on delete');
     }
     await _deleteDocumentImages(orphanDocuments);
     notifyListeners();
@@ -282,7 +284,7 @@ class AppState extends ChangeNotifier {
       try {
         await ImageFileService.deleteIfExists(path);
       } on Object {
-        // 画像削除に失敗してもTodo削除は成立させる
+        if (kDebugMode) debugPrint('AppState error: failed to delete document image');
       }
     }
   }

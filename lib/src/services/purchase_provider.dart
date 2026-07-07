@@ -13,8 +13,8 @@ class PurchaseProvider extends ChangeNotifier {
   PurchaseProvider(this._settings) {
     try {
       _init();
-    } catch (_) {
-      // InAppPurchase が利用できない環境でもクラッシュさせない
+    } catch (e) {
+      if (kDebugMode) debugPrint('PurchaseProvider: init failed - $e');
     }
   }
 

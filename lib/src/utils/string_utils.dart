@@ -4,7 +4,7 @@
 //       screens/todo_detail_screen.dart, screens/review_extraction_screen.dart
 
 List<String> splitItems(String input) => input
-    .split(RegExp(r'[,、\n]'))
+    .split(RegExp(r'[,、\n，]'))
     .map((e) => e.trim())
     .where((e) => e.isNotEmpty)
     .toList();

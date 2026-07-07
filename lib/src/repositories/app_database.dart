@@ -149,24 +149,26 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> saveSnapshot(AppSnapshot snapshot) async {
-    await batch((b) {
-      b.deleteAll(dbChild);
-      b.deleteAll(dbTodo);
-      b.deleteAll(dbChecklistItem);
-      b.deleteAll(dbDocument);
+    await transaction(() async {
+      await batch((b) {
+        b.deleteAll(dbChild);
+        b.deleteAll(dbTodo);
+        b.deleteAll(dbChecklistItem);
+        b.deleteAll(dbDocument);
 
-      for (final child in snapshot.children) {
-        b.insert(dbChild, _fromPersonProfile(child));
-      }
-      for (final todo in snapshot.todos) {
-        b.insert(dbTodo, _fromAppTodo(todo));
-        for (final item in todo.items) {
-          b.insert(dbChecklistItem, _fromChecklistItem(todo.id, item));
+        for (final child in snapshot.children) {
+          b.insert(dbChild, _fromPersonProfile(child));
         }
-      }
-      for (final doc in snapshot.documents) {
-        b.insert(dbDocument, _fromDocumentRecord(doc));
-      }
+        for (final todo in snapshot.todos) {
+          b.insert(dbTodo, _fromAppTodo(todo));
+          for (final item in todo.items) {
+            b.insert(dbChecklistItem, _fromChecklistItem(todo.id, item));
+          }
+        }
+        for (final doc in snapshot.documents) {
+          b.insert(dbDocument, _fromDocumentRecord(doc));
+        }
+      });
     });
   }
 

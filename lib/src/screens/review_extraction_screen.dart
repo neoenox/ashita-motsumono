@@ -63,7 +63,9 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   @override
   void dispose() {
     if (!_saved && widget.documentId != null) {
-      unawaited(_appState.deleteDocument(widget.documentId!).catchError((e) {
+      unawaited(_appState.deleteDocument(widget.documentId!).then((deleted) {
+        if (kDebugMode) debugPrint('Document cleanup on dispose: ${deleted ? "deleted" : "still in use"}');
+      }).catchError((e) {
         if (kDebugMode) debugPrint('Failed to clean up document on dispose: $e');
       }));
     }

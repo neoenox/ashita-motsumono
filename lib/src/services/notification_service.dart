@@ -5,6 +5,7 @@
 // 関連: models/entities.dart, app_state.dart
 
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
@@ -35,6 +36,7 @@ class NotificationService {
       final id = _timezoneName ?? (await FlutterTimezone.getLocalTimezone()).identifier;
       tz.setLocalLocation(tz.getLocation(id));
     } on Object {
+      if (kDebugMode) debugPrint('NotificationService: failed to detect timezone, falling back to Asia/Tokyo');
       tz.setLocalLocation(tz.getLocation('Asia/Tokyo'));
     }
 
@@ -66,8 +68,8 @@ class NotificationService {
     if (due == null || todo.isDone) return;
 
     if (todo.notifyPreviousNight) {
-      final h = settings?.previousNightHour ?? 20;
-      final m = settings?.previousNightMinute ?? 0;
+      final h = settings?.previousNightHour ?? AppSettings.defaultPreviousNightHour;
+      final m = settings?.previousNightMinute ?? AppSettings.defaultPreviousNightMinute;
       final when = DateTime(due.year, due.month, due.day, h, m).subtract(const Duration(days: 1));
       await _scheduleIfFuture(
         _notificationId(todo.id, 1),
@@ -77,8 +79,8 @@ class NotificationService {
       );
     }
     if (todo.notifySameMorning) {
-      final h = settings?.sameMorningHour ?? 7;
-      final m = settings?.sameMorningMinute ?? 0;
+      final h = settings?.sameMorningHour ?? AppSettings.defaultSameMorningHour;
+      final m = settings?.sameMorningMinute ?? AppSettings.defaultSameMorningMinute;
       final when = DateTime(due.year, due.month, due.day, h, m);
       await _scheduleIfFuture(
         _notificationId(todo.id, 2),
@@ -130,5 +132,5 @@ class NotificationService {
   }
 
   int _notificationId(String id, int salt) =>
-      (id.hashCode ^ salt) & 0x7FFFFFFF;
+      (id.codeUnits.fold<int>(0, (h, c) => h * 31 + c) ^ salt) & 0x7FFFFFFF;
 }

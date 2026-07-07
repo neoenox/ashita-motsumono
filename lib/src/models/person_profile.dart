@@ -46,10 +46,10 @@ class PersonProfile {
       };
 
   factory PersonProfile.fromJson(Map<String, dynamic> json) => PersonProfile(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        colorValue: json['colorValue'] as int,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        updatedAt: DateTime.parse(json['updatedAt'] as String),
+        id: (json['id'] as String?) ?? '',
+        name: (json['name'] as String?) ?? '',
+        colorValue: (json['colorValue'] as int?) ?? 0,
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
       );
 }

@@ -32,8 +32,8 @@ class ChecklistItem {
       };
 
   factory ChecklistItem.fromJson(Map<String, dynamic> json) => ChecklistItem(
-        id: json['id'] as String,
-        label: json['label'] as String,
+        id: (json['id'] as String?) ?? '',
+        label: (json['label'] as String?) ?? '',
         isChecked: json['isChecked'] as bool? ?? false,
       );
 }

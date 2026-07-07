@@ -35,8 +35,8 @@ def replace_or_insert(pattern: str, replacement: str, text: str) -> str:
 
 def ensure_kts():
     text = app_kts.read_text()
-    text = re.sub(r"compileSdk\s*=\s*[^\n]+", "compileSdk = 36", text, count=1)
-    text = re.sub(r"minSdk\s*=\s*[^\n]+", "minSdk = 21", text, count=1)
+    text = re.sub(r"compileSdk\s*=\s*[^\n]+", 'compileSdk = flutter.compileSdkVersion"', text, count=1)
+    text = re.sub(r"minSdk\s*=\s*[^\n]+", "minSdk = 24", text, count=1)
     text = re.sub(r"targetSdk\s*=\s*[^\n]+", "targetSdk = 36", text, count=1)
     text = text.replace("JavaVersion.VERSION_11", "JavaVersion.VERSION_17")
     text = text.replace(OLD_DESUGAR_DEP_KTS, DESUGAR_DEP_KTS)

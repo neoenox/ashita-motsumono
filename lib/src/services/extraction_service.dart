@@ -72,7 +72,7 @@ class ExtractionService {
     '日': DateTime.sunday,
   };
 
-  ExtractionDraft extract(String rawText, {DateTime? now}) {
+  static ExtractionDraft extract(String rawText, {DateTime? now}) {
     final current = now ?? DateTime.now();
     final text = normalize(rawText);
     final dueDate = _extractDate(text, current);
@@ -92,7 +92,7 @@ class ExtractionService {
     );
   }
 
-  String normalize(String input) {
+  static String normalize(String input) {
     final sb = StringBuffer();
     for (final codeUnit in input.codeUnits) {
       // 全角数字 (FF10-FF19) を半角 (30-39) に変換
@@ -120,7 +120,7 @@ class ExtractionService {
     return text;
   }
 
-  DateTime? _extractDate(String text, DateTime now) {
+  static DateTime? _extractDate(String text, DateTime now) {
     DateTime? result = _extractRelativeDate(text, now);
     result ??= _extractRelativeWeekday(text, now);
     result ??= _extractConcreteDate(text);
@@ -136,7 +136,7 @@ class ExtractionService {
     return result;
   }
 
-  DateTime? _extractRelativeDate(String text, DateTime now) {
+  static DateTime? _extractRelativeDate(String text, DateTime now) {
     if (text.contains('明後日')) {
       return DateTime(now.year, now.month, now.day + 2);
     }
@@ -149,7 +149,7 @@ class ExtractionService {
     return null;
   }
 
-  DateTime? _extractConcreteDate(String text) {
+  static DateTime? _extractConcreteDate(String text) {
     final full = _fullDatePattern.firstMatch(text);
     if (full == null) return null;
     return _safeDate(
@@ -159,19 +159,19 @@ class ExtractionService {
     );
   }
 
-  DateTime? _extractMonthDayDate(String text, DateTime now) {
+  static DateTime? _extractMonthDayDate(String text, DateTime now) {
     final match = _monthDayPattern.firstMatch(text);
     if (match == null) return null;
     return _futureMonthDay(now, int.parse(match.group(1)!), int.parse(match.group(2)!));
   }
 
-  DateTime? _extractSlashDate(String text, DateTime now) {
+  static DateTime? _extractSlashDate(String text, DateTime now) {
     final match = _slashDatePattern.firstMatch(text);
     if (match == null) return null;
     return _futureMonthDay(now, int.parse(match.group(1)!), int.parse(match.group(2)!));
   }
 
-  DateTime? _extractRelativeWeekday(String text, DateTime now) {
+  static DateTime? _extractRelativeWeekday(String text, DateTime now) {
     final match = _relativeWeekdayPattern.firstMatch(text);
     if (match == null) return null;
 
@@ -191,7 +191,7 @@ class ExtractionService {
     return today.add(Duration(days: delta));
   }
 
-  DateTime? _safeDate(int year, int month, int day) {
+  static DateTime? _safeDate(int year, int month, int day) {
     try {
       final value = DateTime(year, month, day);
       if (value.month != month || value.day != day) return null;
@@ -201,7 +201,7 @@ class ExtractionService {
     }
   }
 
-  DateTime? _futureMonthDay(DateTime now, int month, int day) {
+  static DateTime? _futureMonthDay(DateTime now, int month, int day) {
     final thisYear = _safeDate(now.year, month, day);
     if (thisYear == null) return null;
     final today = DateTime(now.year, now.month, now.day);
@@ -209,7 +209,7 @@ class ExtractionService {
     return _safeDate(now.year + 1, month, day);
   }
 
-  int? _extractAmount(String text) {
+  static int? _extractAmount(String text) {
     for (final pattern in [_yenAmountPattern, _yenSuffixPattern]) {
       final match = pattern.firstMatch(text);
       if (match != null) {
@@ -219,7 +219,7 @@ class ExtractionService {
     return null;
   }
 
-  List<String> _extractItems(String text) {
+  static List<String> _extractItems(String text) {
     final selected = <String>{};
     for (final item in _itemDictionaryByLength) {
       // 長い語を優先し、バスタオル→タオル、お弁当→弁当のような重複を避ける。
@@ -227,10 +227,12 @@ class ExtractionService {
         selected.add(item);
       }
     }
-    return itemDictionary.where(selected.contains).toList();
+    final found = itemDictionary.where(selected.contains).toList(growable: false);
+    found.sort((a, b) => text.indexOf(a).compareTo(text.indexOf(b)));
+    return found;
   }
 
-  TodoCategory _inferCategory(String text, int? amount, List<String> items) {
+  static TodoCategory _inferCategory(String text, int? amount, List<String> items) {
     if (amount != null || text.contains('集金') || text.contains('代金')) {
       return TodoCategory.payment;
     }
@@ -246,7 +248,7 @@ class ExtractionService {
     return TodoCategory.other;
   }
 
-  String _makeTitle(String text, TodoCategory category, List<String> items, int? amount) {
+  static String _makeTitle(String text, TodoCategory category, List<String> items, int? amount) {
     switch (category) {
       case TodoCategory.payment:
         return amount == null ? '集金を確認' : '集金 $amount円';

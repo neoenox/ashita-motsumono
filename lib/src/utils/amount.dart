@@ -4,7 +4,8 @@
 //       screens/todo_detail_screen.dart, screens/review_extraction_screen.dart
 
 ({bool valid, int? amount}) parseAmount(String value) {
-  final text = value.replaceAll(',', '').trim();
+  var text = value.replaceAll(',', '').trim();
+  text = text.replaceAll('¥', '').replaceAll('￥', '').replaceAll('円', '');
   if (text.isEmpty) return (valid: true, amount: null);
   final amount = int.tryParse(text);
   if (amount == null) return (valid: false, amount: null);

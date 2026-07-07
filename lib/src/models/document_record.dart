@@ -23,6 +23,25 @@ class DocumentRecord {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  DocumentRecord copyWith({
+    String? id,
+    String? sourceType,
+    String? localImagePath,
+    String? ocrText,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool clearLocalImagePath = false,
+  }) {
+    return DocumentRecord(
+      id: id ?? this.id,
+      sourceType: sourceType ?? this.sourceType,
+      localImagePath: clearLocalImagePath ? null : localImagePath ?? this.localImagePath,
+      ocrText: ocrText ?? this.ocrText,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'sourceType': sourceType,
@@ -33,11 +52,11 @@ class DocumentRecord {
       };
 
   factory DocumentRecord.fromJson(Map<String, dynamic> json) => DocumentRecord(
-        id: json['id'] as String,
-        sourceType: json['sourceType'] as String,
+        id: (json['id'] as String?) ?? '',
+        sourceType: (json['sourceType'] as String?) ?? '',
         localImagePath: json['localImagePath'] as String?,
         ocrText: json['ocrText'] as String?,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        updatedAt: DateTime.parse(json['updatedAt'] as String),
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
       );
 }

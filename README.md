@@ -72,7 +72,7 @@ flutter test
 GitHub Actions の `Release APK` ワークフローは、`v*` 形式のタグをpushしたときにAPKを生成します。
 
 ```bash
-git tag v0.2.0
+git tag v0.4.1
 git push origin v0.2.0
 ```
 

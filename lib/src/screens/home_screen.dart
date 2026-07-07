@@ -127,9 +127,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     if (!mounted || shouldExport != true) return;
 
-    final json = const JsonEncoder.withIndent('  ').convert(
-      AppSnapshot(children: state.children, todos: state.todos, documents: state.documents).toJson(),
+    final sanitized = AppSnapshot(
+      children: state.children,
+      todos: state.todos,
+      documents: state.documents.map((d) => d.copyWith(localImagePath: null)).toList(),
     );
+    final json = const JsonEncoder.withIndent('  ').convert(sanitized.toJson());
     await Clipboard.setData(ClipboardData(text: json));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -256,7 +259,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   CorruptDataCard(onCopy: () => unawaited(_copyCorruptBackup(state))),
                   const SizedBox(height: 12),
                 ],
-                if (state.children.isEmpty) const FirstRunCard(),
+                if (state.children.isEmpty) FirstRunCard(
+                  onAddPerson: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AddChildScreen()),
+                  ),
+                ),
                 if (state.children.isNotEmpty && allFiltered && _searchQuery.isEmpty && state.todos.isEmpty)
                   const EmptyState(),
                 if (state.children.isNotEmpty && allFiltered && _searchQuery.isNotEmpty)
