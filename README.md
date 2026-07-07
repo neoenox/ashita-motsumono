@@ -4,7 +4,7 @@
 
 ## 対象プラットフォーム
 
-v0.2 MVPは **Android/iOS専用** です。
+現行MVPは **Android/iOS専用** です。
 
 日本語OCRは `google_mlkit_text_recognition` のAndroid/iOS向けネイティブ実装を使います。Web版、Windows版、macOS版、Linux版はこのMVPでは対象外です。
 
@@ -73,7 +73,7 @@ GitHub Actions の `Release APK` ワークフローは、`v*` 形式のタグを
 
 ```bash
 git tag v0.4.1
-git push origin v0.2.0
+git push origin v0.4.1
 ```
 
 ワークフロー内では Android 雛形を生成し、`tool/configure_android_release.sh` でAndroid向けのOCR・通知・desugaring設定を反映してから `flutter build apk --release` を実行します。

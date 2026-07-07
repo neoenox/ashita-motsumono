@@ -258,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 if (state.lastLoadHadCorruptData) ...[
                   CorruptDataCard(onCopy: () => unawaited(_copyCorruptBackup(state))),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: Spacing.sm),
                 ],
                 if (state.children.isEmpty) FirstRunCard(
                   onAddPerson: () => Navigator.of(context).push(
@@ -271,12 +271,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   NoSearchResults(query: _searchQuery),
                 if (todayTodos.isNotEmpty || _searchQuery.isEmpty) ...[
                   TodoSection(title: '今日やること', todos: todayTodos),
-                  const SizedBox(height: Spacing.md),
+                  const SizedBox(height: Spacing.lg),
                 ],
                 TodoSection(title: '明日の持ち物・提出', todos: tomorrowTodos),
-                const SizedBox(height: 16),
+                const SizedBox(height: Spacing.lg),
                 TodoSection(title: '期限未設定・要確認', todos: undated),
-                const SizedBox(height: 16),
+                const SizedBox(height: Spacing.lg),
                 UpcomingSection(todos: upcoming),
               ],
             ),
