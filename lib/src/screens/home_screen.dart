@@ -276,8 +276,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 TodoSection(title: '明日の持ち物・提出', todos: tomorrowTodos),
                 const SizedBox(height: Spacing.lg),
                 TodoSection(title: '期限未設定・要確認', todos: undated),
-                const SizedBox(height: Spacing.lg),
-                UpcomingSection(todos: upcoming),
+                if (upcoming.isNotEmpty) ...[
+                  const SizedBox(height: Spacing.lg),
+                  UpcomingSection(todos: upcoming),
+                ],
               ],
             ),
           ),

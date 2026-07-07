@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../models/enums.dart';
 class AppTheme {
   AppTheme._();
 
@@ -80,21 +81,16 @@ class CategoryColors {
   static const item = Color(0xFF2F7D6E);
   static const other = Color(0xFF9E9E9E);
   static const completed = Color(0xFFBDBDBD);
+}
 
-  static Color fromCategory(String category) {
-    switch (category) {
-      case 'payment':
-        return payment;
-      case 'submit':
-        return submit;
-      case 'event':
-        return event;
-      case 'item':
-        return item;
-      default:
-        return other;
-    }
-  }
+extension TodoCategoryColor on TodoCategory {
+  Color get color => switch (this) {
+        TodoCategory.payment => CategoryColors.payment,
+        TodoCategory.submit => CategoryColors.submit,
+        TodoCategory.event => CategoryColors.event,
+        TodoCategory.item => CategoryColors.item,
+        TodoCategory.other => CategoryColors.other,
+      };
 }
 
 class Spacing {

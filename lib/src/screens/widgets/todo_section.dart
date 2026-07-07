@@ -27,7 +27,7 @@ class TodoSection extends StatelessWidget {
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
-                    ?.copyWith(color: cs.primary, fontWeight: FontWeight.w600)),
+                    ?.copyWith(color: cs.primary)),
             const SizedBox(height: Spacing.sm),
             if (todos.isEmpty)
               Padding(
@@ -71,7 +71,7 @@ class UpcomingSection extends StatelessWidget {
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
-                    ?.copyWith(color: cs.primary, fontWeight: FontWeight.w600)),
+                    ?.copyWith(color: cs.primary)),
             const SizedBox(height: Spacing.sm),
             ...shown.map((todo) => TodoTile(todo: todo, compact: true)),
             if (todos.length > 10) ...[
