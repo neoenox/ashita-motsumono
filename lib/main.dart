@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/app_state.dart';
+import 'src/theme/app_theme.dart';
 import 'src/repositories/drift_store.dart';
 import 'src/screens/home_screen.dart';
 import 'src/services/ad_service.dart';
@@ -57,10 +58,7 @@ class AshitaMotsumonoApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'あした持つもの',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2F7D6E)),
-          useMaterial3: true,
-        ),
+        theme: AppTheme.light(),
         home: HomeScreen(settings: settings),
       ),
     );
