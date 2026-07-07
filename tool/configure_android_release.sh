@@ -108,7 +108,7 @@ def ensure_kts():
 def ensure_groovy():
     text = app_groovy.read_text()
     text = re.sub(r"compileSdk(?:Version)?\s+[^\n]+", "compileSdkVersion 36", text, count=1)
-    text = re.sub(r"minSdk(?:Version)?\s+[^\n]+", "minSdkVersion 21", text, count=1)
+    text = re.sub(r"minSdk(?:Version)?\s+[^\n]+", "minSdkVersion 24", text, count=1)
     text = re.sub(r"targetSdk(?:Version)?\s+[^\n]+", "targetSdkVersion 36", text, count=1)
     text = text.replace("JavaVersion.VERSION_11", "JavaVersion.VERSION_17")
     text = text.replace(OLD_DESUGAR_DEP_GROOVY, DESUGAR_DEP_GROOVY)
@@ -177,6 +177,7 @@ def ensure_manifest():
     permissions = [
         '<uses-permission android:name="android.permission.CAMERA" />',
         '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />',
+        '<uses-permission android:name="android.permission.INTERNET" />',
     ]
     missing = [p for p in permissions if p not in text]
     if missing:

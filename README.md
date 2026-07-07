@@ -67,18 +67,31 @@ flutter run
 flutter test
 ```
 
-## リリースAPK生成
+## Androidリリース生成
 
-GitHub Actions の `Release APK` ワークフローは、`v*` 形式のタグをpushしたときにAPKを生成します。
+GitHub Actions の `Release Android` ワークフローは、`v*` 形式のタグをpushしたときに署名済みAPKとPlay Store提出用AABを生成します。
 
 ```bash
 git tag v0.4.1
 git push origin v0.4.1
 ```
 
-ワークフロー内では Android 雛形を生成し、`tool/configure_android_release.sh` でAndroid向けのOCR・通知・desugaring設定を反映してから `flutter build apk --release` を実行します。
+事前にGitHub Secretsへ以下を登録してください。
 
-生成されたAPKは、Actionsのartifact `ashita-motsumono-<tag>-release-apk` からダウンロードできます。
+- `KEYSTORE_BASE64`
+- `KEYSTORE_STORE_PASSWORD`
+- `KEYSTORE_KEY_PASSWORD`
+- `KEYSTORE_KEY_ALIAS`
+- `ADMOB_APP_ID`
+- `ADMOB_BANNER_AD_UNIT_ID`
+
+署名鍵の作成とSecrets登録の詳細は `docs/ANDROID_RELEASE.md` を参照してください。
+Google Play ストア掲載文、審査メモ、データセーフティ回答の下書きは `docs/STORE_LISTING_JA.md` を参照してください。
+ストア用スクリーンショットは `tool/generate_store_screenshots.py` で `assets/store/screenshots/` に生成できます。
+
+ワークフロー内では Android 雛形を生成し、`tool/configure_android_release.sh` でAndroid向けのOCR・通知・desugaring設定を反映してから `flutter build apk --release` と `flutter build appbundle --release` を実行します。
+
+生成されたAPKは artifact `ashita-motsumono-<tag>-release-apk`、AABは artifact `ashita-motsumono-<tag>-release-aab` からダウンロードできます。
 
 ## 今後の作業
 
@@ -104,6 +117,10 @@ git push origin v0.4.1
 端末内保存のみです。子ども名、Todo、OCR全文、元画像パスはDrift/SQLiteデータベースに保存されます。
 
 エクスポート機能は、これらのデータをJSONとしてクリップボードにコピーします。個人情報を含む可能性があるため、貼り付け先に注意してください。
+
+「設定」>「データ管理」から、人物、Todo、読み取り履歴、保存画像を端末内から削除できます。
+
+プライバシーポリシーの提出用下書きは `docs/privacy_policy.md` を参照してください。広告表示とアプリ内課金では Google Mobile Ads / Google Play Billing が通信を行います。
 
 ## 注意
 

@@ -10,6 +10,50 @@ import 'package:ashita_motsumono/src/services/extraction_service.dart';
 void main() {
   final now = DateTime(2026, 7, 2);
 
+  group('ExtractionService.extractMany', () {
+    test('splits item, payment and submit notices into separate drafts', () {
+      final drafts = ExtractionService.extractMany(
+        '7月10日までに水着、帽子、タオルを持参してください。\n'
+        '集金袋に500円を入れて提出してください。\n'
+        '申込書は7月12日までに提出してください。',
+        now: now,
+      );
+
+      expect(drafts, hasLength(3));
+      expect(drafts.map((draft) => draft.category), [
+        TodoCategory.item,
+        TodoCategory.payment,
+        TodoCategory.submit,
+      ]);
+      expect(drafts[0].title, '持ち物：水着・帽子・タオル');
+      expect(drafts[0].items, ['水着', '帽子', 'タオル']);
+      expect(drafts[0].dueDate, DateTime(2026, 7, 10));
+      expect(drafts[1].title, '集金 500円');
+      expect(drafts[1].amount, 500);
+      expect(drafts[1].items, ['集金袋']);
+      expect(drafts[2].title, '申込書を提出');
+      expect(drafts[2].dueDate, DateTime(2026, 7, 12));
+    });
+
+    test('falls back to a single draft when no useful split is found', () {
+      final drafts = ExtractionService.extractMany('7月10日までに水筒を持参', now: now);
+
+      expect(drafts, hasLength(1));
+      expect(drafts.single.title, '持ち物：水筒');
+    });
+
+    test('uses learned item labels as extraction candidates', () {
+      final drafts = ExtractionService.extractMany(
+        '7月10日までに軍手を持参',
+        now: now,
+        learnedItemLabels: ['軍手'],
+      );
+
+      expect(drafts.single.items, ['軍手']);
+      expect(drafts.single.title, '持ち物：軍手');
+    });
+  });
+
   group('ExtractionService.extract', () {
     test('extracts date, items and payment from Japanese print text', () {
       final draft = ExtractionService.extract(
@@ -80,7 +124,10 @@ void main() {
     });
 
     test('"来週" without weekday yields null (not yet supported)', () {
-      final draft = ExtractionService.extract('来週までに提出', now: DateTime(2026, 7, 7));
+      final draft = ExtractionService.extract(
+        '来週までに提出',
+        now: DateTime(2026, 7, 7),
+      );
       // current impl requires weekday after "来週", e.g. 来週月曜
       expect(draft.dueDate, isNull);
     });
@@ -128,11 +175,19 @@ void main() {
     test('returns null for ambiguous date "今月末"', () {
       final draft = ExtractionService.extract('今月末までに申込書を提出', now: now);
       expect(draft.dueDate, isNull);
+      expect(draft.title, '期限確認：申込書を提出');
+    });
+
+    test('marks ambiguous "月末" deadline as confirmation needed', () {
+      final draft = ExtractionService.extract('月末までに集金袋へ800円を入れて提出', now: now);
+      expect(draft.dueDate, isNull);
+      expect(draft.title, '期限確認：集金 800円');
     });
 
     test('returns null for ambiguous date "始業式の日"', () {
       final draft = ExtractionService.extract('始業式の日までに筆記用具を持参', now: now);
       expect(draft.dueDate, isNull);
+      expect(draft.title, '期限確認：持ち物：筆記用具');
     });
 
     test('returns null date when no date found', () {
@@ -218,7 +273,10 @@ void main() {
     });
 
     test('extracts expanded school item dictionary', () {
-      final draft = ExtractionService.extract('水泳カード、検温表、雑巾、エプロン、三角巾、鍵盤ハーモニカ', now: now);
+      final draft = ExtractionService.extract(
+        '水泳カード、検温表、雑巾、エプロン、三角巾、鍵盤ハーモニカ',
+        now: now,
+      );
       expect(
         draft.items,
         containsAll(['水泳カード', '検温表', '雑巾', 'エプロン', '三角巾', '鍵盤ハーモニカ']),
@@ -286,19 +344,56 @@ void main() {
     });
 
     test('extracts date after OCR correction O→0', () {
-      final draft = ExtractionService.extract('1O月O5日までに提出', now: DateTime(2026, 7, 2));
+      final draft = ExtractionService.extract(
+        '1O月O5日までに提出',
+        now: DateTime(2026, 7, 2),
+      );
       expect(draft.dueDate, DateTime(2026, 10, 5));
     });
 
     test('extracts date after OCR correction l→1', () {
-      final draft = ExtractionService.extract('7月l0日までに水着を持参', now: DateTime(2026, 7, 2));
+      final draft = ExtractionService.extract(
+        '7月l0日までに水着を持参',
+        now: DateTime(2026, 7, 2),
+      );
       expect(draft.dueDate, DateTime(2026, 7, 10));
     });
 
     test('extracts slash date after OCR correction', () {
-      final draft = ExtractionService.extract('7/lOまでに提出', now: DateTime(2026, 7, 2));
+      final draft = ExtractionService.extract(
+        '7/lOまでに提出',
+        now: DateTime(2026, 7, 2),
+      );
       expect(draft.dueDate, DateTime(2026, 7, 10));
     });
+
+    test(
+      'extracts date after OCR correction for long vowel date separator',
+      () {
+        final draft = ExtractionService.extract(
+          '7ー10までに水筒を持参',
+          now: DateTime(2026, 7, 2),
+        );
+        expect(draft.dueDate, DateTime(2026, 7, 10));
+      },
+    );
+
+    test('extracts date after OCR correction for kanji one date separator', () {
+      final draft = ExtractionService.extract(
+        '7一10までに申込書を提出',
+        now: DateTime(2026, 7, 2),
+      );
+      expect(draft.dueDate, DateTime(2026, 7, 10));
+    });
+
+    test(
+      'extracts amount after OCR correction for yen mark read as 円 prefix',
+      () {
+        final draft = ExtractionService.extract('円500を集金します', now: now);
+        expect(draft.amount, 500);
+        expect(draft.title, '集金 500円');
+      },
+    );
 
     test('collapses multiple spaces', () {
       expect(ExtractionService.normalize('水筒  持参'), '水筒 持参');

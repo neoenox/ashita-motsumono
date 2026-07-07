@@ -104,15 +104,15 @@ class CorruptDataCard extends StatelessWidget {
     return Card(
       color: Theme.of(context).colorScheme.errorContainer,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Spacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('保存データの読み込みに失敗しました',
                 style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
+            const SizedBox(height: Spacing.sm),
             const Text('破損していた保存データは退避されています。復旧確認用にコピーできます。'),
-            const SizedBox(height: 12),
+            const SizedBox(height: Spacing.md),
             OutlinedButton.icon(
               onPressed: onCopy,
               icon: const Icon(Icons.copy),

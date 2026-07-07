@@ -13,15 +13,14 @@ import 'services/image_file_service.dart';
 import 'services/notification_service.dart';
 
 class AppState extends ChangeNotifier {
-  AppState({
-    required this._store,
-    required this._notifications,
-    Uuid? uuid,
-  }) : _uuid = uuid ?? const Uuid();
+  AppState({required this._store, required this._notifications, Uuid? uuid})
+    : _uuid = uuid ?? const Uuid();
 
   final Store _store;
   final NotificationService _notifications;
   final Uuid _uuid;
+
+  // ── 状態 ──────────────────────────────────────────────
 
   bool _loaded = false;
   bool get loaded => _loaded;
@@ -34,6 +33,8 @@ class AppState extends ChangeNotifier {
   List<PersonProfile> get children => List.unmodifiable(_children);
   List<AppTodo> get todos => List.unmodifiable(_todos);
   List<DocumentRecord> get documents => List.unmodifiable(_documents);
+
+  // ── 初期化 ──────────────────────────────────────────────
 
   Future<void> load() async {
     final snapshot = await _store.load();
@@ -50,32 +51,49 @@ class AppState extends ChangeNotifier {
 
   String? loadCorruptBackup() => _store.loadCorruptBackup();
 
+  // ── クエリ ──────────────────────────────────────────────
+
   List<AppTodo> todosForDate(DateTime date) {
     final d = DateTime(date.year, date.month, date.day);
     return _todos
-        .where((todo) =>
-            todo.status == TodoStatus.active &&
-            todo.dueDate != null &&
-            DateTime(todo.dueDate!.year, todo.dueDate!.month, todo.dueDate!.day) == d)
+        .where(
+          (todo) =>
+              todo.status == TodoStatus.active &&
+              todo.dueDate != null &&
+              DateTime(
+                    todo.dueDate!.year,
+                    todo.dueDate!.month,
+                    todo.dueDate!.day,
+                  ) ==
+                  d,
+        )
         .toList()
       ..sort(_sortTodo);
   }
 
   List<AppTodo> futureTodos() {
     final today = DateTime.now();
-    final start = DateTime(today.year, today.month, today.day).add(const Duration(days: 2));
+    final start = DateTime(
+      today.year,
+      today.month,
+      today.day,
+    ).add(const Duration(days: 2));
     return _todos
-        .where((todo) =>
-            todo.status == TodoStatus.active &&
-            todo.dueDate != null &&
-            !todo.dueDate!.isBefore(start))
+        .where(
+          (todo) =>
+              todo.status == TodoStatus.active &&
+              todo.dueDate != null &&
+              !todo.dueDate!.isBefore(start),
+        )
         .toList()
       ..sort(_sortTodo);
   }
 
   List<AppTodo> undatedTodos() {
     return _todos
-        .where((todo) => todo.status == TodoStatus.active && todo.dueDate == null)
+        .where(
+          (todo) => todo.status == TodoStatus.active && todo.dueDate == null,
+        )
         .toList()
       ..sort(_sortTodo);
   }
@@ -90,12 +108,15 @@ class AppState extends ChangeNotifier {
     return _documents.where((d) => d.id == id).firstOrNull;
   }
 
+  // ── 人物 CRUD ──────────────────────────────────────────
+
   Future<PersonProfile> addChild(String name) async {
     final now = DateTime.now();
     final child = PersonProfile(
       id: _uuid.v4(),
       name: name.trim(),
-      colorValue: Colors.primaries[_children.length % Colors.primaries.length].toARGB32(),
+      colorValue: Colors.primaries[_children.length % Colors.primaries.length]
+          .toARGB32(),
       createdAt: now,
       updatedAt: now,
     );
@@ -109,9 +130,11 @@ class AppState extends ChangeNotifier {
     _children = _children.where((child) => child.id != id).toList();
     final now = DateTime.now();
     _todos = _todos
-        .map((todo) => todo.personId == id
-            ? todo.copyWith(clearPersonId: true, updatedAt: now)
-            : todo)
+        .map(
+          (todo) => todo.personId == id
+              ? todo.copyWith(clearPersonId: true, updatedAt: now)
+              : todo,
+        )
         .toList();
     await _persist();
     notifyListeners();
@@ -123,6 +146,8 @@ class AppState extends ChangeNotifier {
     await _persist();
     notifyListeners();
   }
+
+  // ── ドキュメント CRUD ──────────────────────────────────
 
   Future<DocumentRecord> addDocument({
     required String sourceType,
@@ -158,6 +183,8 @@ class AppState extends ChangeNotifier {
     return true;
   }
 
+  // ── Todo CRUD ──────────────────────────────────────────
+
   Future<AppTodo> addTodoFromDraft({
     required ExtractionDraft draft,
     String? personId,
@@ -190,7 +217,9 @@ class AppState extends ChangeNotifier {
     try {
       await _notifications.scheduleTodo(todo);
     } on Object {
-      if (kDebugMode) debugPrint('AppState error: failed to schedule notification');
+      if (kDebugMode) {
+        debugPrint('AppState error: failed to schedule notification');
+      }
     }
     notifyListeners();
     return todo;
@@ -201,34 +230,31 @@ class AppState extends ChangeNotifier {
     await _updateTodo(updated);
   }
 
-  Future<void> _updateTodo(AppTodo updated, {bool rescheduleNotification = true}) async {
+  Future<void> _updateTodo(
+    AppTodo updated, {
+    bool rescheduleNotification = true,
+  }) async {
     _todos = _todos.map((e) => e.id == updated.id ? updated : e).toList();
     await _persist();
     if (rescheduleNotification) {
       try {
         await _notifications.scheduleTodo(updated);
       } on Object {
-        if (kDebugMode) debugPrint('AppState error: failed to reschedule notification');
+        if (kDebugMode) {
+          debugPrint('AppState error: failed to reschedule notification');
+        }
       }
     }
     notifyListeners();
-  }
-
-  Future<void> rescheduleAllNotifications() async {
-    for (final todo in _todos) {
-      try {
-        await _notifications.scheduleTodo(todo);
-      } on Object {
-        if (kDebugMode) debugPrint('AppState error: failed to reschedule a notification');
-      }
-    }
   }
 
   Future<void> toggleTodoDone(String id) async {
     final todo = _todos.where((e) => e.id == id).firstOrNull;
     if (todo == null) return;
     final updated = todo.copyWith(
-      status: todo.status == TodoStatus.done ? TodoStatus.active : TodoStatus.done,
+      status: todo.status == TodoStatus.done
+          ? TodoStatus.active
+          : TodoStatus.done,
       updatedAt: DateTime.now(),
     );
     _todos = _todos.map((e) => e.id == id ? updated : e).toList();
@@ -240,7 +266,9 @@ class AppState extends ChangeNotifier {
         await _notifications.scheduleTodo(updated);
       }
     } on Object {
-      if (kDebugMode) debugPrint('AppState error: failed to toggle notification');
+      if (kDebugMode) {
+        debugPrint('AppState error: failed to toggle notification');
+      }
     }
     notifyListeners();
   }
@@ -249,7 +277,11 @@ class AppState extends ChangeNotifier {
     final todo = _todos.where((e) => e.id == todoId).firstOrNull;
     if (todo == null) return;
     final items = todo.items
-        .map((item) => item.id == itemId ? item.copyWith(isChecked: !item.isChecked) : item)
+        .map(
+          (item) => item.id == itemId
+              ? item.copyWith(isChecked: !item.isChecked)
+              : item,
+        )
         .toList();
     await _updateTodo(
       todo.copyWith(items: items, updatedAt: DateTime.now()),
@@ -264,15 +296,60 @@ class AppState extends ChangeNotifier {
     try {
       await _notifications.cancelTodo(id);
     } on Object {
-      if (kDebugMode) debugPrint('AppState error: failed to cancel notification on delete');
+      if (kDebugMode) {
+        debugPrint('AppState error: failed to cancel notification on delete');
+      }
     }
     await _deleteDocumentImages(orphanDocuments);
     notifyListeners();
   }
 
+  // ── 通知 ──────────────────────────────────────────────
+
+  Future<void> rescheduleAllNotifications() async {
+    for (final todo in _todos) {
+      try {
+        await _notifications.scheduleTodo(todo);
+      } on Object {
+        if (kDebugMode) {
+          debugPrint('AppState error: failed to reschedule a notification');
+        }
+      }
+    }
+  }
+
+  // ── 全データクリア ──────────────────────────────────────
+
+  Future<void> clearAllData() async {
+    final documentsToDelete = List<DocumentRecord>.from(_documents);
+    final todosToCancel = List<AppTodo>.from(_todos);
+    _children = [];
+    _todos = [];
+    _documents = [];
+    await _store.clear();
+    for (final todo in todosToCancel) {
+      try {
+        await _notifications.cancelTodo(todo.id);
+      } on Object {
+        if (kDebugMode) {
+          debugPrint('AppState error: failed to cancel notification on clear');
+        }
+      }
+    }
+    await _deleteDocumentImages(documentsToDelete);
+    notifyListeners();
+  }
+
+  // ── 内部ヘルパー ──────────────────────────────────────
+
   List<DocumentRecord> _cleanupOrphanDocuments() {
-    final usedDocIds = _todos.map((t) => t.documentId).whereType<String>().toSet();
-    final orphanDocuments = _documents.where((d) => !usedDocIds.contains(d.id)).toList();
+    final usedDocIds = _todos
+        .map((t) => t.documentId)
+        .whereType<String>()
+        .toSet();
+    final orphanDocuments = _documents
+        .where((d) => !usedDocIds.contains(d.id))
+        .toList();
     _documents = _documents.where((d) => usedDocIds.contains(d.id)).toList();
     return orphanDocuments;
   }
@@ -284,7 +361,9 @@ class AppState extends ChangeNotifier {
       try {
         await ImageFileService.deleteIfExists(path);
       } on Object {
-        if (kDebugMode) debugPrint('AppState error: failed to delete document image');
+        if (kDebugMode) {
+          debugPrint('AppState error: failed to delete document image');
+        }
       }
     }
   }

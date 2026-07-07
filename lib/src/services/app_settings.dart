@@ -9,13 +9,21 @@ class AppSettings {
 
   final SharedPreferences _prefs;
 
-  int get previousNightHour => _prefs.getInt(_keyPreviousNightHour) ?? defaultPreviousNightHour;
-  int get previousNightMinute => _prefs.getInt(_keyPreviousNightMinute) ?? defaultPreviousNightMinute;
-  int get sameMorningHour => _prefs.getInt(_keySameMorningHour) ?? defaultSameMorningHour;
-  int get sameMorningMinute => _prefs.getInt(_keySameMorningMinute) ?? defaultSameMorningMinute;
+  int get previousNightHour =>
+      _prefs.getInt(_keyPreviousNightHour) ?? defaultPreviousNightHour;
+  int get previousNightMinute =>
+      _prefs.getInt(_keyPreviousNightMinute) ?? defaultPreviousNightMinute;
+  int get sameMorningHour =>
+      _prefs.getInt(_keySameMorningHour) ?? defaultSameMorningHour;
+  int get sameMorningMinute =>
+      _prefs.getInt(_keySameMorningMinute) ?? defaultSameMorningMinute;
 
   /// 広告除去購入済みなら true
   bool get adRemoved => _prefs.getBool(_keyAdRemoved) ?? false;
+
+  List<String> get learnedItemLabels => List.unmodifiable(
+    _prefs.getStringList(_keyLearnedItemLabels) ?? const [],
+  );
 
   static const defaultPreviousNightHour = 20;
   static const defaultPreviousNightMinute = 0;
@@ -27,6 +35,7 @@ class AppSettings {
   static const _keySameMorningHour = 'notification_same_morning_hour';
   static const _keySameMorningMinute = 'notification_same_morning_minute';
   static const _keyAdRemoved = 'purchase_ad_removed';
+  static const _keyLearnedItemLabels = 'learned_item_labels_v1';
 
   Future<void> setPreviousNightTime(int hour, int minute) async {
     await _prefs.setInt(_keyPreviousNightHour, hour);
@@ -40,5 +49,22 @@ class AppSettings {
 
   Future<void> setAdRemoved(bool removed) async {
     await _prefs.setBool(_keyAdRemoved, removed);
+  }
+
+  Future<void> addLearnedItemLabels(Iterable<String> labels) async {
+    final merged = <String>{
+      ...learnedItemLabels,
+      ...labels.map((label) => label.trim()).where(_isUsefulItemLabel),
+    }.toList(growable: false);
+    await _prefs.setStringList(
+      _keyLearnedItemLabels,
+      merged.take(100).toList(),
+    );
+  }
+
+  static bool _isUsefulItemLabel(String label) {
+    if (label.isEmpty) return false;
+    if (label.length > 32) return false;
+    return true;
   }
 }

@@ -13,6 +13,8 @@ import '../utils/amount.dart';
 import '../utils/date_picker.dart';
 import '../utils/string_utils.dart';
 import '../app_state.dart';
+import '../services/app_settings.dart';
+import '../theme/app_theme.dart';
 
 import '../models/entities.dart';
 import 'widgets/child_dropdown.dart';
@@ -48,8 +50,12 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.draft.title);
-    _itemsController = TextEditingController(text: widget.draft.items.join('、'));
-    _amountController = TextEditingController(text: widget.draft.amount?.toString() ?? '');
+    _itemsController = TextEditingController(
+      text: widget.draft.items.join('、'),
+    );
+    _amountController = TextEditingController(
+      text: widget.draft.amount?.toString() ?? '',
+    );
     _noteController = TextEditingController(text: widget.draft.note ?? '');
     _category = widget.draft.category;
     _dueDate = widget.draft.dueDate;
@@ -64,11 +70,22 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   @override
   void dispose() {
     if (!_saved && widget.documentId != null) {
-      unawaited(_appState.deleteDocument(widget.documentId!).then((deleted) {
-        if (kDebugMode) debugPrint('Document cleanup on dispose: ${deleted ? "deleted" : "still in use"}');
-      }).catchError((e) {
-        if (kDebugMode) debugPrint('Failed to clean up document on dispose: $e');
-      }));
+      unawaited(
+        _appState
+            .deleteDocument(widget.documentId!)
+            .then((deleted) {
+              if (kDebugMode) {
+                debugPrint(
+                  'Document cleanup on dispose: ${deleted ? "deleted" : "still in use"}',
+                );
+              }
+            })
+            .catchError((e) {
+              if (kDebugMode) {
+                debugPrint('Failed to clean up document on dispose: $e');
+              }
+            }),
+      );
     }
     _titleController.dispose();
     _itemsController.dispose();
@@ -83,43 +100,57 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('読み取り結果の確認')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Spacing.md),
         children: [
           const Text('OCRは間違う前提です。登録前に内容を確認してください。'),
-          const SizedBox(height: 16),
+          const SizedBox(height: Spacing.md),
           ChildDropdown(
             value: _personId,
             children: children,
             onChanged: (value) => setState(() => _personId = value),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: Spacing.md),
           TextField(
             controller: _titleController,
-            decoration: const InputDecoration(labelText: 'タイトル', border: OutlineInputBorder()),
+            decoration: const InputDecoration(
+              labelText: 'タイトル',
+              border: OutlineInputBorder(),
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: Spacing.md),
           DropdownButtonFormField<TodoCategory>(
             initialValue: _category,
-            decoration: const InputDecoration(labelText: '種類', border: OutlineInputBorder()),
+            decoration: const InputDecoration(
+              labelText: '種類',
+              border: OutlineInputBorder(),
+            ),
             items: TodoCategory.values
-                .map((category) => DropdownMenuItem(value: category, child: Text(category.label)))
+                .map(
+                  (category) => DropdownMenuItem(
+                    value: category,
+                    child: Text(category.label),
+                  ),
+                )
                 .toList(),
-            onChanged: (value) => setState(() => _category = value ?? TodoCategory.other),
+            onChanged: (value) =>
+                setState(() => _category = value ?? TodoCategory.other),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: Spacing.md),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: _selectDueDate,
                   icon: const Icon(Icons.event),
-                  label: Text(_dueDate == null
-                      ? '期限を選ぶ'
-                      : '${_dueDate!.year}/${_dueDate!.month}/${_dueDate!.day}'),
+                  label: Text(
+                    _dueDate == null
+                        ? '期限を選ぶ'
+                        : '${_dueDate!.year}/${_dueDate!.month}/${_dueDate!.day}',
+                  ),
                 ),
               ),
               if (_dueDate != null) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: Spacing.sm),
                 IconButton.outlined(
                   tooltip: '期限をクリア',
                   onPressed: () => setState(() => _dueDate = null),
@@ -128,7 +159,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
               ],
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: Spacing.md),
           TextField(
             controller: _itemsController,
             decoration: const InputDecoration(
@@ -137,13 +168,16 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
               hintText: '水筒、体操着、集金袋',
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: Spacing.md),
           TextField(
             controller: _amountController,
-            decoration: const InputDecoration(labelText: '金額', border: OutlineInputBorder()),
+            decoration: const InputDecoration(
+              labelText: '金額',
+              border: OutlineInputBorder(),
+            ),
             keyboardType: TextInputType.number,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: Spacing.md),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('前日20:00に通知'),
@@ -156,10 +190,13 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
             value: _notifySameMorning,
             onChanged: (value) => setState(() => _notifySameMorning = value),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: Spacing.md),
           TextField(
             controller: _noteController,
-            decoration: const InputDecoration(labelText: 'OCR全文・メモ', border: OutlineInputBorder()),
+            decoration: const InputDecoration(
+              labelText: 'OCR全文・メモ',
+              border: OutlineInputBorder(),
+            ),
             minLines: 6,
             maxLines: 12,
           ),
@@ -167,7 +204,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(Spacing.md),
           child: FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.check),
@@ -187,16 +224,21 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   Future<void> _save() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('タイトルを入力してください')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('タイトルを入力してください')));
       return;
     }
     final parsed = parseAmount(_amountController.text);
     if (!parsed.valid) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('金額は数字で入力してください')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('金額は数字で入力してください')));
       return;
     }
 
     final appState = context.read<AppState>();
+    final settings = context.read<AppSettings>();
     final navigator = Navigator.of(context);
     final items = splitItems(_itemsController.text);
     final draft = ExtractionDraft(
@@ -205,7 +247,9 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
       dueDate: _dueDate,
       amount: parsed.amount,
       items: items,
-      note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+      note: _noteController.text.trim().isEmpty
+          ? null
+          : _noteController.text.trim(),
       rawText: widget.draft.rawText,
     );
     await appState.addTodoFromDraft(
@@ -215,6 +259,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
       notifyPreviousNight: _notifyPreviousNight,
       notifySameMorning: _notifySameMorning,
     );
+    await settings.addLearnedItemLabels(items);
     _saved = true;
     if (!mounted) return;
     navigator.popUntil((route) => route.isFirst);

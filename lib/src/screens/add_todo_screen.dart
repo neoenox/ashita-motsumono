@@ -13,7 +13,8 @@ import 'package:provider/provider.dart';
 
 import '../app_state.dart';
 import '../models/entities.dart';
-
+import '../theme/app_theme.dart';
+import '../services/app_settings.dart';
 import '../services/extraction_service.dart';
 import '../services/image_file_service.dart';
 import '../services/ocr_service.dart';
@@ -21,6 +22,7 @@ import '../utils/amount.dart';
 import '../utils/date_picker.dart';
 import '../utils/string_utils.dart';
 import 'review_extraction_screen.dart';
+import 'review_extractions_screen.dart';
 import 'widgets/child_dropdown.dart';
 
 class AddTodoScreen extends StatefulWidget {
@@ -60,25 +62,31 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
       appBar: AppBar(title: const Text('追加')),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
-            16, 16, 16,
-            16 + MediaQuery.paddingOf(context).bottom,
-          ),
+          Spacing.md,
+          Spacing.md,
+          Spacing.md,
+          Spacing.md + MediaQuery.paddingOf(context).bottom,
+        ),
         children: [
           Text('画像・スクショから登録', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+          const SizedBox(height: Spacing.sm),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _busy ? null : () => _pickAndOcr(ImageSource.camera),
+                  onPressed: _busy
+                      ? null
+                      : () => _pickAndOcr(ImageSource.camera),
                   icon: const Icon(Icons.photo_camera),
                   label: const Text('写真を撮る'),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: Spacing.sm),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _busy ? null : () => _pickAndOcr(ImageSource.gallery),
+                  onPressed: _busy
+                      ? null
+                      : () => _pickAndOcr(ImageSource.gallery),
                   icon: const Icon(Icons.photo_library),
                   label: const Text('画像を選ぶ'),
                 ),
@@ -87,11 +95,14 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
           ),
           if (_busy)
             const Padding(
-              padding: EdgeInsets.only(top: 12),
+              padding: EdgeInsets.only(top: Spacing.md),
               child: LinearProgressIndicator(),
             ),
-          const SizedBox(height: 24),
-          Text('OCRテキストを貼り付けて抽出', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: Spacing.lg),
+          Text(
+            'OCRテキストを貼り付けて抽出',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _pasteController,
@@ -102,7 +113,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
             minLines: 4,
             maxLines: 8,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: Spacing.sm),
           OutlinedButton.icon(
             onPressed: () => _extractFromText(_pasteController.text),
             icon: const Icon(Icons.auto_fix_high),
@@ -117,13 +128,13 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
             ),
           if (_showManual) ...[
             Text('手入力', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
+            const SizedBox(height: Spacing.md),
             ChildDropdown(
               value: _personId,
               children: children,
               onChanged: (value) => setState(() => _personId = value),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: Spacing.md),
             TextField(
               controller: _titleController,
               decoration: const InputDecoration(
@@ -132,24 +143,35 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
                 hintText: '例：集金袋を提出',
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: Spacing.md),
             DropdownButtonFormField<TodoCategory>(
               initialValue: _category,
-              decoration: const InputDecoration(labelText: '種類', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: '種類',
+                border: OutlineInputBorder(),
+              ),
               items: TodoCategory.values
-                  .map((category) => DropdownMenuItem(value: category, child: Text(category.label)))
+                  .map(
+                    (category) => DropdownMenuItem(
+                      value: category,
+                      child: Text(category.label),
+                    ),
+                  )
                   .toList(),
-              onChanged: (value) => setState(() => _category = value ?? TodoCategory.other),
+              onChanged: (value) =>
+                  setState(() => _category = value ?? TodoCategory.other),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: Spacing.md),
             OutlinedButton.icon(
               onPressed: _selectDueDate,
               icon: const Icon(Icons.event),
-              label: Text(_dueDate == null
-                  ? '期限を選ぶ'
-                  : '${_dueDate!.year}/${_dueDate!.month}/${_dueDate!.day}'),
+              label: Text(
+                _dueDate == null
+                    ? '期限を選ぶ'
+                    : '${_dueDate!.year}/${_dueDate!.month}/${_dueDate!.day}',
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: Spacing.md),
             TextField(
               controller: _itemsController,
               decoration: const InputDecoration(
@@ -158,7 +180,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
                 hintText: '水筒、体操着、集金袋',
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: Spacing.md),
             TextField(
               controller: _amountController,
               decoration: const InputDecoration(
@@ -168,14 +190,17 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
               ),
               keyboardType: TextInputType.number,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: Spacing.md),
             TextField(
               controller: _noteController,
-              decoration: const InputDecoration(labelText: 'メモ', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'メモ',
+                border: OutlineInputBorder(),
+              ),
               minLines: 2,
               maxLines: 4,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: Spacing.lg),
             FilledButton.icon(
               onPressed: _saveManual,
               icon: const Icon(Icons.check),
@@ -196,16 +221,21 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
   Future<void> _saveManual() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('タイトルを入力してください')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('タイトルを入力してください')));
       return;
     }
     final parsed = parseAmount(_amountController.text);
     if (!parsed.valid) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('金額は数字で入力してください')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('金額は数字で入力してください')));
       return;
     }
 
     final appState = context.read<AppState>();
+    final settings = context.read<AppSettings>();
     final navigator = Navigator.of(context);
     final items = splitItems(_itemsController.text);
     final draft = ExtractionDraft(
@@ -214,9 +244,12 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
       dueDate: _dueDate,
       amount: parsed.amount,
       items: items,
-      note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+      note: _noteController.text.trim().isEmpty
+          ? null
+          : _noteController.text.trim(),
     );
     await appState.addTodoFromDraft(draft: draft, personId: _personId);
+    await settings.addLearnedItemLabels(items);
     if (!mounted) return;
     navigator.pop();
   }
@@ -225,13 +258,21 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
     final appState = context.read<AppState>();
+    final settings = context.read<AppSettings>();
     final navigator = Navigator.of(context);
-    final draft = ExtractionService.extract(trimmed);
-    final document = await appState.addDocument(sourceType: 'text', ocrText: trimmed);
+    final drafts = ExtractionService.extractMany(
+      trimmed,
+      learnedItemLabels: settings.learnedItemLabels,
+    );
+    final document = await appState.addDocument(
+      sourceType: 'text',
+      ocrText: trimmed,
+    );
     if (!mounted) return;
     await navigator.pushReplacement(
       MaterialPageRoute(
-        builder: (_) => ReviewExtractionScreen(draft: draft, documentId: document.id),
+        builder: (_) =>
+            _reviewScreenFor(drafts: drafts, documentId: document.id),
       ),
     );
   }
@@ -241,6 +282,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
     File? imageFile;
     try {
       final appState = context.read<AppState>();
+      final settings = context.read<AppSettings>();
       final navigator = Navigator.of(context);
       final picker = ImagePicker();
       final picked = await picker.pickImage(source: source, imageQuality: 92);
@@ -250,7 +292,9 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
       if (!mounted) return;
       if (ocrText.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('文字を読み取れませんでした。撮り直すか、テキスト貼り付けを使ってください。')),
+          const SnackBar(
+            content: Text('文字を読み取れませんでした。撮り直すか、テキスト貼り付けを使ってください。'),
+          ),
         );
         await ImageFileService.deleteIfExists(imageFile.path);
         imageFile = null;
@@ -262,11 +306,15 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
         ocrText: ocrText,
       );
       imageFile = null;
-      final draft = ExtractionService.extract(ocrText);
+      final drafts = ExtractionService.extractMany(
+        ocrText,
+        learnedItemLabels: settings.learnedItemLabels,
+      );
       if (!mounted) return;
       await navigator.pushReplacement(
         MaterialPageRoute(
-          builder: (_) => ReviewExtractionScreen(draft: draft, documentId: document.id),
+          builder: (_) =>
+              _reviewScreenFor(drafts: drafts, documentId: document.id),
         ),
       );
     } on OcrException catch (e) {
@@ -292,12 +340,20 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
   void _showOcrError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 10),
-      ),
+      SnackBar(content: Text(message), duration: const Duration(seconds: 10)),
     );
   }
+
+  Widget _reviewScreenFor({
+    required List<ExtractionDraft> drafts,
+    required String documentId,
+  }) {
+    if (drafts.length == 1) {
+      return ReviewExtractionScreen(
+        draft: drafts.single,
+        documentId: documentId,
+      );
+    }
+    return ReviewExtractionsScreen(drafts: drafts, documentId: documentId);
+  }
 }
-
-

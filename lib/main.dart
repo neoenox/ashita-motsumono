@@ -29,11 +29,13 @@ Future<void> main() async {
   final appState = AppState(store: store, notifications: notifications);
   await appState.load();
   unawaited(AdService.initialize());
-  runApp(AshitaMotsumonoApp(
-    appState: appState,
-    settings: settings,
-    purchaseProvider: PurchaseProvider(settings),
-  ));
+  runApp(
+    AshitaMotsumonoApp(
+      appState: appState,
+      settings: settings,
+      purchaseProvider: PurchaseProvider(settings),
+    ),
+  );
 }
 
 class AshitaMotsumonoApp extends StatelessWidget {
@@ -53,6 +55,7 @@ class AshitaMotsumonoApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: appState),
+        Provider.value(value: settings),
         ChangeNotifierProvider.value(value: purchaseProvider),
       ],
       child: MaterialApp(

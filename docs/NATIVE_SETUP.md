@@ -10,11 +10,11 @@
 
 `android/app/build.gradle` または `android/app/build.gradle.kts` で以下を確認します。
 
-- minSdkVersion 21
+- minSdkVersion 24
 - targetSdkVersion 36
 - compileSdkVersion 36
 
-このリポジトリの `tool/configure_android_release.sh` は、Androidリリースビルド時に `minSdk 21`、`targetSdk 36`、`compileSdk 36` に揃えます。
+このリポジトリの `tool/configure_android_release.sh` は、Androidリリースビルド時に `minSdk 24`、`targetSdk 36`、`compileSdk 36` に揃えます。
 `flutter_local_notifications` は `compileSdk` 35以上を要求するため、36で統一しています。
 
 ### 2. flutter_local_notifications の desugaring
@@ -59,7 +59,7 @@ dependencies {
 
 ### 4. 権限と通知設定
 
-`AndroidManifest.xml` にカメラ権限と Android 13以降の通知権限を追加します。
+`AndroidManifest.xml` にカメラ権限、Android 13以降の通知権限、広告表示/アプリ内課金に必要なインターネット権限を追加します。
 
 スケジュール通知を端末再起動後にも維持したい場合は、`flutter_local_notifications` の公式 README の AndroidManifest 設定も追加してください。このMVPは `AndroidScheduleMode.inexactAllowWhileIdle` を使っているため、正確なアラーム権限は追加しません。
 

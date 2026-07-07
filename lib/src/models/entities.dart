@@ -10,3 +10,4 @@ export 'app_todo.dart';
 export 'document_record.dart';
 export 'extraction_draft.dart';
 export 'app_snapshot.dart';
+export 'todo_update.dart';

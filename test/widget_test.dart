@@ -26,16 +26,29 @@ Future<AppSettings> _createSettings() async {
 }
 
 /// テスト用の PurchaseProvider（実際の課金処理は行わない）。
-class _TestPurchaseProvider extends ChangeNotifier
-    implements PurchaseProvider {
+class _TestPurchaseProvider extends ChangeNotifier implements PurchaseProvider {
+  _TestPurchaseProvider({
+    this.adRemoved = false,
+    this.priceLabel = '買い切り ¥190',
+  });
+
   @override
-  bool get adRemoved => false;
+  final bool adRemoved;
 
   @override
   bool get busy => false;
 
   @override
+  final String priceLabel;
+
+  @override
+  Future<void> get ready => Future<void>.value();
+
+  @override
   Future<void> purchase() async {}
+
+  @override
+  Future<void> restore() async {}
 }
 
 /// 通知説明ダイアログをスキップした AppState を生成する。
@@ -66,23 +79,34 @@ void main() {
       );
       await appState.load();
 
-      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings, purchaseProvider: _TestPurchaseProvider()));
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(priceLabel: '買い切り ¥190'),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('あした持つもの'), findsOneWidget);
       expect(find.text('まず人物を登録'), findsOneWidget);
-      expect(
-        find.text('Todoは人物別に整理できます。\nログイン不要・端末内保存です。'),
-        findsOneWidget,
-      );
+      expect(find.text('Todoは人物別に整理できます。\nログイン不要・端末内保存です。'), findsOneWidget);
     });
 
-    testWidgets('shows empty state when children exist but no todos', (tester) async {
+    testWidgets('shows empty state when children exist but no todos', (
+      tester,
+    ) async {
       final appState = await _createAppState();
       final settings = await _createSettings();
       await appState.addChild('長女');
 
-      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings, purchaseProvider: _TestPurchaseProvider()));
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(priceLabel: '買い切り ¥190'),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('まず人物を登録'), findsNothing);
@@ -103,7 +127,13 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings, purchaseProvider: _TestPurchaseProvider()));
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('今日やること'), findsOneWidget);
@@ -120,7 +150,13 @@ void main() {
     testWidgets('shows empty state and can add a child', (tester) async {
       final appState = await _createAppState();
       final settings = await _createSettings();
-      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings, purchaseProvider: _TestPurchaseProvider()));
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.person_add));
@@ -140,7 +176,13 @@ void main() {
       final appState = await _createAppState();
       final settings = await _createSettings();
       await appState.addChild('長女');
-      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings, purchaseProvider: _TestPurchaseProvider()));
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.person_add));
@@ -169,7 +211,13 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings, purchaseProvider: _TestPurchaseProvider()));
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('今日やること'), findsOneWidget);
@@ -184,7 +232,13 @@ void main() {
     testWidgets('shows not found when todo is missing', (tester) async {
       final appState = await _createAppState();
       final settings = await _createSettings();
-      await tester.pumpWidget(AshitaMotsumonoApp(appState: appState, settings: settings, purchaseProvider: _TestPurchaseProvider()));
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
       await tester.pumpWidget(
         MaterialApp(
           home: ChangeNotifierProvider.value(
@@ -255,11 +309,13 @@ void main() {
       final appState = await _createAppState();
       final settings = await _createSettings();
 
-      await tester.pumpWidget(AshitaMotsumonoApp(
-        appState: appState,
-        settings: settings,
-        purchaseProvider: _TestPurchaseProvider(),
-      ));
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.settings));
@@ -269,25 +325,88 @@ void main() {
       expect(find.text('通知時刻'), findsOneWidget);
       expect(find.textContaining('前日（夜）'), findsOneWidget);
       expect(find.textContaining('当日（朝）'), findsOneWidget);
-      expect(find.text('広告'), findsOneWidget);
+      expect(find.text('サポーター'), findsOneWidget);
     });
 
     testWidgets('shows purchase section', (tester) async {
       final appState = await _createAppState();
       final settings = await _createSettings();
 
-      await tester.pumpWidget(AshitaMotsumonoApp(
-        appState: appState,
-        settings: settings,
-        purchaseProvider: _TestPurchaseProvider(),
-      ));
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.settings));
       await tester.pumpAndSettle();
 
-      expect(find.text('広告を除去する'), findsOneWidget);
-      expect(find.text('買い切り 190円（税込）'), findsOneWidget);
+      expect(find.text('買い切りサポーター'), findsOneWidget);
+      expect(find.text('買い切り ¥190'), findsOneWidget);
+      expect(find.text('広告を消して応援する'), findsOneWidget);
+      expect(find.text('購入を復元'), findsOneWidget);
+    });
+
+    testWidgets('shows supporter thank-you when ads are removed', (
+      tester,
+    ) async {
+      final appState = await _createAppState();
+      final settings = await _createSettings();
+
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(adRemoved: true),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.settings));
+      await tester.pumpAndSettle();
+
+      expect(find.text('サポーター登録済み'), findsOneWidget);
+      expect(find.text('広告なしで使えます。ご購入ありがとうございます。'), findsOneWidget);
+    });
+
+    testWidgets('clears all local data after confirmation', (tester) async {
+      final appState = await _createAppState();
+      final settings = await _createSettings();
+      await appState.addChild('長女');
+      await appState.addTodoFromDraft(
+        draft: const ExtractionDraft(
+          title: '水筒を持参',
+          category: TodoCategory.item,
+          items: ['水筒'],
+        ),
+      );
+
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.settings));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(ListView), const Offset(0, -500));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('登録データをすべて削除'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('削除する'));
+      await tester.pumpAndSettle();
+
+      expect(appState.children, isEmpty);
+      expect(appState.todos, isEmpty);
+      expect(appState.documents, isEmpty);
+      expect(find.text('登録データを削除しました'), findsOneWidget);
     });
   });
 
@@ -297,11 +416,13 @@ void main() {
       final settings = await _createSettings();
       await appState.addChild('長女');
 
-      await tester.pumpWidget(AshitaMotsumonoApp(
-        appState: appState,
-        settings: settings,
-        purchaseProvider: _TestPurchaseProvider(),
-      ));
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('追加'));
@@ -319,11 +440,13 @@ void main() {
       final settings = await _createSettings();
       await appState.addChild('長女');
 
-      await tester.pumpWidget(AshitaMotsumonoApp(
-        appState: appState,
-        settings: settings,
-        purchaseProvider: _TestPurchaseProvider(),
-      ));
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('追加'));
@@ -341,11 +464,13 @@ void main() {
       final settings = await _createSettings();
       await appState.addChild('長女');
 
-      await tester.pumpWidget(AshitaMotsumonoApp(
-        appState: appState,
-        settings: settings,
-        purchaseProvider: _TestPurchaseProvider(),
-      ));
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('追加'));
@@ -363,6 +488,101 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('タイトルを入力してください'), findsOneWidget);
+    });
+
+    testWidgets('creates multiple review candidates from pasted notice', (
+      tester,
+    ) async {
+      final appState = await _createAppState();
+      final settings = await _createSettings();
+      await appState.addChild('長女');
+
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('追加'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byType(TextField).first,
+        '7月10日までに水着、帽子、タオルを持参してください。\n'
+        '集金袋に500円を入れて提出してください。\n'
+        '申込書は7月12日までに提出してください。',
+      );
+      await tester.tap(find.text('貼り付け文からTodo候補を作る'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('3件の候補を確認'), findsOneWidget);
+      expect(find.text('持ち物：水着・帽子・タオル'), findsOneWidget);
+      expect(find.text('集金 500円'), findsOneWidget);
+      expect(find.text('申込書を提出'), findsOneWidget);
+
+      await tester.tap(find.text('3件を登録'));
+      await tester.pumpAndSettle();
+
+      expect(appState.todos.map((todo) => todo.title), [
+        '持ち物：水着・帽子・タオル',
+        '集金 500円',
+        '申込書を提出',
+      ]);
+      expect(appState.documents, hasLength(1));
+      expect(appState.todos.map((todo) => todo.documentId).toSet(), {
+        appState.documents.single.id,
+      });
+    });
+
+    testWidgets('learns manually entered items for later pasted extraction', (
+      tester,
+    ) async {
+      final appState = await _createAppState();
+      final settings = await _createSettings();
+      await appState.addChild('長女');
+
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('追加'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('手動で入力する'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.ancestor(of: find.text('タイトル'), matching: find.byType(TextField)),
+        '軍手を持参',
+      );
+      await tester.drag(find.byType(ListView), const Offset(0, -360));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.ancestor(
+          of: find.text('持ち物・チェック項目'),
+          matching: find.byType(TextField),
+        ),
+        '軍手',
+      );
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('登録'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('追加'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, '7月10日までに軍手を持参');
+      await tester.tap(find.text('貼り付け文からTodo候補を作る'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('持ち物：軍手'), findsOneWidget);
     });
   });
 
@@ -389,11 +609,13 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(AshitaMotsumonoApp(
-        appState: appState,
-        settings: settings,
-        purchaseProvider: _TestPurchaseProvider(),
-      ));
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('水筒を持参'), findsOneWidget);
@@ -421,11 +643,13 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(AshitaMotsumonoApp(
-        appState: appState,
-        settings: settings,
-        purchaseProvider: _TestPurchaseProvider(),
-      ));
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('水筒を持参'), findsOneWidget);

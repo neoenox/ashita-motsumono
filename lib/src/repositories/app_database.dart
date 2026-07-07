@@ -150,23 +150,46 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> saveSnapshot(AppSnapshot snapshot) async {
     await transaction(() async {
-      await batch((b) {
-        b.deleteAll(dbChild);
-        b.deleteAll(dbTodo);
-        b.deleteAll(dbChecklistItem);
-        b.deleteAll(dbDocument);
+      // 現在のデータを取得
+      final currentChildren = await select(dbChild).get();
+      final currentTodos = await select(dbTodo).get();
+      final currentDocs = await select(dbDocument).get();
 
+      final currentChildIds = currentChildren.map((c) => c.id).toSet();
+      final currentTodoIds = currentTodos.map((t) => t.id).toSet();
+      final currentDocIds = currentDocs.map((d) => d.id).toSet();
+
+      final newChildIds = snapshot.children.map((c) => c.id).toSet();
+      final newTodoIds = snapshot.todos.map((t) => t.id).toSet();
+      final newDocIds = snapshot.documents.map((d) => d.id).toSet();
+
+      await batch((b) {
+        // 削除: 新しいデータに存在しないもの
+        for (final id in currentChildIds.difference(newChildIds)) {
+          b.deleteWhere(dbChild, (t) => t.id.equals(id));
+        }
+        for (final id in currentTodoIds.difference(newTodoIds)) {
+          b.deleteWhere(dbTodo, (t) => t.id.equals(id));
+          b.deleteWhere(dbChecklistItem, (t) => t.todoId.equals(id));
+        }
+        for (final id in currentDocIds.difference(newDocIds)) {
+          b.deleteWhere(dbDocument, (t) => t.id.equals(id));
+        }
+
+        // 追加・更新
         for (final child in snapshot.children) {
-          b.insert(dbChild, _fromPersonProfile(child));
+          b.insert(dbChild, _fromPersonProfile(child), mode: InsertMode.replace);
         }
         for (final todo in snapshot.todos) {
-          b.insert(dbTodo, _fromAppTodo(todo));
+          b.insert(dbTodo, _fromAppTodo(todo), mode: InsertMode.replace);
+          // 既存のチェックリスト項目を削除して再挿入
+          b.deleteWhere(dbChecklistItem, (t) => t.todoId.equals(todo.id));
           for (final item in todo.items) {
             b.insert(dbChecklistItem, _fromChecklistItem(todo.id, item));
           }
         }
         for (final doc in snapshot.documents) {
-          b.insert(dbDocument, _fromDocumentRecord(doc));
+          b.insert(dbDocument, _fromDocumentRecord(doc), mode: InsertMode.replace);
         }
       });
     });

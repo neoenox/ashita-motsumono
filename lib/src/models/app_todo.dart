@@ -6,6 +6,7 @@
 import 'package:flutter/foundation.dart';
 import 'enums.dart';
 import 'checklist_item.dart';
+import 'todo_update.dart';
 
 @immutable
 class AppTodo {
@@ -42,6 +43,23 @@ class AppTodo {
   final DateTime updatedAt;
 
   bool get isDone => status == TodoStatus.done;
+
+  AppTodo applyUpdate(TodoUpdate update) {
+    if (!update.hasChanges) return this;
+    return copyWith(
+      title: update.title,
+      personId: update.clearPersonId ? null : update.personId,
+      documentId: update.clearDocumentId ? null : update.documentId,
+      dueDate: update.clearDueDate ? null : update.dueDate,
+      category: update.category,
+      amount: update.clearAmount ? null : update.amount,
+      note: update.clearNote ? null : update.note,
+      status: update.status,
+      items: update.items,
+      notifyPreviousNight: update.notifyPreviousNight,
+      notifySameMorning: update.notifySameMorning,
+    );
+  }
 
   AppTodo copyWith({
     String? id,

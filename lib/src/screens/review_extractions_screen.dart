@@ -1,0 +1,192 @@
+// lib/src/screens/review_extractions_screen.dart
+// OCR抽出結果が複数ある場合の確認画面。候補を選んでまとめて登録する。
+// 関連: add_todo_screen.dart, review_extraction_screen.dart, app_state.dart
+
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../app_state.dart';
+import '../models/entities.dart';
+import '../services/app_settings.dart';
+import '../theme/app_theme.dart';
+import 'widgets/child_dropdown.dart';
+
+class ReviewExtractionsScreen extends StatefulWidget {
+  const ReviewExtractionsScreen({
+    super.key,
+    required this.drafts,
+    this.documentId,
+  });
+
+  final List<ExtractionDraft> drafts;
+  final String? documentId;
+
+  @override
+  State<ReviewExtractionsScreen> createState() =>
+      _ReviewExtractionsScreenState();
+}
+
+class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
+  late final List<bool> _selected;
+  late AppState _appState;
+  String? _personId;
+  bool _saved = false;
+  bool _busy = false;
+
+  int get _selectedCount => _selected.where((selected) => selected).length;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = List<bool>.filled(widget.drafts.length, true);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _appState = context.read<AppState>();
+  }
+
+  @override
+  void dispose() {
+    if (!_saved && widget.documentId != null) {
+      unawaited(
+        _appState
+            .deleteDocument(widget.documentId!)
+            .then((deleted) {
+              if (kDebugMode) {
+                debugPrint(
+                  'Document cleanup on bulk dispose: ${deleted ? "deleted" : "still in use"}',
+                );
+              }
+            })
+            .catchError((e) {
+              if (kDebugMode) {
+                debugPrint('Failed to clean up document on bulk dispose: $e');
+              }
+            }),
+      );
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final children = context.watch<AppState>().children;
+    return Scaffold(
+      appBar: AppBar(title: Text('${widget.drafts.length}件の候補を確認')),
+      body: ListView(
+        padding: const EdgeInsets.all(Spacing.md),
+        children: [
+          const Text('必要な候補だけ選んで登録できます。登録後は各Todoの詳細画面から修正できます。'),
+          const SizedBox(height: Spacing.md),
+          ChildDropdown(
+            value: _personId,
+            children: children,
+            onChanged: (value) => setState(() => _personId = value),
+          ),
+          const SizedBox(height: Spacing.md),
+          for (var i = 0; i < widget.drafts.length; i++) ...[
+            _DraftCard(
+              draft: widget.drafts[i],
+              selected: _selected[i],
+              onChanged: (value) =>
+                  setState(() => _selected[i] = value ?? false),
+            ),
+            const SizedBox(height: Spacing.sm),
+          ],
+        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(Spacing.md),
+          child: FilledButton.icon(
+            onPressed: _busy ? null : _saveSelected,
+            icon: _busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check),
+            label: Text('$_selectedCount件を登録'),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveSelected() async {
+    if (_selectedCount == 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('登録する候補を1件以上選んでください')));
+      return;
+    }
+
+    setState(() => _busy = true);
+    final navigator = Navigator.of(context);
+    final settings = context.read<AppSettings>();
+    final learnedLabels = <String>[];
+    try {
+      for (var i = 0; i < widget.drafts.length; i++) {
+        if (!_selected[i]) continue;
+        learnedLabels.addAll(widget.drafts[i].items);
+        await _appState.addTodoFromDraft(
+          draft: widget.drafts[i],
+          personId: _personId,
+          documentId: widget.documentId,
+        );
+      }
+      await settings.addLearnedItemLabels(learnedLabels);
+      _saved = true;
+      if (!mounted) return;
+      navigator.popUntil((route) => route.isFirst);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+class _DraftCard extends StatelessWidget {
+  const _DraftCard({
+    required this.draft,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final ExtractionDraft draft;
+  final bool selected;
+  final ValueChanged<bool?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final details = <String>[
+      draft.category.label,
+      if (draft.dueDate != null) _formatDate(draft.dueDate!),
+      if (draft.amount != null) '${draft.amount}円',
+      if (draft.items.isNotEmpty) draft.items.join('・'),
+    ];
+
+    return Card(
+      color: selected ? cs.surfaceContainerHighest : cs.surface,
+      child: CheckboxListTile(
+        value: selected,
+        onChanged: onChanged,
+        title: Text(draft.title),
+        subtitle: details.isEmpty ? null : Text(details.join(' / ')),
+        controlAffinity: ListTileControlAffinity.leading,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: Spacing.sm,
+          vertical: Spacing.xs,
+        ),
+      ),
+    );
+  }
+}
+
+String _formatDate(DateTime date) => '${date.year}/${date.month}/${date.day}';
