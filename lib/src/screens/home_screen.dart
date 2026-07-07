@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_state.dart';
 import '../models/entities.dart';
+import '../theme/app_theme.dart';
 import '../services/ad_service.dart';
 import '../services/app_settings.dart';
 import '../services/purchase_provider.dart';
@@ -223,14 +224,14 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: EdgeInsets.fromLTRB(Spacing.md, Spacing.sm, Spacing.md, 0),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: '検索…',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                contentPadding: EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear),
@@ -253,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+              padding: EdgeInsets.fromLTRB(Spacing.md, Spacing.sm, Spacing.md, 96),
               children: [
                 if (state.lastLoadHadCorruptData) ...[
                   CorruptDataCard(onCopy: () => unawaited(_copyCorruptBackup(state))),
@@ -270,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   NoSearchResults(query: _searchQuery),
                 if (todayTodos.isNotEmpty || _searchQuery.isEmpty) ...[
                   TodoSection(title: '今日やること', todos: todayTodos),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: Spacing.md),
                 ],
                 TodoSection(title: '明日の持ち物・提出', todos: tomorrowTodos),
                 const SizedBox(height: 16),

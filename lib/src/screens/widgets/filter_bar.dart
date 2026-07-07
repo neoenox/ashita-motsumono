@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/entities.dart';
+import '../../theme/app_theme.dart';
 
 class FilterBar extends StatelessWidget {
   const FilterBar({
@@ -25,7 +26,7 @@ class FilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: EdgeInsets.fromLTRB(Spacing.md, Spacing.sm, Spacing.md, 0),
       child: Row(
         children: [
           FilterChip(
@@ -33,7 +34,7 @@ class FilterBar extends StatelessWidget {
             selected: showCompleted,
             onSelected: onToggleCompleted,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: Spacing.sm),
           if (children.length > 1)
             DropdownButton<String?>(
               value: filterPersonId,
