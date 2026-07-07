@@ -29,12 +29,13 @@ class TodoTile extends StatelessWidget {
 
     final bandColor = todo.isDone
         ? CategoryColors.completed
-        : CategoryColors.fromCategory(todo.category.name);
+        : todo.category.color;
 
     final tile = IntrinsicHeight(
       child: Row(
         children: [
           Container(width: 4, color: bandColor),
+          const SizedBox(width: Spacing.sm),
           Expanded(
             child: ListTile(
               contentPadding: EdgeInsets.zero,
@@ -61,13 +62,10 @@ class TodoTile extends StatelessWidget {
       ),
     );
 
-    if (todo.isDone) {
-      return AnimatedOpacity(
-        duration: const Duration(milliseconds: 300),
-        opacity: 0.6,
-        child: tile,
-      );
-    }
-    return tile;
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 300),
+      opacity: todo.isDone ? 0.6 : 1.0,
+      child: tile,
+    );
   }
 }
