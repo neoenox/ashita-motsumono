@@ -5,6 +5,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -63,7 +64,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   void dispose() {
     if (!_saved && widget.documentId != null) {
       unawaited(_appState.deleteDocument(widget.documentId!).catchError((e) {
-        debugPrint('Failed to clean up document on dispose: $e');
+        if (kDebugMode) debugPrint('Failed to clean up document on dispose: $e');
       }));
     }
     _titleController.dispose();

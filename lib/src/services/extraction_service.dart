@@ -102,17 +102,22 @@ class ExtractionService {
         sb.writeCharCode(codeUnit);
       }
     }
-    return sb
+    var text = sb
         .toString()
         .replaceAll('／', '/')
         .replaceAll('，', ',')
         .replaceAll('￥', '¥')
-        .replaceAll('O', '0')  // OCR誤認識: O→0
-        .replaceAll('l', '1')  // OCR誤認識: l→1
         .replaceAll('　', ' ')
         .replaceAll(_multiSpacePattern, ' ')
         .replaceAll(_multiNewlinePattern, '\n\n')
         .trim();
+    // OCR誤認識: 数字に隣接するO/l、またはlO/Ol連鎖を0/1に変換
+    // lO→10 / Ol→01 のペアは1回のreplaceAllMappedで変換（先読みだけでは不十分）
+    text = text.replaceAllMapped(
+      RegExp(r'lO|Ol|(?<=\d)[Ol]|[Ol](?=\d)'),
+      (m) => switch (m[0]) { 'lO' => '10', 'Ol' => '01', 'O' => '0', _ => '1' },
+    );
+    return text;
   }
 
   DateTime? _extractDate(String text, DateTime now) {

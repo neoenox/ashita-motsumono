@@ -46,11 +46,22 @@ class PurchaseProvider extends ChangeNotifier {
 
   void _onPurchase(List<PurchaseDetails> details) {
     for (final purchase in details) {
-      if (purchase.productID == _productId && purchase.status == PurchaseStatus.purchased) {
-        _adRemoved = true;
-        unawaited(_settings.setAdRemoved(true));
-        notifyListeners();
+      if (purchase.productID != _productId) continue;
+      switch (purchase.status) {
+        case PurchaseStatus.purchased || PurchaseStatus.restored:
+          _adRemoved = true;
+          unawaited(_settings.setAdRemoved(true));
+          if (purchase.pendingCompletePurchase) {
+            unawaited(_purchase.completePurchase(purchase));
+          }
+        case PurchaseStatus.error:
+          if (kDebugMode) debugPrint('Purchase error: ${purchase.error}');
+        case PurchaseStatus.canceled:
+          // ユーザーがキャンセルした場合は何もしない
+        case PurchaseStatus.pending:
+          // 決済処理中は待機
       }
+      notifyListeners();
     }
   }
 

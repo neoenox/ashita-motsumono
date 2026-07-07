@@ -6,6 +6,7 @@
 
 import 'dart:io' show File;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -268,12 +269,12 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
         ),
       );
     } on OcrException catch (e) {
-      debugPrint('OCR error: ${e.cause ?? e}');
+      if (kDebugMode) debugPrint('OCR error: ${e.cause ?? e}');
       await _deleteTemporaryImage(imageFile);
       imageFile = null;
       _showOcrError(e.message);
     } on Object catch (e) {
-      debugPrint('OCR error: $e');
+      if (kDebugMode) debugPrint('OCR error: $e');
       await _deleteTemporaryImage(imageFile);
       imageFile = null;
       _showOcrError('読み取りに失敗しました。画像を撮り直すか、テキスト貼り付けを使ってください。');

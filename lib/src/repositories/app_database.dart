@@ -80,6 +80,15 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) async => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          // v1→v2: 将来のスキーマ変更対応（現状はプレースホルダー）
+          // from == 1 && to == 2 の場合に migrate 処理を記述
+        },
+      );
+
   /// SharedPreferences から JSON データを SQLite に移行する。
   static Future<AppDatabase> createWithMigration() async {
     final dir = await getApplicationDocumentsDirectory();

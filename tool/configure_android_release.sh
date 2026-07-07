@@ -40,6 +40,16 @@ def ensure_kts():
     text = re.sub(r"targetSdk\s*=\s*[^\n]+", "targetSdk = 36", text, count=1)
     text = text.replace("JavaVersion.VERSION_11", "JavaVersion.VERSION_17")
     text = text.replace(OLD_DESUGAR_DEP_KTS, DESUGAR_DEP_KTS)
+    text = re.sub(
+        r'namespace\s*=\s*"[^"]+"',
+        'namespace = "com.ashita_motsumono"',
+        text, count=1,
+    )
+    text = re.sub(
+        r'applicationId\s*=\s*"[^"]+"',
+        'applicationId = "com.ashita_motsumono"',
+        text, count=1,
+    )
 
     if 'org.jetbrains.kotlin.android' not in text and 'kotlin-android' not in text:
         text = replace_or_insert(
@@ -56,6 +66,16 @@ def ensure_kts():
         )
 
     text = re.sub(r'\n\s*kotlinOptions\s*\{[^}]*\}', '', text)
+
+    if 'manifestPlaceholders["admobAppId"]' not in text:
+        text = re.sub(
+            r'(versionName\s*=\s*flutter\.versionName[^\n]*)',
+            lambda m: m.group(1)
+            + '\n        manifestPlaceholders["admobAppId"] ='
+            + ' System.getenv("ADMOB_APP_ID")'
+            + ' ?: "ca-app-pub-3940256099942544~3347511713"',
+            text, count=1,
+        )
 
     if 'compilerOptions' not in text:
         text = text.rstrip() + '\n\nkotlin {\n    compilerOptions {\n        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17\n    }\n}\n'

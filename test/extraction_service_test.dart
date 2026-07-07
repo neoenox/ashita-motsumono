@@ -33,6 +33,17 @@ void main() {
       expect(draft.amount, 500);
     });
 
+    test('normalizes O/l only adjacent to digits, not in English words', () {
+      final draft = ExtractionService().extract(
+        '1O月1O日 Hello World を持参 l0枚 O型 2O25',
+        now: now,
+      );
+      // '1O' → '10', 'l0' → '10', '2O25' → '2025'
+      expect(draft.dueDate, DateTime(2026, 10, 10));
+      expect(draft.note, contains('Hello World'));
+      expect(draft.note, contains('O型'));
+    });
+
     test('extracts date with slash format', () {
       final draft = ExtractionService().extract('7/10までに水着を持参', now: now);
       expect(draft.dueDate, DateTime(2026, 7, 10));

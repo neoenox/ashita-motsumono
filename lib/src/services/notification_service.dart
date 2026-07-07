@@ -130,5 +130,5 @@ class NotificationService {
   }
 
   int _notificationId(String id, int salt) =>
-      (Object.hash(id, salt) & 0x7FFFFFFF).clamp(1, 0x7FFFFFFF);
+      (id.hashCode ^ salt) & 0x7FFFFFFF;
 }

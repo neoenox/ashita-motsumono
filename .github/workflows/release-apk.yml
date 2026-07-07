@@ -46,6 +46,7 @@ jobs:
           echo "KEYSTORE_STORE_PASSWORD=${{ secrets.KEYSTORE_STORE_PASSWORD }}" >> $GITHUB_ENV
           echo "KEYSTORE_KEY_PASSWORD=${{ secrets.KEYSTORE_KEY_PASSWORD }}" >> $GITHUB_ENV
           echo "KEYSTORE_KEY_ALIAS=${{ secrets.KEYSTORE_KEY_ALIAS }}" >> $GITHUB_ENV
+          echo "ADMOB_APP_ID=${{ secrets.ADMOB_APP_ID }}" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: flutter pub get
@@ -57,7 +58,9 @@ jobs:
         run: flutter test
 
       - name: Build APK
-        run: flutter build apk --release
+        run: >
+          flutter build apk --release
+          --dart-define=ADMOB_BANNER_AD_UNIT_ID=${{ secrets.ADMOB_BANNER_AD_UNIT_ID || '' }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

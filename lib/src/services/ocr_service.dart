@@ -34,7 +34,7 @@ class OcrService {
     if (size == 0) {
       throw StateError('画像ファイルが空です: ${imageFile.path}');
     }
-    debugPrint('OCR: file=${imageFile.path}, size=$size');
+    if (kDebugMode) debugPrint('OCR: file=${imageFile.path}, size=$size');
 
     if (Platform.isAndroid) {
       return _recognizeOnAndroid(imageFile);

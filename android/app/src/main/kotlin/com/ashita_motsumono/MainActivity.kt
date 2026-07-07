@@ -1,4 +1,4 @@
-package com.example.ashita_motsumono
+package com.ashita_motsumono
 
 import android.net.Uri
 import com.google.mlkit.vision.common.InputImage
