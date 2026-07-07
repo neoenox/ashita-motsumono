@@ -277,7 +277,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: context.watch<PurchaseProvider>().adRemoved
           ? null
-          : const _AdBanner(),
+          : SafeArea(
+              bottom: true,
+              child: const _AdBanner(),
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const AddTodoScreen()),
