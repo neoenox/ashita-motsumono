@@ -33,6 +33,9 @@ class ReviewExtractionScreen extends StatefulWidget {
   State<ReviewExtractionScreen> createState() => _ReviewExtractionScreenState();
 }
 
+String _fmtTime(int hour, int minute) =>
+    '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+
 class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   late final TextEditingController _titleController;
   late final TextEditingController _itemsController;
@@ -100,9 +103,34 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('読み取り結果の確認')),
       body: ListView(
-        padding: const EdgeInsets.all(Spacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          Spacing.md, Spacing.md, Spacing.md, 96,
+        ),
         children: [
-          const Text('OCRは間違う前提です。登録前に内容を確認してください。'),
+          Card(
+            color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.2),
+            child: Padding(
+              padding: const EdgeInsets.all(Spacing.md),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: Spacing.sm),
+                  Expanded(
+                    child: Text(
+                      'OCRは間違う前提です。登録前に内容を確認してください。',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: Spacing.md),
           ChildDropdown(
             value: _personId,
@@ -112,18 +140,12 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
           const SizedBox(height: Spacing.md),
           TextField(
             controller: _titleController,
-            decoration: const InputDecoration(
-              labelText: 'タイトル',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'タイトル'),
           ),
           const SizedBox(height: Spacing.md),
           DropdownButtonFormField<TodoCategory>(
             initialValue: _category,
-            decoration: const InputDecoration(
-              labelText: '種類',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: '種類'),
             items: TodoCategory.values
                 .map(
                   (category) => DropdownMenuItem(
@@ -164,7 +186,6 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
             controller: _itemsController,
             decoration: const InputDecoration(
               labelText: '持ち物・チェック項目',
-              border: OutlineInputBorder(),
               hintText: '水筒、体操着、集金袋',
             ),
           ),
@@ -173,29 +194,42 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
             controller: _amountController,
             decoration: const InputDecoration(
               labelText: '金額',
-              border: OutlineInputBorder(),
+              hintText: '500',
             ),
             keyboardType: TextInputType.number,
           ),
           const SizedBox(height: Spacing.md),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('前日20:00に通知'),
-            value: _notifyPreviousNight,
-            onChanged: (value) => setState(() => _notifyPreviousNight = value),
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('当日7:00に通知'),
-            value: _notifySameMorning,
-            onChanged: (value) => setState(() => _notifySameMorning = value),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(Spacing.md),
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      '前日${_fmtTime(context.read<AppSettings>().previousNightHour, context.read<AppSettings>().previousNightMinute)}に通知'),
+                    subtitle: const Text('前日夜にリマインド'),
+                    value: _notifyPreviousNight,
+                    onChanged: (value) => setState(() => _notifyPreviousNight = value),
+                  ),
+                  const Divider(),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      '当日${_fmtTime(context.read<AppSettings>().sameMorningHour, context.read<AppSettings>().sameMorningMinute)}に通知'),
+                    subtitle: const Text('当日朝にリマインド'),
+                    value: _notifySameMorning,
+                    onChanged: (value) => setState(() => _notifySameMorning = value),
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: Spacing.md),
           TextField(
             controller: _noteController,
             decoration: const InputDecoration(
               labelText: 'OCR全文・メモ',
-              border: OutlineInputBorder(),
             ),
             minLines: 6,
             maxLines: 12,

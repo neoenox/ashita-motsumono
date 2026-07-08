@@ -16,37 +16,50 @@ class TodoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(color: cs.primary)),
-            const SizedBox(height: Spacing.sm),
-            if (todos.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle_outline,
-                        size: 20, color: cs.onSurfaceVariant),
-                    const SizedBox(width: Spacing.sm),
-                    Text('すべて完了',
-                        style: TextStyle(color: cs.onSurfaceVariant)),
-                  ],
-                ),
-              )
-            else
-              ...todos.map((todo) => TodoTile(todo: todo)),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: Spacing.sm),
+          child: Text(title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
         ),
-      ),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Spacing.sm,
+              vertical: Spacing.xs,
+            ),
+            child: todos.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: Spacing.md,
+                      horizontal: Spacing.sm,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle_outline,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: Spacing.sm),
+                        Text('すべて完了',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Column(
+                    children: todos.map((todo) => TodoTile(todo: todo)).toList(),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -59,30 +72,41 @@ class UpcomingSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (todos.isEmpty) return const SizedBox.shrink();
-    final cs = Theme.of(context).colorScheme;
     final shown = todos.take(10).toList();
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('今後の予定',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(color: cs.primary)),
-            const SizedBox(height: Spacing.sm),
-            ...shown.map((todo) => TodoTile(todo: todo, compact: true)),
-            if (todos.length > 10) ...[
-              const SizedBox(height: Spacing.sm),
-              Text('他 ${todos.length - 10} 件',
-                  style: TextStyle(
-                      color: cs.onSurfaceVariant, fontSize: 13)),
-            ],
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: Spacing.sm),
+          child: Text('今後の予定',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
         ),
-      ),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Spacing.sm,
+              vertical: Spacing.xs,
+            ),
+            child: Column(
+              children: [
+                ...shown.map((todo) => TodoTile(todo: todo, compact: true)),
+                if (todos.length > 10) ...[
+                  const SizedBox(height: Spacing.sm),
+                  Text('他 ${todos.length - 10} 件',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

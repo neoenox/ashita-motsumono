@@ -1,5 +1,6 @@
 // lib/src/screens/widgets/todo_tile.dart
-// Todo 1件を表示する。カテゴリ色帯＋ListTile の組み合わせ。
+// Todo 1件を表示する。カテゴリ色帯＋リストアイテム。
+// Stitch デザインに合わせてスタイル調整。
 // 関連: home_screen.dart, todo_section.dart, theme/app_theme.dart
 
 import 'package:flutter/material.dart';
@@ -19,7 +20,9 @@ class TodoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final child = context.select<AppState, PersonProfile?>((s) => s.personById(todo.personId));
+    final child = context.select<AppState, PersonProfile?>(
+      (s) => s.personById(todo.personId),
+    );
     final subtitle = [
       todo.category.label,
       formatDueDate(todo.dueDate),
@@ -31,41 +34,71 @@ class TodoTile extends StatelessWidget {
         ? CategoryColors.completed
         : todo.category.color;
 
-    final tile = IntrinsicHeight(
-      child: Row(
-        children: [
-          Container(width: 4, color: bandColor),
-          const SizedBox(width: Spacing.sm),
-          Expanded(
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Checkbox(
+    return InkWell(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => TodoDetailScreen(todoId: todo.id),
+        ),
+      ),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 300),
+        opacity: todo.isDone ? 0.6 : 1.0,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: bandColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              const SizedBox(width: Spacing.sm),
+              Checkbox(
                 value: todo.isDone,
-                onChanged: (_) => context.read<AppState>().toggleTodoDone(todo.id),
+                onChanged: (_) =>
+                    context.read<AppState>().toggleTodoDone(todo.id),
               ),
-              title: Text(
-                todo.title,
-                maxLines: compact ? 1 : 2,
-                overflow: TextOverflow.ellipsis,
-                style: todo.isDone
-                    ? const TextStyle(decoration: TextDecoration.lineThrough)
-                    : null,
+              const SizedBox(width: Spacing.xs),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        todo.title,
+                        maxLines: compact ? 1 : 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 15,
+                          decoration: todo.isDone
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              subtitle: Text(subtitle),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => TodoDetailScreen(todoId: todo.id)),
-              ),
+              const Icon(Icons.chevron_right, size: 18),
+              ],
             ),
           ),
-        ],
+        ),
       ),
-    );
-
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 300),
-      opacity: todo.isDone ? 0.6 : 1.0,
-      child: tile,
     );
   }
 }

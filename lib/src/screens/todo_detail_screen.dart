@@ -1,11 +1,12 @@
 // lib/src/screens/todo_detail_screen.dart
 // Todo 詳細画面兼編集画面。表示/編集モードを切り替え可能。
-// 編集モードではタイトル・種類・期限・金額を変更できる。
+// Stitch デザインに合わせてカードベースのレイアウトに刷新。
 // 関連: screens/home_screen.dart, app_state.dart, utils/date_formatters.dart
 
 import 'dart:io' show File;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -180,35 +181,65 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     PersonProfile? child,
     DocumentRecord? document,
   ) {
+    final cs = Theme.of(context).colorScheme;
     return ListView(
       padding: const EdgeInsets.all(Spacing.md),
       children: [
+        // メイン情報カード
         Card(
           child: Padding(
             padding: const EdgeInsets.all(Spacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  todo.title,
-                  style: Theme.of(context).textTheme.headlineSmall,
+                // カテゴリバッジ
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: todo.category.color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    todo.category.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: todo.category.color,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: Spacing.sm),
-                Text('種類：${todo.category.label}'),
-                Text('期限：${formatDueDate(todo.dueDate)}'),
-                if (child != null) Text('対象：${child.name}'),
-                if (todo.amount != null) Text('金額：${todo.amount}円'),
-                const SizedBox(height: Spacing.md),
-                FilledButton.icon(
-                  onPressed: () =>
-                      context.read<AppState>().toggleTodoDone(todo.id),
-                  icon: Icon(todo.isDone ? Icons.undo : Icons.check),
-                  label: Text(todo.isDone ? '未完了に戻す' : '完了にする'),
+                Text(
+                  todo.title,
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
+                const SizedBox(height: Spacing.md),
+                _detailRow(Icons.event, '期限', formatDueDate(todo.dueDate)),
+                if (child != null)
+                  _detailRow(Icons.person, '対象', child.name),
+                if (todo.amount != null)
+                  _detailRow(Icons.monetization_on_outlined, '金額', '${todo.amount}円'),
               ],
             ),
           ),
         ),
+        const SizedBox(height: Spacing.md),
+
+        // 完了ボタン
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () =>
+                context.read<AppState>().toggleTodoDone(todo.id),
+            icon: Icon(todo.isDone ? Icons.undo : Icons.check_circle),
+            label: Text(todo.isDone ? '未完了に戻す' : '完了にする'),
+          ),
+        ),
+
+        // チェック項目
         if (todo.items.isNotEmpty) ...[
           const SizedBox(height: Spacing.md),
           Card(
@@ -217,15 +248,30 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'チェック項目',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  Row(
+                    children: [
+                      const Icon(Icons.checklist, size: 18),
+                      const SizedBox(width: Spacing.sm),
+                      Text('チェック項目',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${todo.items.where((i) => i.isChecked).length}/${todo.items.length}',
+                        style: TextStyle(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: Spacing.sm),
                   ...todo.items.map(
                     (item) => CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
                       value: item.isChecked,
                       title: Text(item.label),
+                      controlAffinity: ListTileControlAffinity.leading,
                       onChanged: (_) =>
                           context.read<AppState>().toggleItem(todo.id, item.id),
                     ),
@@ -235,6 +281,8 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
             ),
           ),
         ],
+
+        // メモ
         if (todo.note != null && todo.note!.trim().isNotEmpty) ...[
           const SizedBox(height: Spacing.md),
           Card(
@@ -243,17 +291,35 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'メモ・OCR全文',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  Row(
+                    children: [
+                      const Icon(Icons.description_outlined, size: 18),
+                      const SizedBox(width: Spacing.sm),
+                      Text('メモ・OCR全文',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: Spacing.sm),
                   SelectableText(todo.note!),
+                  const SizedBox(height: Spacing.sm),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: todo.note!));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('全文をコピーしました')),
+                      );
+                    },
+                    icon: const Icon(Icons.content_copy, size: 16),
+                    label: const Text('全文をコピー'),
+                  ),
                 ],
               ),
             ),
           ),
         ],
+
+        // 元画像
         if (document?.localImagePath != null) ...[
           const SizedBox(height: Spacing.md),
           Card(
@@ -262,7 +328,15 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('元画像', style: Theme.of(context).textTheme.titleMedium),
+                  Row(
+                    children: [
+                      const Icon(Icons.image_outlined, size: 18),
+                      const SizedBox(width: Spacing.sm),
+                      Text('元画像',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: Spacing.sm),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
@@ -272,8 +346,85 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
               ),
             ),
           ),
+        ] else ...[
+          const SizedBox(height: Spacing.md),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(Spacing.md),
+              child: Row(
+                children: [
+                  const Icon(Icons.image_outlined, size: 18),
+                  const SizedBox(width: Spacing.sm),
+                  Expanded(
+                    child: Text(
+                      'OCRスキャン元画像の履歴はありません',
+                      style: TextStyle(color: cs.onSurfaceVariant),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
+
+        // アクション
+        const SizedBox(height: Spacing.md),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('共有機能は準備中です')),
+                  );
+                },
+                icon: const Icon(Icons.share, size: 16),
+                label: const Text('共有'),
+              ),
+            ),
+            const SizedBox(width: Spacing.sm),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('カレンダー機能は準備中です')),
+                  );
+                },
+                icon: const Icon(Icons.calendar_month, size: 16),
+                label: const Text('カレンダーへ'),
+              ),
+            ),
+            const SizedBox(width: Spacing.sm),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _confirmDelete(todo),
+                icon: const Icon(Icons.delete_outline, size: 16),
+                label: const Text('削除'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: cs.error,
+                  side: BorderSide(color: cs.error.withValues(alpha: 0.5)),
+                ),
+              ),
+            ),
+          ],
+        ),
       ],
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, String value) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Spacing.sm),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: cs.onSurfaceVariant),
+          const SizedBox(width: Spacing.sm),
+          Text('$label：', style: TextStyle(color: cs.onSurfaceVariant)),
+          const SizedBox(width: Spacing.xs),
+          Text(value),
+        ],
+      ),
     );
   }
 
@@ -283,18 +434,12 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       children: [
         TextField(
           controller: _titleController,
-          decoration: const InputDecoration(
-            labelText: 'タイトル',
-            border: OutlineInputBorder(),
-          ),
+          decoration: const InputDecoration(labelText: 'タイトル'),
         ),
         const SizedBox(height: Spacing.md),
         DropdownButtonFormField<TodoCategory>(
           initialValue: _category,
-          decoration: const InputDecoration(
-            labelText: '種類',
-            border: OutlineInputBorder(),
-          ),
+          decoration: const InputDecoration(labelText: '種類'),
           items: TodoCategory.values
               .map((c) => DropdownMenuItem(value: c, child: Text(c.label)))
               .toList(),
@@ -330,26 +475,19 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
           controller: _itemsController,
           decoration: const InputDecoration(
             labelText: '持ち物・チェック項目',
-            border: OutlineInputBorder(),
             hintText: '水筒、体操着、集金袋',
           ),
         ),
         const SizedBox(height: Spacing.md),
         TextField(
           controller: _amountController,
-          decoration: const InputDecoration(
-            labelText: '金額',
-            border: OutlineInputBorder(),
-          ),
+          decoration: const InputDecoration(labelText: '金額'),
           keyboardType: TextInputType.number,
         ),
         const SizedBox(height: Spacing.md),
         TextField(
           controller: _noteController,
-          decoration: const InputDecoration(
-            labelText: 'メモ',
-            border: OutlineInputBorder(),
-          ),
+          decoration: const InputDecoration(labelText: 'メモ'),
           minLines: 3,
           maxLines: 6,
         ),
