@@ -1,5 +1,7 @@
 # プライバシーポリシー
 
+公開URL: `https://gist.githubusercontent.com/kaenozu/784d808fd74d5ed717beaaa087d7162e/raw/index.html`
+
 ## 1. 情報収集について
 本アプリ（あした持つもの）は、独自サーバーを運用しておらず、ユーザーが登録した子ども名、Todo、OCR処理済みテキスト、撮影画像を開発者のサーバーへ送信しません。
 
