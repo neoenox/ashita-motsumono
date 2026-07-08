@@ -19,6 +19,7 @@ import '../models/entities.dart';
 import '../theme/app_theme.dart';
 import '../services/ad_service.dart';
 import '../services/app_settings.dart';
+import '../services/export_service.dart';
 import '../services/purchase_provider.dart';
 import 'add_child_screen.dart';
 import 'add_todo_screen.dart';
@@ -353,16 +354,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-}
-
-AppSnapshot createExportSnapshot(AppState state) {
-  return AppSnapshot(
-    children: state.children,
-    todos: state.todos,
-    documents: state.documents
-        .map((d) => d.copyWith(clearLocalImagePath: true))
-        .toList(),
-  );
 }
 
 class _AdBanner extends StatefulWidget {
