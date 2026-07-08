@@ -348,16 +348,16 @@ class AppState extends ChangeNotifier {
   Future<void> _safeSchedule(AppTodo todo) async {
     try {
       await _notifications.scheduleTodo(todo);
-    } on Object {
-      if (kDebugMode) debugPrint('AppState: failed to schedule notification');
+    } on Object catch (e, s) {
+      if (kDebugMode) debugPrint('AppState: failed to schedule notification: $e\n$s');
     }
   }
 
   Future<void> _safeCancel(String todoId) async {
     try {
       await _notifications.cancelTodo(todoId);
-    } on Object {
-      if (kDebugMode) debugPrint('AppState: failed to cancel notification');
+    } on Object catch (e, s) {
+      if (kDebugMode) debugPrint('AppState: failed to cancel notification: $e\n$s');
     }
   }
 }
