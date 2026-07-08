@@ -12,6 +12,17 @@ import 'repositories/store.dart';
 import 'services/image_file_service.dart';
 import 'services/notification_service.dart';
 
+int _sortTodo(AppTodo a, AppTodo b) {
+  final ad = a.dueDate;
+  final bd = b.dueDate;
+  if (ad == null && bd == null) return a.createdAt.compareTo(b.createdAt);
+  if (ad == null) return 1;
+  if (bd == null) return -1;
+  final d = ad.compareTo(bd);
+  if (d != 0) return d;
+  return a.createdAt.compareTo(b.createdAt);
+}
+
 class AppState extends ChangeNotifier {
   AppState({required this._store, required this._notifications, Uuid? uuid})
     : _uuid = uuid ?? const Uuid();
@@ -214,13 +225,7 @@ class AppState extends ChangeNotifier {
     );
     _todos = [..._todos, todo];
     await _persist();
-    try {
-      await _notifications.scheduleTodo(todo);
-    } on Object {
-      if (kDebugMode) {
-        debugPrint('AppState error: failed to schedule notification');
-      }
-    }
+    await _safeSchedule(todo);
     notifyListeners();
     return todo;
   }
@@ -237,13 +242,7 @@ class AppState extends ChangeNotifier {
     _todos = _todos.map((e) => e.id == updated.id ? updated : e).toList();
     await _persist();
     if (rescheduleNotification) {
-      try {
-        await _notifications.scheduleTodo(updated);
-      } on Object {
-        if (kDebugMode) {
-          debugPrint('AppState error: failed to reschedule notification');
-        }
-      }
+      await _safeSchedule(updated);
     }
     notifyListeners();
   }
@@ -259,16 +258,10 @@ class AppState extends ChangeNotifier {
     );
     _todos = _todos.map((e) => e.id == id ? updated : e).toList();
     await _persist();
-    try {
-      if (updated.isDone) {
-        await _notifications.cancelTodo(updated.id);
-      } else {
-        await _notifications.scheduleTodo(updated);
-      }
-    } on Object {
-      if (kDebugMode) {
-        debugPrint('AppState error: failed to toggle notification');
-      }
+    if (updated.isDone) {
+      await _safeCancel(updated.id);
+    } else {
+      await _safeSchedule(updated);
     }
     notifyListeners();
   }
@@ -293,13 +286,7 @@ class AppState extends ChangeNotifier {
     _todos = _todos.where((todo) => todo.id != id).toList();
     final orphanDocuments = _cleanupOrphanDocuments();
     await _persist();
-    try {
-      await _notifications.cancelTodo(id);
-    } on Object {
-      if (kDebugMode) {
-        debugPrint('AppState error: failed to cancel notification on delete');
-      }
-    }
+    await _safeCancel(id);
     await _deleteDocumentImages(orphanDocuments);
     notifyListeners();
   }
@@ -308,13 +295,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> rescheduleAllNotifications() async {
     for (final todo in _todos) {
-      try {
-        await _notifications.scheduleTodo(todo);
-      } on Object {
-        if (kDebugMode) {
-          debugPrint('AppState error: failed to reschedule a notification');
-        }
-      }
+      await _safeSchedule(todo);
     }
   }
 
@@ -328,13 +309,7 @@ class AppState extends ChangeNotifier {
     _documents = [];
     await _store.clear();
     for (final todo in todosToCancel) {
-      try {
-        await _notifications.cancelTodo(todo.id);
-      } on Object {
-        if (kDebugMode) {
-          debugPrint('AppState error: failed to cancel notification on clear');
-        }
-      }
+      await _safeCancel(todo.id);
     }
     await _deleteDocumentImages(documentsToDelete);
     notifyListeners();
@@ -370,14 +345,19 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  int _sortTodo(AppTodo a, AppTodo b) {
-    final ad = a.dueDate;
-    final bd = b.dueDate;
-    if (ad == null && bd == null) return a.createdAt.compareTo(b.createdAt);
-    if (ad == null) return 1;
-    if (bd == null) return -1;
-    final d = ad.compareTo(bd);
-    if (d != 0) return d;
-    return a.createdAt.compareTo(b.createdAt);
+  Future<void> _safeSchedule(AppTodo todo) async {
+    try {
+      await _notifications.scheduleTodo(todo);
+    } on Object {
+      if (kDebugMode) debugPrint('AppState: failed to schedule notification');
+    }
+  }
+
+  Future<void> _safeCancel(String todoId) async {
+    try {
+      await _notifications.cancelTodo(todoId);
+    } on Object {
+      if (kDebugMode) debugPrint('AppState: failed to cancel notification');
+    }
   }
 }
