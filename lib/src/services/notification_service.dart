@@ -47,8 +47,14 @@ class NotificationService {
       requestSoundPermission: false,
     );
     const settings = InitializationSettings(android: android, iOS: ios);
-    await _plugin.initialize(settings: settings);
-    _initialized = true;
+    try {
+      await _plugin.initialize(settings: settings);
+      _initialized = true;
+      _initFuture = null;
+    } on Object {
+      _initFuture = null;
+      rethrow;
+    }
   }
 
   Future<void> requestPermissions() async {

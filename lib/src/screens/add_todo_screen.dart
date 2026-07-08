@@ -4,7 +4,7 @@
 // 関連: services/ocr_service.dart, services/extraction_service.dart,
 //       services/image_file_service.dart, screens/review_extraction_screen.dart
 
-import 'dart:io' show File;
+import 'dart:io' show File, Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -70,29 +70,36 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
         children: [
           Text('画像・スクショから登録', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: Spacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _busy
-                      ? null
-                      : () => _pickAndOcr(ImageSource.camera),
-                  icon: const Icon(Icons.photo_camera),
-                  label: const Text('写真を撮る'),
+          if (Platform.isWindows)
+            const Padding(
+              padding: EdgeInsets.only(bottom: Spacing.sm),
+              child: Text('カメラ・OCRはWindows未対応です。テキスト貼り付けまたは手入力を使ってください。',
+                  style: TextStyle(color: Colors.grey)),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => _pickAndOcr(ImageSource.camera),
+                    icon: const Icon(Icons.photo_camera),
+                    label: const Text('写真を撮る'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: Spacing.sm),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _busy
-                      ? null
-                      : () => _pickAndOcr(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library),
-                  label: const Text('画像を選ぶ'),
+                const SizedBox(width: Spacing.sm),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => _pickAndOcr(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library),
+                    label: const Text('画像を選ぶ'),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           if (_busy)
             const Padding(
               padding: EdgeInsets.only(top: Spacing.md),

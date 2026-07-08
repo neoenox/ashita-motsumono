@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../app_state.dart';
 import '../models/entities.dart';
+import '../theme/app_theme.dart';
 
 class AddChildScreen extends StatefulWidget {
   const AddChildScreen({super.key});
@@ -31,7 +32,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('人物管理')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Spacing.md),
         children: [
           TextField(
             controller: _controller,
@@ -43,15 +44,15 @@ class _AddChildScreenState extends State<AddChildScreen> {
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _add(context),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: Spacing.sm),
           FilledButton.icon(
             onPressed: () => _add(context),
             icon: const Icon(Icons.add),
             label: const Text('追加'),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: Spacing.lg),
           Text('登録済み', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+          const SizedBox(height: Spacing.sm),
           if (children.isEmpty)
             const Text('まだ登録されていません。')
           else

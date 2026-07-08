@@ -26,7 +26,12 @@ class OcrService {
   static const _androidOcrChannel = MethodChannel('ashita_motsumono/native_ocr');
 
   Future<String> recognize(File imageFile) async {
-    // 画像ファイルの存在・サイズを事前確認（R8最適化や権限問題の早期検知）
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      throw OcrException(
+        'OCRはAndroid/iOS専用です。Windowsではテキスト貼り付けを使ってください。',
+      );
+    }
+
     if (!await imageFile.exists()) {
       throw StateError('画像ファイルが見つかりません: ${imageFile.path}');
     }

@@ -3,10 +3,13 @@
 // 関連: main.dart, src/screens/home_screen.dart, src/screens/add_child_screen.dart,
 //       src/screens/todo_detail_screen.dart, src/app_state.dart
 
+import 'dart:io' show Platform;
+
 import 'package:ashita_motsumono/main.dart';
 import 'package:ashita_motsumono/src/app_state.dart';
 import 'package:ashita_motsumono/src/models/entities.dart';
 import 'package:ashita_motsumono/src/repositories/drift_store.dart';
+import 'package:ashita_motsumono/src/screens/home_screen.dart';
 import 'package:ashita_motsumono/src/services/app_settings.dart';
 import 'package:ashita_motsumono/src/services/notification_service.dart';
 import 'package:ashita_motsumono/src/services/purchase_provider.dart';
@@ -30,6 +33,8 @@ class _TestPurchaseProvider extends ChangeNotifier implements PurchaseProvider {
   _TestPurchaseProvider({
     this.adRemoved = false,
     this.priceLabel = '買い切り ¥190',
+    this.canPurchase = true,
+    this.statusMessage,
   });
 
   @override
@@ -40,6 +45,12 @@ class _TestPurchaseProvider extends ChangeNotifier implements PurchaseProvider {
 
   @override
   final String priceLabel;
+
+  @override
+  final bool canPurchase;
+
+  @override
+  final String? statusMessage;
 
   @override
   Future<void> get ready => Future<void>.value();
@@ -143,6 +154,51 @@ void main() {
     testWidgets('reports no corrupt data on normal load', (tester) async {
       final appState = await _createAppState();
       expect(appState.lastLoadHadCorruptData, isFalse);
+    });
+
+    testWidgets('opens supporter section from overflow menu', (tester) async {
+      final appState = await _createAppState();
+      final settings = await _createSettings();
+
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('サポーター'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('設定'), findsOneWidget);
+      expect(find.text('買い切りサポーター'), findsOneWidget);
+    });
+
+    test('creates export snapshot without local image paths', () async {
+      final appState = await _createAppState();
+      final doc = await appState.addDocument(
+        sourceType: 'camera',
+        localImagePath: '/private/photo.jpg',
+        ocrText: '明日までに水筒を持参',
+      );
+      await appState.addTodoFromDraft(
+        draft: const ExtractionDraft(
+          title: '水筒を持参',
+          category: TodoCategory.item,
+          items: ['水筒'],
+        ),
+        documentId: doc.id,
+      );
+
+      final snapshot = createExportSnapshot(appState);
+
+      expect(snapshot.documents.single.localImagePath, null);
+      expect(snapshot.documents.single.ocrText, '明日までに水筒を持参');
+      expect(snapshot.todos.single.documentId, doc.id);
     });
   });
 
@@ -350,6 +406,34 @@ void main() {
       expect(find.text('購入を復元'), findsOneWidget);
     });
 
+    testWidgets('shows purchase status when store product is unavailable', (
+      tester,
+    ) async {
+      final appState = await _createAppState();
+      final settings = await _createSettings();
+
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(
+            canPurchase: false,
+            statusMessage: '購入アイテムを準備中です。しばらくしてからもう一度お試しください。',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.settings));
+      await tester.pumpAndSettle();
+
+      expect(find.text('購入アイテムを準備中です。しばらくしてからもう一度お試しください。'), findsOneWidget);
+      final button = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, '広告を消して応援する'),
+      );
+      expect(button.onPressed, null);
+    });
+
     testWidgets('shows supporter thank-you when ads are removed', (
       tester,
     ) async {
@@ -376,6 +460,7 @@ void main() {
       final appState = await _createAppState();
       final settings = await _createSettings();
       await appState.addChild('長女');
+      await settings.addLearnedItemLabels(['軍手']);
       await appState.addTodoFromDraft(
         draft: const ExtractionDraft(
           title: '水筒を持参',
@@ -406,6 +491,7 @@ void main() {
       expect(appState.children, isEmpty);
       expect(appState.todos, isEmpty);
       expect(appState.documents, isEmpty);
+      expect(settings.learnedItemLabels, isEmpty);
       expect(find.text('登録データを削除しました'), findsOneWidget);
     });
   });
@@ -429,8 +515,14 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('画像・スクショから登録'), findsOneWidget);
-      expect(find.text('写真を撮る'), findsOneWidget);
-      expect(find.text('画像を選ぶ'), findsOneWidget);
+      if (Platform.isWindows) {
+        expect(find.text('写真を撮る'), findsNothing);
+        expect(find.text('画像を選ぶ'), findsNothing);
+        expect(find.textContaining('カメラ・OCRはWindows未対応'), findsOneWidget);
+      } else {
+        expect(find.text('写真を撮る'), findsOneWidget);
+        expect(find.text('画像を選ぶ'), findsOneWidget);
+      }
       expect(find.text('OCRテキストを貼り付けて抽出'), findsOneWidget);
       expect(find.text('手動で入力する'), findsOneWidget);
     });

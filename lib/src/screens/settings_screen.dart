@@ -142,6 +142,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       await appState.clearAllData();
+      await settings.clearLearnedItemLabels();
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('登録データを削除しました')));
     } on Object catch (e) {
@@ -245,7 +246,9 @@ class _SupporterCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: purchase.busy ? null : purchase.purchase,
+                      onPressed: purchase.canPurchase
+                          ? purchase.purchase
+                          : null,
                       icon: purchase.busy
                           ? const SizedBox(
                               width: 18,
@@ -258,6 +261,13 @@ class _SupporterCard extends StatelessWidget {
                   ),
                 ],
               ),
+              if (purchase.statusMessage != null) ...[
+                const SizedBox(height: Spacing.sm),
+                Text(
+                  purchase.statusMessage!,
+                  style: TextStyle(color: cs.error),
+                ),
+              ],
               const SizedBox(height: Spacing.sm),
               Row(
                 children: [
@@ -309,7 +319,12 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(Spacing.md, Spacing.lg, Spacing.md, Spacing.sm),
+      padding: const EdgeInsets.fromLTRB(
+        Spacing.md,
+        Spacing.lg,
+        Spacing.md,
+        Spacing.sm,
+      ),
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(

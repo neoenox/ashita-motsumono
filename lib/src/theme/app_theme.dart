@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/enums.dart';
+
 class AppTheme {
   AppTheme._();
 
@@ -29,9 +30,7 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         elevation: 1,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         clipBehavior: Clip.antiAlias,
       ),
       textTheme: const TextTheme(
@@ -44,9 +43,7 @@ class AppTheme {
         bodySmall: TextStyle(fontWeight: FontWeight.w400),
       ),
       inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 12,
@@ -85,12 +82,12 @@ class CategoryColors {
 
 extension TodoCategoryColor on TodoCategory {
   Color get color => switch (this) {
-        TodoCategory.payment => CategoryColors.payment,
-        TodoCategory.submit => CategoryColors.submit,
-        TodoCategory.event => CategoryColors.event,
-        TodoCategory.item => CategoryColors.item,
-        TodoCategory.other => CategoryColors.other,
-      };
+    TodoCategory.payment => CategoryColors.payment,
+    TodoCategory.submit => CategoryColors.submit,
+    TodoCategory.event => CategoryColors.event,
+    TodoCategory.item => CategoryColors.item,
+    TodoCategory.other => CategoryColors.other,
+  };
 }
 
 class Spacing {

@@ -355,17 +355,13 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _deleteDocumentImages(List<DocumentRecord> documents) async {
-    for (final document in documents) {
-      final path = document.localImagePath;
-      if (path == null || path.isEmpty) continue;
-      try {
-        await ImageFileService.deleteIfExists(path);
-      } on Object {
-        if (kDebugMode) {
-          debugPrint('AppState error: failed to delete document image');
-        }
-      }
-    }
+    await Future.wait(
+      documents.where((d) => d.localImagePath != null && d.localImagePath!.isNotEmpty).map(
+        (d) => ImageFileService.deleteIfExists(d.localImagePath!).catchError((_) {
+          if (kDebugMode) debugPrint('AppState error: failed to delete document image');
+        }),
+      ),
+    );
   }
 
   Future<void> _persist() {

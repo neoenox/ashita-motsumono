@@ -18,4 +18,16 @@ void main() {
       expect(settings.learnedItemLabels, ['軍手', '水筒']);
     },
   );
+
+  test('clears learned item labels without changing purchase state', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = AppSettings(await SharedPreferences.getInstance());
+
+    await settings.addLearnedItemLabels(['軍手', '水筒']);
+    await settings.setAdRemoved(true);
+    await settings.clearLearnedItemLabels();
+
+    expect(settings.learnedItemLabels, isEmpty);
+    expect(settings.adRemoved, isTrue);
+  });
 }

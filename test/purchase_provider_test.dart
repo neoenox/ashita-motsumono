@@ -37,32 +37,74 @@ void main() {
     ]);
     expect(gateway.restoreCount, 1);
   });
+
+  test('reports unavailable store before purchase', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = AppSettings(await SharedPreferences.getInstance());
+    final gateway = _FakePurchaseGateway(available: false);
+
+    final provider = PurchaseProvider(settings, gateway: gateway);
+    await provider.ready;
+
+    expect(provider.canPurchase, isFalse);
+    expect(provider.statusMessage, 'ストアに接続できないため、購入は現在利用できません。');
+
+    await provider.purchase();
+
+    expect(gateway.buyCount, 0);
+  });
+
+  test('reports missing store product before purchase', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = AppSettings(await SharedPreferences.getInstance());
+    final gateway = _FakePurchaseGateway(
+      notFoundIDs: [PurchaseProvider.productId],
+    );
+
+    final provider = PurchaseProvider(settings, gateway: gateway);
+    await provider.ready;
+
+    expect(provider.canPurchase, isFalse);
+    expect(provider.statusMessage, '購入アイテムを準備中です。しばらくしてからもう一度お試しください。');
+
+    await provider.purchase();
+
+    expect(gateway.buyCount, 0);
+  });
 }
 
 class _FakePurchaseGateway implements PurchaseGateway {
-  _FakePurchaseGateway({this.productDetails = const []});
+  _FakePurchaseGateway({
+    this.available = true,
+    this.productDetails = const [],
+    this.notFoundIDs = const [],
+  });
 
+  final bool available;
   final List<ProductDetails> productDetails;
+  final List<String> notFoundIDs;
   final List<Set<String>> queriedIds = [];
   int restoreCount = 0;
+  int buyCount = 0;
 
   @override
   Stream<List<PurchaseDetails>> get purchaseStream => const Stream.empty();
 
   @override
-  Future<bool> isAvailable() async => true;
+  Future<bool> isAvailable() async => available;
 
   @override
   Future<ProductDetailsResponse> queryProductDetails(Set<String> ids) async {
     queriedIds.add(Set<String>.from(ids));
     return ProductDetailsResponse(
       productDetails: productDetails,
-      notFoundIDs: const [],
+      notFoundIDs: notFoundIDs,
     );
   }
 
   @override
   Future<bool> buyNonConsumable({required PurchaseParam purchaseParam}) async {
+    buyCount += 1;
     return true;
   }
 

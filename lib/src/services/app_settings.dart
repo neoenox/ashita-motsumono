@@ -62,6 +62,10 @@ class AppSettings {
     );
   }
 
+  Future<void> clearLearnedItemLabels() async {
+    await _prefs.remove(_keyLearnedItemLabels);
+  }
+
   static bool _isUsefulItemLabel(String label) {
     if (label.isEmpty) return false;
     if (label.length > 32) return false;

@@ -77,6 +77,12 @@ class PurchaseProvider extends ChangeNotifier {
   bool _busy = false;
   bool get busy => _busy;
 
+  bool _storeAvailable = false;
+  bool _productLoaded = false;
+  String? _statusMessage;
+  bool get canPurchase => _storeAvailable && _productLoaded && !_busy;
+  String? get statusMessage => _statusMessage;
+
   String? _storePrice;
   String get priceLabel =>
       _storePrice == null ? '価格は購入前に表示' : '買い切り $_storePrice';
@@ -91,11 +97,18 @@ class PurchaseProvider extends ChangeNotifier {
     try {
       _adRemoved = _settings.adRemoved;
       final available = await _purchase.isAvailable();
-      if (!available) return;
+      _storeAvailable = available;
+      if (!available) {
+        _statusMessage = 'ストアに接続できないため、購入は現在利用できません。';
+        notifyListeners();
+        return;
+      }
       _subscription = _purchase.purchaseStream.listen(_onPurchase);
       await _loadProductDetails();
       unawaited(_purchase.restorePurchases());
     } on Object catch (e) {
+      _statusMessage = '購入情報の確認に失敗しました。時間をおいてもう一度お試しください。';
+      notifyListeners();
       if (kDebugMode) debugPrint('PurchaseProvider: init failed - $e');
     }
   }
@@ -127,7 +140,11 @@ class PurchaseProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final available = await _purchase.isAvailable();
-      if (!available) return;
+      _storeAvailable = available;
+      if (!available) {
+        _statusMessage = 'ストアに接続できないため、購入は現在利用できません。';
+        return;
+      }
       final product = await _loadProductDetails();
       if (product == null) return;
       await _purchase.buyNonConsumable(
@@ -145,7 +162,11 @@ class PurchaseProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final available = await _purchase.isAvailable();
-      if (!available) return;
+      _storeAvailable = available;
+      if (!available) {
+        _statusMessage = 'ストアに接続できないため、購入は現在利用できません。';
+        return;
+      }
       await _purchase.restorePurchases();
     } finally {
       _busy = false;
@@ -158,6 +179,12 @@ class PurchaseProvider extends ChangeNotifier {
     final product = productDetails.productDetails.firstOrNull;
     if (product != null) {
       _storePrice = product.price;
+      _productLoaded = true;
+      _statusMessage = null;
+      notifyListeners();
+    } else {
+      _productLoaded = false;
+      _statusMessage = '購入アイテムを準備中です。しばらくしてからもう一度お試しください。';
       notifyListeners();
     }
     return product;

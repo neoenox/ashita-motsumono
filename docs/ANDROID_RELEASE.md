@@ -20,7 +20,7 @@ keytool -genkeypair \
 
 ## 2. GitHub Secretsを登録する
 
-`upload-keystore.jks` をBase64化して `KEYSTORE_BASE64` に登録します。
+`upload-keystore.jks` をBase64化して `KEYSTORE_BASE64` に登録します。Play Store提出用のRelease Android workflowでは、署名情報に加えてAdMob本番IDも必須です。
 
 ```bash
 base64 -w 0 upload-keystore.jks
@@ -50,8 +50,8 @@ Windows PowerShellの場合:
 `v*` タグをpushするか、GitHub Actionsから `Release Android` を手動実行します。
 
 ```bash
-git tag v0.4.1
-git push origin v0.4.1
+git tag v0.6.0
+git push origin v0.6.0
 ```
 
 生成物:
@@ -65,5 +65,6 @@ Play StoreへはAABを提出します。APKは実機での最終確認に使い�
 
 - Android実機でカメラ撮影、画像選択、日本語OCR、通知許可、通知予約を確認する。
 - 課金商品ID `remove_ads`、またはRepository Variable `IAP_REMOVE_ADS_PRODUCT_ID` がPlay Console側のアプリ内アイテムと一致していることを確認する。
-- AdMobの本番App IDと広告ユニットIDがGitHub Secretsに入っていることを確認する。
+- AdMobの本番App IDと広告ユニットIDがGitHub Secretsに入っていることを確認する。未設定の場合、`Release Android` ワークフローは失敗します。
+- `ADMOB_BANNER_AD_UNIT_ID` が未設定のビルドではバナー広告を読み込みません。Play Store提出ビルドでは本番広告ユニットIDを必ず設定してください。
 - プライバシーポリシーURLをPlay Consoleに登録する。

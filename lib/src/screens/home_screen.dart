@@ -100,14 +100,10 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await appState.requestNotificationPermissions();
       if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(content: Text('通知設定を確認しました')),
-      );
+      messenger.showSnackBar(const SnackBar(content: Text('通知設定を確認しました')));
     } on Object catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('通知設定を確認できませんでした: $e')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('通知設定を確認できませんでした: $e')));
     }
   }
 
@@ -117,58 +113,77 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) => AlertDialog(
         title: const Text('データをエクスポート'),
         content: const Text(
-          '人物名、Todo、OCR全文、端末内画像パスを含むJSONをクリップボードにコピーします。'
+          '人物名、Todo、OCR全文を含むJSONをクリップボードにコピーします。'
+          '保存画像のファイル本体と端末内画像パスは含めません。'
           '他のアプリに貼り付けると個人情報が含まれる可能性があります。',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('コピーする')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('コピーする'),
+          ),
         ],
       ),
     );
     if (!mounted || shouldExport != true) return;
 
-    final sanitized = AppSnapshot(
-      children: state.children,
-      todos: state.todos,
-      documents: state.documents.map((d) => d.copyWith(localImagePath: null)).toList(),
-    );
+    final sanitized = createExportSnapshot(state);
     final json = const JsonEncoder.withIndent('  ').convert(sanitized.toJson());
     await Clipboard.setData(ClipboardData(text: json));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('データをクリップボードにコピーしました')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('データをクリップボードにコピーしました')));
   }
 
   Future<void> _copyCorruptBackup(AppState state) async {
     final backup = state.loadCorruptBackup();
     if (backup == null || backup.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('退避データが見つかりませんでした')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('退避データが見つかりませんでした')));
       return;
     }
     await Clipboard.setData(ClipboardData(text: backup));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('退避データをクリップボードにコピーしました')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('退避データをクリップボードにコピーしました')));
   }
 
   List<AppTodo> _filter(List<AppTodo> todos, List<PersonProfile> children) {
     final childMap = {for (final c in children) c.id: c};
     return todos.where((t) {
-      if (!_showCompleted && t.isDone) return false;
-      if (_filterPersonId != null && t.personId != _filterPersonId) return false;
-      if (_searchQuery.isEmpty) return true;
+      if (!_showCompleted && t.isDone) {
+        return false;
+      }
+      if (_filterPersonId != null && t.personId != _filterPersonId) {
+        return false;
+      }
+      if (_searchQuery.isEmpty) {
+        return true;
+      }
       final q = _searchQuery.toLowerCase();
-      if (t.title.toLowerCase().contains(q)) return true;
-      if (t.category.label.contains(q)) return true;
-      if (t.note?.toLowerCase().contains(q) == true) return true;
-      if (t.amount?.toString().contains(q) == true) return true;
+      if (t.title.toLowerCase().contains(q)) {
+        return true;
+      }
+      if (t.category.label.contains(q)) {
+        return true;
+      }
+      if (t.note?.toLowerCase().contains(q) == true) {
+        return true;
+      }
+      if (t.amount?.toString().contains(q) == true) {
+        return true;
+      }
       final child = childMap[t.personId];
-      if (child?.name.toLowerCase().contains(q) == true) return true;
+      if (child?.name.toLowerCase().contains(q) == true) {
+        return true;
+      }
       return false;
     }).toList();
   }
@@ -183,7 +198,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final undated = _filter(state.undatedTodos(), state.children);
     final upcoming = _filter(state.futureTodos(), state.children);
     final allFiltered =
-        todayTodos.isEmpty && tomorrowTodos.isEmpty && undated.isEmpty && upcoming.isEmpty;
+        todayTodos.isEmpty &&
+        tomorrowTodos.isEmpty &&
+        undated.isEmpty &&
+        upcoming.isEmpty;
 
     return Scaffold(
       appBar: AppBar(
@@ -193,21 +211,41 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: '設定',
             icon: const Icon(Icons.settings),
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => SettingsScreen(settings: widget.settings)),
+              MaterialPageRoute(
+                builder: (_) => SettingsScreen(settings: widget.settings),
+              ),
             ),
           ),
           IconButton(
             tooltip: '人物を追加',
             icon: const Icon(Icons.person_add),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AddChildScreen()),
-            ),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const AddChildScreen())),
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == 'export') unawaited(_exportData(state));
+              if (value == 'supporter') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SettingsScreen(settings: widget.settings),
+                  ),
+                );
+              }
+              if (value == 'export') {
+                unawaited(_exportData(state));
+              }
             },
             itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'supporter',
+                child: ListTile(
+                  leading: Icon(Icons.workspace_premium),
+                  title: Text('サポーター'),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
               const PopupMenuItem(
                 value: 'export',
                 child: ListTile(
@@ -230,8 +268,13 @@ class _HomeScreenState extends State<HomeScreen> {
               decoration: InputDecoration(
                 hintText: '検索…',
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                contentPadding: EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: Spacing.md,
+                  vertical: Spacing.sm,
+                ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear),
@@ -254,20 +297,33 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           Expanded(
             child: ListView(
-              padding: EdgeInsets.fromLTRB(Spacing.md, Spacing.sm, Spacing.md, 96),
+              padding: EdgeInsets.fromLTRB(
+                Spacing.md,
+                Spacing.sm,
+                Spacing.md,
+                96,
+              ),
               children: [
                 if (state.lastLoadHadCorruptData) ...[
-                  CorruptDataCard(onCopy: () => unawaited(_copyCorruptBackup(state))),
+                  CorruptDataCard(
+                    onCopy: () => unawaited(_copyCorruptBackup(state)),
+                  ),
                   const SizedBox(height: Spacing.sm),
                 ],
-                if (state.children.isEmpty) FirstRunCard(
-                  onAddPerson: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const AddChildScreen()),
+                if (state.children.isEmpty)
+                  FirstRunCard(
+                    onAddPerson: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const AddChildScreen()),
+                    ),
                   ),
-                ),
-                if (state.children.isNotEmpty && allFiltered && _searchQuery.isEmpty && state.todos.isEmpty)
+                if (state.children.isNotEmpty &&
+                    allFiltered &&
+                    _searchQuery.isEmpty &&
+                    state.todos.isEmpty)
                   const EmptyState(),
-                if (state.children.isNotEmpty && allFiltered && _searchQuery.isNotEmpty)
+                if (state.children.isNotEmpty &&
+                    allFiltered &&
+                    _searchQuery.isNotEmpty)
                   NoSearchResults(query: _searchQuery),
                 if (todayTodos.isNotEmpty || _searchQuery.isEmpty) ...[
                   TodoSection(title: '今日やること', todos: todayTodos),
@@ -287,19 +343,26 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: context.watch<PurchaseProvider>().adRemoved
           ? null
-          : SafeArea(
-              bottom: true,
-              child: const _AdBanner(),
-            ),
+          : SafeArea(bottom: true, child: const _AdBanner()),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AddTodoScreen()),
-        ),
+        onPressed: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const AddTodoScreen())),
         icon: const Icon(Icons.add),
         label: const Text('追加'),
       ),
     );
   }
+}
+
+AppSnapshot createExportSnapshot(AppState state) {
+  return AppSnapshot(
+    children: state.children,
+    todos: state.todos,
+    documents: state.documents
+        .map((d) => d.copyWith(clearLocalImagePath: true))
+        .toList(),
+  );
 }
 
 class _AdBanner extends StatefulWidget {
@@ -311,6 +374,7 @@ class _AdBanner extends StatefulWidget {
 
 class _AdBannerState extends State<_AdBanner> {
   BannerAd? _ad;
+  BannerAd? _loadingAd;
 
   @override
   void initState() {
@@ -320,13 +384,35 @@ class _AdBannerState extends State<_AdBanner> {
 
   void _load() {
     final size = AdSize.fullBanner;
-    final ad = AdService.createBannerAd(size: size);
+    final ad = AdService.createBannerAd(
+      size: size,
+      onLoaded: (loadedAd) {
+        if (!mounted) {
+          loadedAd.dispose();
+          return;
+        }
+        setState(() {
+          _loadingAd = null;
+          _ad = loadedAd;
+        });
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() {
+          _loadingAd = null;
+          _ad = null;
+        });
+      },
+    );
+    if (ad == null) return;
+
+    _loadingAd = ad;
     ad.load();
-    setState(() => _ad = ad);
   }
 
   @override
   void dispose() {
+    _loadingAd?.dispose();
     _ad?.dispose();
     super.dispose();
   }
