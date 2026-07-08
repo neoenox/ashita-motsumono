@@ -6,6 +6,8 @@
 // 関連: lib/src/services/notification_service.dart
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ashita_motsumono/src/services/app_settings.dart';
 import 'package:ashita_motsumono/src/services/notification_service.dart';
 
 void main() {
@@ -20,9 +22,16 @@ void main() {
       expect(service, isNotNull);
     });
 
-    test('can construct with settings', () {
-      final service = NotificationService(timezoneName: 'Asia/Tokyo');
+    test('can construct with settings', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final settings = AppSettings(prefs);
+      final service = NotificationService(
+        settings: settings,
+        timezoneName: 'Asia/Tokyo',
+      );
       expect(service, isNotNull);
+      expect(service.settings, same(settings));
     });
 
     test('multiple instances are independent', () {
