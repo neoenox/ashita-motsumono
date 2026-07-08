@@ -10,6 +10,12 @@ import '../services/app_settings.dart';
 import '../services/purchase_provider.dart';
 import '../theme/app_theme.dart';
 
+final _themeModes = {
+  ThemeMode.system: 'システム',
+  ThemeMode.light: 'ライト',
+  ThemeMode.dark: 'ダーク',
+};
+
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.settings});
 
@@ -60,6 +66,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
               '通知時刻を変更すると、登録済みの未完了Todo通知も新しい時刻で再予約されます。',
               style: TextStyle(color: Colors.grey, fontSize: 13),
             ),
+          ),
+          const Divider(),
+          const _SectionHeader('テーマ'),
+          Consumer<AppSettings>(
+            builder: (context, settings, _) {
+              final current = settings.themeMode;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SegmentedButton<ThemeMode>(
+                      segments: _themeModes.entries.map((e) {
+                        return ButtonSegment<ThemeMode>(
+                          value: e.key,
+                          label: Text(e.value),
+                        );
+                      }).toList(),
+                      selected: {current},
+                      onSelectionChanged: (selected) {
+                        settings.setThemeMode(selected.first);
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
           const Divider(),
           const _SectionHeader('サポーター'),

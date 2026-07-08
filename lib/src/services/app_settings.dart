@@ -2,9 +2,10 @@
 // SharedPreferences で通知時刻などのアプリ設定を管理する。
 // 関連: settings_screen.dart, notification_service.dart, main.dart
 
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class AppSettings {
+class AppSettings extends ChangeNotifier {
   AppSettings(this._prefs);
 
   final SharedPreferences _prefs;
@@ -18,6 +19,12 @@ class AppSettings {
   int get sameMorningMinute =>
       _prefs.getInt(_keySameMorningMinute) ?? defaultSameMorningMinute;
 
+  ThemeMode get themeMode => switch (_prefs.getString(_keyThemeMode)) {
+    'dark' => ThemeMode.dark,
+    'light' => ThemeMode.light,
+    _ => ThemeMode.system,
+  };
+
   /// 広告除去購入済みなら true
   bool get adRemoved => _prefs.getBool(_keyAdRemoved) ?? false;
 
@@ -30,6 +37,7 @@ class AppSettings {
   static const defaultSameMorningHour = 7;
   static const defaultSameMorningMinute = 0;
 
+  static const _keyThemeMode = 'theme_mode';
   static const _keyPreviousNightHour = 'notification_previous_night_hour';
   static const _keyPreviousNightMinute = 'notification_previous_night_minute';
   static const _keySameMorningHour = 'notification_same_morning_hour';
@@ -60,6 +68,16 @@ class AppSettings {
       _keyLearnedItemLabels,
       merged.take(100).toList(),
     );
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    final raw = switch (mode) {
+      ThemeMode.dark => 'dark',
+      ThemeMode.light => 'light',
+      ThemeMode.system => 'system',
+    };
+    await _prefs.setString(_keyThemeMode, raw);
+    notifyListeners();
   }
 
   Future<void> clearLearnedItemLabels() async {

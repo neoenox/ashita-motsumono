@@ -16,11 +16,13 @@ import 'src/repositories/drift_store.dart';
 import 'src/screens/home_screen.dart';
 import 'src/services/ad_service.dart';
 import 'src/services/app_settings.dart';
+import 'src/services/crash_reporter.dart';
 import 'src/services/notification_service.dart';
 import 'src/services/purchase_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await CrashReporter.init();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   final prefs = await SharedPreferences.getInstance();
   final settings = AppSettings(prefs);
@@ -55,15 +57,20 @@ class AshitaMotsumonoApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: appState),
-        Provider.value(value: settings),
+        ChangeNotifierProvider.value(value: settings),
         ChangeNotifierProvider.value(value: purchaseProvider),
       ],
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'あした持つもの',
-        theme: AppTheme.light(),
-        home: HomeScreen(settings: settings),
-      ),
+      builder: (context, _) {
+        final currentSettings = context.watch<AppSettings>();
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'あした持つもの',
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: currentSettings.themeMode,
+          home: HomeScreen(settings: settings),
+        );
+      },
     );
   }
 }

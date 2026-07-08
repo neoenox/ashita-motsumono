@@ -10,11 +10,14 @@ import '../models/enums.dart';
 class AppTheme {
   AppTheme._();
 
-  static ThemeData light() {
+  static ThemeData light() => _build(Brightness.light);
+  static ThemeData dark() => _build(Brightness.dark);
+
+  static ThemeData _build(Brightness brightness) {
     const seedColor = Color(0xFF2F7D6E);
     final cs = ColorScheme.fromSeed(
       seedColor: seedColor,
-      brightness: Brightness.light,
+      brightness: brightness,
     );
 
     return ThemeData(
