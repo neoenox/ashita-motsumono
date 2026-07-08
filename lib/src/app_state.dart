@@ -119,6 +119,20 @@ class AppState extends ChangeNotifier {
     return _documents.where((d) => d.id == id).firstOrNull;
   }
 
+  // 人物に割り当てる色のパレット（視覚的に離れた色）
+  static const _personColors = <Color>[
+    Color(0xFFE53935), // 赤
+    Color(0xFF1E88E5), // 青
+    Color(0xFF43A047), // 緑
+    Color(0xFFFB8C00), // 橙
+    Color(0xFF8E24AA), // 紫
+    Color(0xFF00ACC1), // シアン
+    Color(0xFFD81B60), // ピンク
+    Color(0xFF3949AB), // インジゴ
+    Color(0xFF6D4C41), // 茶
+    Color(0xFF546E7A), // 青灰
+  ];
+
   // ── 人物 CRUD ──────────────────────────────────────────
 
   Future<PersonProfile> addChild(String name) async {
@@ -126,7 +140,7 @@ class AppState extends ChangeNotifier {
     final child = PersonProfile(
       id: _uuid.v4(),
       name: name.trim(),
-      colorValue: Colors.primaries[_children.length % Colors.primaries.length]
+      colorValue: _personColors[_children.length % _personColors.length]
           .toARGB32(),
       createdAt: now,
       updatedAt: now,

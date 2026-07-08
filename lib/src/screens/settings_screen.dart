@@ -1,5 +1,6 @@
 // lib/src/screens/settings_screen.dart
 // 通知時刻などをカスタマイズする設定画面。
+// Stitch デザインに合わせてカードベースのレイアウトに刷新。
 // 関連: app_settings.dart, home_screen.dart, notification_service.dart
 
 import 'package:flutter/material.dart';
@@ -30,91 +31,151 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('設定')),
       body: ListView(
+        padding: EdgeInsets.fromLTRB(
+          Spacing.md, Spacing.md, Spacing.md,
+          MediaQuery.paddingOf(context).bottom + Spacing.lg,
+        ),
         children: [
-          const _SectionHeader('通知時刻'),
-          _TimeTile(
-            icon: Icons.nightlight_round,
-            title: '前日（夜）',
-            subtitle:
-                '前日の${_fmt(settings.previousNightHour, settings.previousNightMinute)}に通知',
-            onTap: () => _pickTime(
-              context,
-              settings.previousNightHour,
-              settings.previousNightMinute,
-              (h, m) => settings.setPreviousNightTime(h, m),
-            ),
-          ),
-          _TimeTile(
-            icon: Icons.wb_sunny_outlined,
-            title: '当日（朝）',
-            subtitle:
-                '当日の${_fmt(settings.sameMorningHour, settings.sameMorningMinute)}に通知',
-            onTap: () => _pickTime(
-              context,
-              settings.sameMorningHour,
-              settings.sameMorningMinute,
-              (h, m) => settings.setSameMorningTime(h, m),
-            ),
-          ),
-          const Divider(),
-          const Padding(
-            padding: EdgeInsets.all(Spacing.md),
+          Padding(
+            padding: const EdgeInsets.only(bottom: Spacing.md),
             child: Text(
-              '通知時刻を変更すると、登録済みの未完了Todo通知も新しい時刻で再予約されます。',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+              '通知やサポーター機能の管理ができます',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
             ),
           ),
-          const Divider(),
-          const _SectionHeader('テーマ'),
-          Consumer<AppSettings>(
-            builder: (context, settings, _) {
-              final current = settings.themeMode;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SegmentedButton<ThemeMode>(
-                      segments: _themeModes.entries.map((e) {
-                        return ButtonSegment<ThemeMode>(
-                          value: e.key,
-                          label: Text(e.value),
-                        );
-                      }).toList(),
-                      selected: {current},
-                      onSelectionChanged: (selected) {
-                        settings.setThemeMode(selected.first);
-                      },
-                    ),
-                  ],
+          _SectionCard(
+            icon: Icons.notifications_outlined,
+            title: '通知時刻',
+            description: '前日と当日のリマインド通知を設定します',
+            child: Column(
+              children: [
+                _TimeTile(
+                  icon: Icons.nightlight_round,
+                  title: '夜 前日 ${_fmt(settings.previousNightHour, settings.previousNightMinute)}',
+                  subtitle: '前日の持ち物を確認しましょう',
+                  onTap: () => _pickTime(
+                    context,
+                    settings.previousNightHour,
+                    settings.previousNightMinute,
+                    (h, m) => settings.setPreviousNightTime(h, m),
+                  ),
                 ),
-              );
-            },
-          ),
-          const Divider(),
-          const _SectionHeader('サポーター'),
-          Consumer<PurchaseProvider>(
-            builder: (context, purchase, _) {
-              return _SupporterCard(purchase: purchase);
-            },
-          ),
-          const Divider(),
-          const _SectionHeader('データ管理'),
-          ListTile(
-            leading: Icon(
-              Icons.delete_outline,
-              color: Theme.of(context).colorScheme.error,
+                const Divider(),
+                _TimeTile(
+                  icon: Icons.wb_sunny_outlined,
+                  title: '朝 当日 ${_fmt(settings.sameMorningHour, settings.sameMorningMinute)}',
+                  subtitle: '最終チェックで安心な1日を',
+                  onTap: () => _pickTime(
+                    context,
+                    settings.sameMorningHour,
+                    settings.sameMorningMinute,
+                    (h, m) => settings.setSameMorningTime(h, m),
+                  ),
+                ),
+              ],
             ),
+          ),
+          const SizedBox(height: Spacing.sm),
+          _SectionCard(
+            icon: Icons.palette_outlined,
+            title: 'テーマ',
+            child: Consumer<AppSettings>(
+              builder: (context, settings, _) {
+                final current = settings.themeMode;
+                return Padding(
+                  padding: const EdgeInsets.only(top: Spacing.sm),
+                  child: SegmentedButton<ThemeMode>(
+                    segments: _themeModes.entries.map((e) {
+                      return ButtonSegment<ThemeMode>(
+                        value: e.key,
+                        label: Text(e.value),
+                      );
+                    }).toList(),
+                    selected: {current},
+                    onSelectionChanged: (selected) {
+                      settings.setThemeMode(selected.first);
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: Spacing.sm),
+          _SectionCard(
+            icon: Icons.volunteer_activism_outlined,
+            title: 'サポーター',
+            description: '広告除去と開発支援',
+            child: Consumer<PurchaseProvider>(
+              builder: (context, purchase, _) => _SupporterCard(purchase: purchase),
+            ),
+          ),
+          const SizedBox(height: Spacing.lg),
+          const Divider(),
+          const SizedBox(height: Spacing.sm),
+          ListTile(
+            leading: Icon(Icons.delete_outline, color: cs.error),
             title: const Text('登録データをすべて削除'),
-            subtitle: const Text('人物、Todo、読み取り履歴、保存画像をこの端末から削除します'),
+            subtitle: const Text('人物、Todo、履歴、保存画像をこの端末から削除します'),
+            contentPadding: EdgeInsets.zero,
             onTap: () => _confirmClearAllData(context),
           ),
           const SizedBox(height: Spacing.lg),
+          const Divider(),
+          const SizedBox(height: Spacing.sm),
+          Text('その他', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: Spacing.sm),
+          ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const Text('使い方ガイド'),
+            trailing: const Icon(Icons.open_in_new, size: 16),
+            contentPadding: EdgeInsets.zero,
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('使い方ガイドは準備中です')),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.policy_outlined),
+            title: const Text('プライバシーポリシー'),
+            trailing: const Icon(Icons.chevron_right, size: 16),
+            contentPadding: EdgeInsets.zero,
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('準備中です')),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.mail_outline),
+            title: const Text('お問い合わせ'),
+            trailing: const Icon(Icons.chevron_right, size: 16),
+            contentPadding: EdgeInsets.zero,
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('準備中です')),
+              );
+            },
+          ),
+          const SizedBox(height: Spacing.lg),
+          Center(
+            child: Text(
+              'Version 0.6.1+1',
+              style: TextStyle(
+                color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+                fontSize: 12,
+              ),
+            ),
+          ),
         ],
       ),
+      bottomNavigationBar: const _SettingsBottomNav(),
     );
   }
 
@@ -185,8 +246,82 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-String _fmt(int h, int m) =>
-    '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
+class _SettingsBottomNav extends StatelessWidget {
+  const _SettingsBottomNav();
+
+  @override
+  Widget build(BuildContext context) {
+    return BottomNavigationBar(
+      currentIndex: 1,
+      onTap: (index) {
+        if (index == 0) {
+          Navigator.of(context).pop();
+        }
+      },
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home),
+          label: 'ホーム',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.settings),
+          activeIcon: Icon(Icons.settings),
+          label: '設定',
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.icon,
+    required this.title,
+    this.description,
+    required this.child,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? description;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 20),
+                const SizedBox(width: Spacing.sm),
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
+              ],
+            ),
+            if (description != null) ...[
+              const SizedBox(height: Spacing.xs),
+              Padding(
+                padding: const EdgeInsets.only(left: 28),
+                child: Text(
+                  description!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: Spacing.sm),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _SupporterCard extends StatelessWidget {
   const _SupporterCard({required this.purchase});
@@ -197,173 +332,112 @@ class _SupporterCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     if (purchase.adRemoved) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
-        child: Card(
-          color: cs.primaryContainer,
-          child: Padding(
-            padding: const EdgeInsets.all(Spacing.md),
-            child: Row(
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.check_circle, color: cs.primary, size: 20),
+          const SizedBox(width: Spacing.sm),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.check_circle, color: cs.primary),
-                const SizedBox(width: Spacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'サポーター登録済み',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: Spacing.xs),
-                      const Text('広告なしで使えます。ご購入ありがとうございます。'),
-                    ],
+                Text('サポーター登録済み',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: cs.primary,
                   ),
                 ),
+                const SizedBox(height: Spacing.xs),
+                const Text('広告なしで使えます。ご購入ありがとうございます。'),
               ],
             ),
           ),
-        ),
+        ],
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
-      child: Card(
-        color: cs.surfaceContainerHighest,
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.favorite, color: cs.primary, size: 20),
+            const SizedBox(width: Spacing.sm),
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    backgroundColor: cs.primaryContainer,
-                    foregroundColor: cs.primary,
-                    child: const Icon(Icons.favorite),
+                  Text('買い切りサポーター',
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
-                  const SizedBox(width: Spacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '買い切りサポーター',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: Spacing.xs),
-                        const Text('広告を消して、朝の支度確認に集中できます。'),
-                      ],
-                    ),
-                  ),
+                  const SizedBox(height: Spacing.xs),
+                  const Text('一度の購入で、アプリをずっと快適に。'),
                 ],
               ),
-              const SizedBox(height: Spacing.md),
-              const _SupporterBenefit(
-                icon: Icons.block,
-                text: '広告なしでホーム画面を広く使える',
-              ),
-              const _SupporterBenefit(
-                icon: Icons.lock_outline,
-                text: 'ログイン不要・端末内保存の方針はそのまま',
-              ),
-              const _SupporterBenefit(
-                icon: Icons.auto_awesome,
-                text: '今後の改善を買い切りで応援',
-              ),
-              const SizedBox(height: Spacing.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: purchase.canPurchase
-                          ? purchase.purchase
-                          : null,
-                      icon: purchase.busy
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.workspace_premium),
-                      label: const Text('広告を消して応援する'),
-                    ),
-                  ),
-                ],
-              ),
-              if (purchase.statusMessage != null) ...[
-                const SizedBox(height: Spacing.sm),
-                Text(
-                  purchase.statusMessage!,
-                  style: TextStyle(color: cs.error),
-                ),
-              ],
-              const SizedBox(height: Spacing.sm),
-              Row(
-                children: [
-                  Text(
-                    purchase.priceLabel,
-                    style: TextStyle(color: cs.onSurfaceVariant),
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: purchase.busy ? null : purchase.restore,
-                    child: const Text('購入を復元'),
-                  ),
-                ],
-              ),
-            ],
+            ),
+          ],
+        ),
+        const SizedBox(height: Spacing.sm),
+        _BenefitRow(icon: Icons.check, text: '広告なしでホーム画面を広く使える'),
+        const SizedBox(height: Spacing.xs),
+        _BenefitRow(icon: Icons.check, text: 'ログイン不要・端末内保存の方針はそのまま'),
+        const SizedBox(height: Spacing.xs),
+        _BenefitRow(icon: Icons.check, text: '今後の継続的な開発を応援'),
+        const SizedBox(height: Spacing.md),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: purchase.canPurchase ? purchase.purchase : null,
+            icon: purchase.busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.workspace_premium),
+            label: const Text('広告を消して応援する'),
           ),
         ),
-      ),
+        if (purchase.statusMessage != null) ...[
+          const SizedBox(height: Spacing.sm),
+          Text(
+            purchase.statusMessage!,
+            style: TextStyle(color: cs.error, fontSize: 13),
+          ),
+        ],
+        const SizedBox(height: Spacing.sm),
+        Row(
+          children: [
+            Text(
+              purchase.priceLabel,
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: purchase.busy ? null : purchase.restore,
+              child: const Text('購入を復元'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
 
-class _SupporterBenefit extends StatelessWidget {
-  const _SupporterBenefit({required this.icon, required this.text});
+class _BenefitRow extends StatelessWidget {
+  const _BenefitRow({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Spacing.xs),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: cs.primary),
-          const SizedBox(width: Spacing.sm),
-          Expanded(child: Text(text)),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title);
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        Spacing.md,
-        Spacing.lg,
-        Spacing.md,
-        Spacing.sm,
-      ),
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-          color: Theme.of(context).colorScheme.primary,
-        ),
-      ),
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(width: Spacing.sm),
+        Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
+      ],
     );
   }
 }
@@ -386,9 +460,13 @@ class _TimeTile extends StatelessWidget {
     return ListTile(
       leading: Icon(icon),
       title: Text(title),
-      subtitle: Text(subtitle),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 13)),
       trailing: const Icon(Icons.chevron_right),
+      contentPadding: EdgeInsets.zero,
       onTap: onTap,
     );
   }
 }
+
+String _fmt(int h, int m) =>
+    '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';

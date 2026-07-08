@@ -9,7 +9,6 @@ import 'package:ashita_motsumono/main.dart';
 import 'package:ashita_motsumono/src/app_state.dart';
 import 'package:ashita_motsumono/src/models/entities.dart';
 import 'package:ashita_motsumono/src/repositories/drift_store.dart';
-import 'package:ashita_motsumono/src/screens/home_screen.dart';
 import 'package:ashita_motsumono/src/services/app_settings.dart';
 import 'package:ashita_motsumono/src/services/export_service.dart';
 import 'package:ashita_motsumono/src/services/notification_service.dart';
@@ -81,7 +80,6 @@ void main() {
 
   group('HomeScreen', () {
     testWidgets('shows home screen and first run card', (tester) async {
-      // 初回起動（通知フラグなし）→ ダイアログが出るがcardは見えている
       SharedPreferences.setMockInitialValues({});
       final settings = await _createSettings();
       final store = await DriftStore.createInMemory();
@@ -157,7 +155,7 @@ void main() {
       expect(appState.lastLoadHadCorruptData, isFalse);
     });
 
-    testWidgets('opens supporter section from overflow menu', (tester) async {
+    testWidgets('opens settings from bottom nav', (tester) async {
       final appState = await _createAppState();
       final settings = await _createSettings();
 
@@ -170,13 +168,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.more_vert));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('サポーター'));
+      await tester.tap(find.text('設定'));
       await tester.pumpAndSettle();
 
-      expect(find.text('設定'), findsOneWidget);
-      expect(find.text('買い切りサポーター'), findsOneWidget);
+      expect(find.text('通知時刻'), findsOneWidget);
     });
 
     test('creates export snapshot without local image paths', () async {
@@ -216,7 +211,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.person_add));
+      await tester.tap(find.byIcon(Icons.person_add_outlined));
       await tester.pumpAndSettle();
 
       expect(find.text('まだ登録されていません。'), findsOneWidget);
@@ -242,7 +237,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.person_add));
+      await tester.tap(find.byIcon(Icons.person_add_outlined));
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField), '長女');
@@ -282,8 +277,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Todo詳細'), findsOneWidget);
-      expect(find.text('種類：提出'), findsOneWidget);
-      expect(find.text('金額：3000円'), findsOneWidget);
+      expect(find.text('提出'), findsWidgets);
+      expect(find.text('金額：'), findsOneWidget);
+      expect(find.text('3000円'), findsOneWidget);
     });
 
     testWidgets('shows not found when todo is missing', (tester) async {
@@ -313,6 +309,7 @@ void main() {
   group('ReviewExtractionScreen', () {
     testWidgets('deletes document when cancelled without save', (tester) async {
       final appState = await _createAppState();
+      final settings = await _createSettings();
       await appState.addChild('長女');
       final doc = await appState.addDocument(
         sourceType: 'paste',
@@ -323,8 +320,11 @@ void main() {
       final navigatorKey = GlobalKey<NavigatorState>();
 
       await tester.pumpWidget(
-        ChangeNotifierProvider.value(
-          value: appState,
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: appState),
+            ChangeNotifierProvider.value(value: settings),
+          ],
           child: MaterialApp(
             navigatorKey: navigatorKey,
             home: Builder(
@@ -362,6 +362,11 @@ void main() {
   });
 
   group('SettingsScreen', () {
+    Future<void> _openSettings(WidgetTester tester) async {
+      await tester.tap(find.text('設定'));
+      await tester.pumpAndSettle();
+    }
+
     testWidgets('shows notification time tiles', (tester) async {
       final appState = await _createAppState();
       final settings = await _createSettings();
@@ -375,13 +380,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.settings));
-      await tester.pumpAndSettle();
+      await _openSettings(tester);
 
-      expect(find.text('設定'), findsOneWidget);
       expect(find.text('通知時刻'), findsOneWidget);
-      expect(find.textContaining('前日（夜）'), findsOneWidget);
-      expect(find.textContaining('当日（朝）'), findsOneWidget);
+      expect(find.text('夜 前日 20:00'), findsOneWidget);
+      expect(find.text('朝 当日 07:00'), findsOneWidget);
       expect(find.text('サポーター'), findsOneWidget);
     });
 
@@ -398,8 +401,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.settings));
-      await tester.pumpAndSettle();
+      await _openSettings(tester);
 
       expect(find.text('買い切りサポーター'), findsOneWidget);
       expect(find.text('買い切り ¥190'), findsOneWidget);
@@ -425,8 +427,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.settings));
-      await tester.pumpAndSettle();
+      await _openSettings(tester);
 
       expect(find.text('購入アイテムを準備中です。しばらくしてからもう一度お試しください。'), findsOneWidget);
       final button = tester.widget<FilledButton>(
@@ -450,8 +451,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.settings));
-      await tester.pumpAndSettle();
+      await _openSettings(tester);
 
       expect(find.text('サポーター登録済み'), findsOneWidget);
       expect(find.text('広告なしで使えます。ご購入ありがとうございます。'), findsOneWidget);
@@ -479,8 +479,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.settings));
-      await tester.pumpAndSettle();
+      await _openSettings(tester);
       await tester.drag(find.byType(ListView), const Offset(0, -500));
       await tester.pumpAndSettle();
 
@@ -545,11 +544,14 @@ void main() {
       await tester.tap(find.text('追加'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('手動で入力する'));
+      await tester.tap(find.byIcon(Icons.edit_note));
       await tester.pumpAndSettle();
 
       expect(find.text('手入力'), findsOneWidget);
-      expect(find.text('タイトル'), findsOneWidget);
+      // Scroll down to reveal manual form TextFields (paste field is scrolled out of tree)
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextField), findsNWidgets(4));
     });
 
     testWidgets('validates empty title on manual save', (tester) async {
@@ -569,15 +571,14 @@ void main() {
       await tester.tap(find.text('追加'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('手動で入力する'));
+      await tester.tap(find.byIcon(Icons.edit_note));
       await tester.pumpAndSettle();
 
-      // Scroll to find the register button
-      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      // Scroll to reveal the 登録 button
+      await tester.drag(find.byType(ListView), const Offset(0, -700));
       await tester.pumpAndSettle();
 
-      // Tap register with empty title
-      await tester.tap(find.text('登録'));
+      await tester.tap(find.widgetWithText(FilledButton, '登録'));
       await tester.pumpAndSettle();
 
       expect(find.text('タイトルを入力してください'), findsOneWidget);
@@ -648,25 +649,31 @@ void main() {
 
       await tester.tap(find.text('追加'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('手動で入力する'));
+
+      await tester.tap(find.byIcon(Icons.edit_note));
+      await tester.pumpAndSettle();
+
+      // Scroll to reveal manual form fields
+      await tester.drag(find.byType(ListView), const Offset(0, -300));
       await tester.pumpAndSettle();
 
       await tester.enterText(
-        find.ancestor(of: find.text('タイトル'), matching: find.byType(TextField)),
+        find.widgetWithText(TextField, '例：集金袋を提出'),
         '軍手を持参',
       );
-      await tester.drag(find.byType(ListView), const Offset(0, -360));
+
+      await tester.drag(find.byType(ListView), const Offset(0, -300));
       await tester.pumpAndSettle();
+
       await tester.enterText(
-        find.ancestor(
-          of: find.text('持ち物・チェック項目'),
-          matching: find.byType(TextField),
-        ),
+        find.widgetWithText(TextField, '水筒、体操着、集金袋'),
         '軍手',
       );
-      await tester.drag(find.byType(ListView), const Offset(0, -600));
+
+      await tester.drag(find.byType(ListView), const Offset(0, -300));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('登録'));
+
+      await tester.tap(find.widgetWithText(FilledButton, '登録'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('追加'));

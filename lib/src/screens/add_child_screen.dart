@@ -3,6 +3,7 @@
 // 削除は確認ダイアログで実行。関連するTodoの人物指定はクリアされる。
 // 関連: screens/home_screen.dart, app_state.dart
 
+import 'package:characters/characters.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -28,50 +29,85 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final children = context.watch<AppState>().children;
     return Scaffold(
       appBar: AppBar(title: const Text('人物管理')),
       body: ListView(
         padding: const EdgeInsets.all(Spacing.md),
         children: [
-          TextField(
-            controller: _controller,
-            decoration: const InputDecoration(
-              labelText: '名前',
-              hintText: '例：長女、太郎、保育園用',
-              border: OutlineInputBorder(),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(Spacing.md),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      labelText: '名前',
+                      hintText: '例：長女、太郎、保育園用',
+                    ),
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _add(context),
+                  ),
+                  const SizedBox(height: Spacing.sm),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => _add(context),
+                      icon: const Icon(Icons.add),
+                      label: const Text('追加'),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _add(context),
-          ),
-          const SizedBox(height: Spacing.sm),
-          FilledButton.icon(
-            onPressed: () => _add(context),
-            icon: const Icon(Icons.add),
-            label: const Text('追加'),
           ),
           const SizedBox(height: Spacing.lg),
-          Text('登録済み', style: Theme.of(context).textTheme.titleMedium),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text('登録済み',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: cs.primary,
+              ),
+            ),
+          ),
           const SizedBox(height: Spacing.sm),
           if (children.isEmpty)
-            const Text('まだ登録されていません。')
+            const Padding(
+              padding: EdgeInsets.all(Spacing.md),
+              child: Text('まだ登録されていません。'),
+            )
           else
             ...children.map(
-              (child) => ListTile(
-                leading: CircleAvatar(backgroundColor: Color(child.colorValue)),
-                title: Text(child.name),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined),
-                      onPressed: () => _startEdit(context, child),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed: () => _confirmDelete(context, child.id, child.name),
-                    ),
-                  ],
+              (child) => Card(
+                margin: const EdgeInsets.only(bottom: Spacing.sm),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Color(child.colorValue),
+                    foregroundColor: cs.onPrimary,
+                    child: Text(child.name.isNotEmpty
+                        ? child.name.characters.first.toUpperCase()
+                        : '?'),
+                  ),
+                  title: Text(child.name),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined),
+                        onPressed: () => _startEdit(context, child),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () => _confirmDelete(context, child.id, child.name),
+                      ),
+                    ],
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: Spacing.sm,
+                    vertical: Spacing.xs,
+                  ),
                 ),
               ),
             ),
@@ -106,10 +142,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
         title: const Text('名前を編集'),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
-            labelText: '名前',
-            border: OutlineInputBorder(),
-          ),
+          decoration: const InputDecoration(labelText: '名前'),
           autofocus: true,
           textInputAction: TextInputAction.done,
           onSubmitted: (value) => Navigator.pop(context, value.trim()),

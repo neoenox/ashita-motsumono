@@ -1,6 +1,6 @@
 // lib/src/screens/home_screen.dart
 // ホーム画面。今日・明日・未設定・今後のTodoをセクション分けして表示。
-// FABからTodo追加、AppBarから子ども管理画面へ遷移。
+// FABからTodo追加、BottomNavigationBar で設定画面へ遷移。
 // 初回起動時に通知説明ダイアログを表示。
 // 関連: screens/add_todo_screen.dart, screens/add_child_screen.dart,
 //       screens/todo_detail_screen.dart, app_state.dart
@@ -24,7 +24,6 @@ import '../services/purchase_provider.dart';
 import 'add_child_screen.dart';
 import 'add_todo_screen.dart';
 import 'settings_screen.dart';
-import 'widgets/filter_bar.dart';
 import 'widgets/home_status_cards.dart';
 import 'widgets/todo_section.dart';
 
@@ -43,7 +42,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _notificationDialogShown = false;
   final _searchController = TextEditingController();
   String _searchQuery = '';
-  bool _showCompleted = false;
   String? _filterPersonId;
 
   @override
@@ -159,9 +157,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<AppTodo> _filter(List<AppTodo> todos, List<PersonProfile> children) {
     final childMap = {for (final c in children) c.id: c};
     return todos.where((t) {
-      if (!_showCompleted && t.isDone) {
-        return false;
-      }
       if (_filterPersonId != null && t.personId != _filterPersonId) {
         return false;
       }
@@ -209,48 +204,24 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('あした持つもの'),
         actions: [
           IconButton(
-            tooltip: '設定',
-            icon: const Icon(Icons.settings),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => SettingsScreen(settings: widget.settings),
-              ),
-            ),
-          ),
-          IconButton(
             tooltip: '人物を追加',
-            icon: const Icon(Icons.person_add),
+            icon: const Icon(Icons.person_add_outlined),
             onPressed: () => Navigator.of(
               context,
             ).push(MaterialPageRoute(builder: (_) => const AddChildScreen())),
           ),
           PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
             onSelected: (value) {
-              if (value == 'supporter') {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => SettingsScreen(settings: widget.settings),
-                  ),
-                );
-              }
               if (value == 'export') {
                 unawaited(_exportData(state));
               }
             },
             itemBuilder: (_) => [
               const PopupMenuItem(
-                value: 'supporter',
-                child: ListTile(
-                  leading: Icon(Icons.workspace_premium),
-                  title: Text('サポーター'),
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
                 value: 'export',
                 child: ListTile(
-                  leading: Icon(Icons.download),
+                  leading: Icon(Icons.download_outlined),
                   title: Text('データをエクスポート'),
                   dense: true,
                   contentPadding: EdgeInsets.zero,
@@ -269,13 +240,6 @@ class _HomeScreenState extends State<HomeScreen> {
               decoration: InputDecoration(
                 hintText: '検索…',
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: Spacing.md,
-                  vertical: Spacing.sm,
-                ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear),
@@ -289,13 +253,38 @@ class _HomeScreenState extends State<HomeScreen> {
               onChanged: (v) => setState(() => _searchQuery = v.trim()),
             ),
           ),
-          FilterBar(
-            showCompleted: _showCompleted,
-            filterPersonId: _filterPersonId,
-            children: state.children,
-            onToggleCompleted: (v) => setState(() => _showCompleted = v),
-            onChangeChild: (id) => setState(() => _filterPersonId = id),
-          ),
+          if (state.children.length > 1)
+            Padding(
+              padding: EdgeInsets.fromLTRB(Spacing.md, Spacing.sm, Spacing.md, 0),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: state.children.map(
+                    (c) => Padding(
+                      padding: const EdgeInsets.only(right: Spacing.sm),
+                      child: FilterChip(
+                        label: Text(c.name),
+                        selected: _filterPersonId == c.id,
+                        onSelected: (selected) {
+                          setState(() => _filterPersonId = selected ? c.id : null);
+                        },
+                        selectedColor: Theme.of(context).colorScheme.primary,
+                        labelStyle: TextStyle(
+                          color: _filterPersonId == c.id
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : null,
+                        ),
+                        checkmarkColor: Theme.of(context).colorScheme.onPrimary,
+                        avatar: CircleAvatar(
+                          radius: 10,
+                          backgroundColor: Color(c.colorValue),
+                        ),
+                      ),
+                    ),
+                  ).toList(),
+                ),
+              ),
+            ),
           Expanded(
             child: ListView(
               padding: EdgeInsets.fromLTRB(
@@ -328,13 +317,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   NoSearchResults(query: _searchQuery),
                 if (todayTodos.isNotEmpty || _searchQuery.isEmpty) ...[
                   TodoSection(title: '今日やること', todos: todayTodos),
-                  const SizedBox(height: Spacing.lg),
+                  const SizedBox(height: Spacing.md),
                 ],
                 TodoSection(title: '明日の持ち物・提出', todos: tomorrowTodos),
-                const SizedBox(height: Spacing.lg),
+                const SizedBox(height: Spacing.md),
                 TodoSection(title: '期限未設定・要確認', todos: undated),
                 if (upcoming.isNotEmpty) ...[
-                  const SizedBox(height: Spacing.lg),
+                  const SizedBox(height: Spacing.md),
                   UpcomingSection(todos: upcoming),
                 ],
               ],
@@ -342,7 +331,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: context.watch<PurchaseProvider>().adRemoved
+      bottomNavigationBar: const _MainBottomNav(selectedIndex: 0),
+      bottomSheet: context.watch<PurchaseProvider>().adRemoved
           ? null
           : SafeArea(bottom: true, child: const _AdBanner()),
       floatingActionButton: FloatingActionButton.extended(
@@ -352,6 +342,42 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: const Icon(Icons.add),
         label: const Text('追加'),
       ),
+    );
+  }
+}
+
+class _MainBottomNav extends StatelessWidget {
+  const _MainBottomNav({required this.selectedIndex});
+
+  final int selectedIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    return BottomNavigationBar(
+      currentIndex: selectedIndex,
+      onTap: (index) {
+        if (index == 1 && selectedIndex != 1) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => SettingsScreen(
+                settings: context.read<AppSettings>(),
+              ),
+            ),
+          );
+        }
+      },
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home),
+          label: 'ホーム',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.settings_outlined),
+          activeIcon: Icon(Icons.settings),
+          label: '設定',
+        ),
+      ],
     );
   }
 }
