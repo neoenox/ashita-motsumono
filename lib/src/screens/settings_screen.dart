@@ -132,17 +132,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Text('その他', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: Spacing.sm),
           ListTile(
-            leading: const Icon(Icons.help_outline),
-            title: const Text('使い方ガイド'),
-            trailing: const Icon(Icons.open_in_new, size: 16),
-            contentPadding: EdgeInsets.zero,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('使い方ガイドは準備中です')),
-              );
-            },
-          ),
-          ListTile(
             leading: const Icon(Icons.policy_outlined),
             title: const Text('プライバシーポリシー'),
             trailing: const Icon(Icons.open_in_new, size: 16),
