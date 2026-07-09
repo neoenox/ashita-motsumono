@@ -151,8 +151,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               final uri = Uri.parse(
                 'https://gist.githubusercontent.com/kaenozu/784d808fd74d5ed717beaaa087d7162e/raw/index.html',
               );
-              if (await canLaunchUrl(uri)) {
+              try {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('リンクを開けませんでした')),
+                  );
+                }
               }
             },
           ),
@@ -161,13 +167,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('お問い合わせ'),
             trailing: const Icon(Icons.chevron_right, size: 16),
             contentPadding: EdgeInsets.zero,
-            onTap: () async {
-              final uri = Uri.parse(
-                'https://gist.githubusercontent.com/kaenozu/784d808fd74d5ed717beaaa087d7162e/raw/index.html',
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('準備中です')),
               );
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
             },
           ),
           const SizedBox(height: Spacing.lg),
