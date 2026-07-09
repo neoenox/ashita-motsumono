@@ -183,6 +183,13 @@ def ensure_manifest():
     if missing:
         insertion = "\n" + "\n".join(f"    {p}" for p in missing) + "\n"
         text = text.replace(">\n    <application", ">" + insertion + "    <application", 1)
+    admob_metadata = (
+        '<meta-data\n'
+        '            android:name="com.google.android.gms.ads.APPLICATION_ID"\n'
+        '            android:value="${admobAppId}"/>'
+    )
+    if admob_metadata not in text:
+        text = text.replace("</application>", f"        {admob_metadata}\n    </application>", 1)
     manifest.write_text(text)
 
 

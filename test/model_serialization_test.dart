@@ -75,6 +75,31 @@ void main() {
       expect(restored.items, isEmpty);
     });
 
+    test('fromJson falls back to legacy childId', () {
+      final json = {
+        'id': 't1',
+        'title': 'test',
+        'category': 'other',
+        'status': 'active',
+        'childId': 'legacy-person-1',
+      };
+      final restored = AppTodo.fromJson(json);
+      expect(restored.personId, 'legacy-person-1');
+    });
+
+    test('fromJson prefers personId over childId', () {
+      final json = {
+        'id': 't1',
+        'title': 'test',
+        'category': 'other',
+        'status': 'active',
+        'personId': 'person-2',
+        'childId': 'legacy-person-1',
+      };
+      final restored = AppTodo.fromJson(json);
+      expect(restored.personId, 'person-2');
+    });
+
     test('fromJson falls back to default values', () {
       final restored = AppTodo.fromJson({});
       expect(restored.id, '');
