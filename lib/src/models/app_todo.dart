@@ -102,7 +102,7 @@ class AppTodo {
   factory AppTodo.fromJson(Map<String, dynamic> json) => AppTodo(
         id: (json['id'] as String?) ?? '',
         title: (json['title'] as String?) ?? '',
-        personId: json['personId'] as String?,
+        personId: json['personId'] as String? ?? json['childId'] as String?,
         documentId: json['documentId'] as String?,
         dueDate: (json['dueDate'] as String?) != null
             ? DateTime.tryParse(json['dueDate'] as String)
