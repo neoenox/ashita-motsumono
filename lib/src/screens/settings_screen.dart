@@ -151,8 +151,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               final uri = Uri.parse(
                 'https://gist.githubusercontent.com/kaenozu/784d808fd74d5ed717beaaa087d7162e/raw/index.html',
               );
-              if (await canLaunchUrl(uri)) {
+              try {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('リンクを開けませんでした')),
+                  );
+                }
               }
             },
           ),
