@@ -2,10 +2,10 @@
 // OCR テキストから日付・金額・持ち物・カテゴリを抽出し、ExtractionDraft を生成する。
 // パターンマッチベース（ML/LLM不使用）。MVP では辞書引き＋正規表現で十分。
 // 関連: models/entities.dart, screens/review_extraction_screen.dart, screens/add_todo_screen.dart,
-//       text_normalizer.dart, date_extractor.dart, item_extractor.dart
+//       ../utils/text_normalizer.dart, date_extractor.dart, item_extractor.dart
 
 import '../models/entities.dart';
-import 'text_normalizer.dart';
+import '../utils/text_normalizer.dart';
 import 'date_extractor.dart';
 import 'item_extractor.dart';
 
@@ -26,8 +26,9 @@ class ExtractionService {
       category,
       items,
       amount,
-      needsDueDateConfirmation:
-          dueDate == null && DateExtractor.hasAmbiguousDeadline(text),
+      needsDueDateConfirmation: dueDate == null &&
+          (DateExtractor.hasAmbiguousDeadline(text) ||
+              DateExtractor.hasPastMonthDayDate(text, current)),
     );
 
     return ExtractionDraft(
@@ -72,9 +73,10 @@ class ExtractionService {
     }
 
     if (drafts.length < 2) {
-      return [
-        extract(text, now: current, learnedItemLabels: learnedItemLabels),
-      ];
+      final fallback = extract(
+        text, now: current, learnedItemLabels: learnedItemLabels,
+      );
+      return _isActionableDraft(fallback) ? [fallback] : [];
     }
     return drafts;
   }

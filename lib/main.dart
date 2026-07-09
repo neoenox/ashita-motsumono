@@ -35,7 +35,7 @@ Future<void> main() async {
     AshitaMotsumonoApp(
       appState: appState,
       settings: settings,
-      purchaseProvider: PurchaseProvider(settings),
+      purchaseProvider: AppPurchaseProvider(settings),
     ),
   );
 }

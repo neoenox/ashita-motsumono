@@ -53,24 +53,10 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
 
   @override
   void dispose() {
-    if (!_saved && widget.documentId != null) {
-      unawaited(
-        _appState
-            .deleteDocument(widget.documentId!)
-            .then((deleted) {
-              if (kDebugMode) {
-                debugPrint(
-                  'Document cleanup on bulk dispose: ${deleted ? "deleted" : "still in use"}',
-                );
-              }
-            })
-            .catchError((e) {
-              if (kDebugMode) {
-                debugPrint('Failed to clean up document on bulk dispose: $e');
-              }
-            }),
-      );
-    }
+    unawaited(_appState.tryDeleteDocumentOnDispose(
+      saved: _saved,
+      documentId: widget.documentId,
+    ));
     super.dispose();
   }
 

@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../app_state.dart';
 import '../services/app_settings.dart';
@@ -144,12 +145,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.policy_outlined),
             title: const Text('プライバシーポリシー'),
-            trailing: const Icon(Icons.chevron_right, size: 16),
+            trailing: const Icon(Icons.open_in_new, size: 16),
             contentPadding: EdgeInsets.zero,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('準備中です')),
+            onTap: () async {
+              final uri = Uri.parse(
+                'https://gist.githubusercontent.com/kaenozu/784d808fd74d5ed717beaaa087d7162e/raw/index.html',
               );
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
             },
           ),
           ListTile(
@@ -157,10 +161,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('お問い合わせ'),
             trailing: const Icon(Icons.chevron_right, size: 16),
             contentPadding: EdgeInsets.zero,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('準備中です')),
+            onTap: () async {
+              final uri = Uri.parse(
+                'https://gist.githubusercontent.com/kaenozu/784d808fd74d5ed717beaaa087d7162e/raw/index.html',
               );
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
             },
           ),
           const SizedBox(height: Spacing.lg),

@@ -25,3 +25,47 @@ jobs:
 
       - name: Test
         run: flutter test
+
+  release-build:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android platform files
+        run: bash tool/create_platforms.sh
+
+      - name: Apply Android release configuration
+        run: bash tool/configure_android_release.sh
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build release APK (unsigned, validation only)
+        env:
+          ADMOB_APP_ID: ca-app-pub-3940256099942544~3347511713
+        run: >
+          flutter build apk --release
+          --dart-define=ADMOB_BANNER_AD_UNIT_ID=ca-app-pub-3940256099942544/6300978111
+          --dart-define=IAP_REMOVE_ADS_PRODUCT_ID=remove_ads
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ashita-motsumono-ci-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 7

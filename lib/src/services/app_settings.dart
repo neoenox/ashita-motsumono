@@ -48,15 +48,18 @@ class AppSettings extends ChangeNotifier {
   Future<void> setPreviousNightTime(int hour, int minute) async {
     await _prefs.setInt(_keyPreviousNightHour, hour);
     await _prefs.setInt(_keyPreviousNightMinute, minute);
+    notifyListeners();
   }
 
   Future<void> setSameMorningTime(int hour, int minute) async {
     await _prefs.setInt(_keySameMorningHour, hour);
     await _prefs.setInt(_keySameMorningMinute, minute);
+    notifyListeners();
   }
 
   Future<void> setAdRemoved(bool removed) async {
     await _prefs.setBool(_keyAdRemoved, removed);
+    notifyListeners();
   }
 
   Future<void> addLearnedItemLabels(Iterable<String> labels) async {

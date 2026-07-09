@@ -7,6 +7,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -100,13 +101,45 @@ class AppDatabase extends _$AppDatabase {
     final prefs = await SharedPreferences.getInstance();
     final migrated = prefs.getBool(_migrationDoneKey) ?? false;
     if (!migrated) {
-      final snapshot = _loadSnapshotFromPrefs(prefs);
-      if (snapshot != null) {
-        await db.saveSnapshot(snapshot);
+      final ok = await db._migrateFromPrefs(prefs);
+      if (ok) {
+        await prefs.setBool(_migrationDoneKey, true);
       }
-      await prefs.setBool(_migrationDoneKey, true);
+      // ok == false の場合、レガシーデータは存在するがパースに失敗。
+      // 生JSONはバックアップ済み。次回起動時に再試行する。
     }
     return db;
+  }
+
+  /// レガシーSharedPreferences からデータを移行する。
+  /// 戻り値: true=移行成功または移行不要 / false=データ存在→パース失敗（再試行必要）
+  Future<bool> _migrateFromPrefs(SharedPreferences prefs) async {
+    const key = 'ashita_motsumono_snapshot_v1';
+    final raw = prefs.getString(key);
+    if (raw == null || raw.trim().isEmpty) return true; // 移行不要
+
+    await _backupRawSnapshot(raw);
+
+    try {
+      final jsonMap = jsonDecode(raw) as Map<String, dynamic>;
+      final snapshot = AppSnapshot.fromJson(jsonMap).migrate();
+      await saveSnapshot(snapshot);
+      return true;
+    } on Object {
+      return false; // パース失敗 → migrationDone はセットしない
+    }
+  }
+
+  /// レガシー JSON をファイルに退避してからパースを試みる。
+  Future<void> _backupRawSnapshot(String rawJson) async {
+    try {
+      final dir = databaseFile?.parent ?? await getApplicationDocumentsDirectory();
+      final stamp = DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
+      final backup = File(p.join(dir.path, 'ashita_motsumono_legacy_backup_$stamp.json'));
+      await backup.writeAsString(rawJson);
+    } on Object {
+      // バックアップ失敗は移行をブロックしない
+    }
   }
 
   static const _migrationDoneKey = 'ashita_motsumono_drift_migrated_v1';
@@ -116,6 +149,15 @@ class AppDatabase extends _$AppDatabase {
     final db = AppDatabase(NativeDatabase.memory());
     await db.customStatement('PRAGMA foreign_keys = OFF');
     return db;
+  }
+
+  /// テスト用: 与えられた SharedPreferences で移行を試行する（インメモリDB）。
+  /// 戻り値: true=移行成功または不要 / false=レガシーデータが存在→パース失敗
+  @visibleForTesting
+  static Future<bool> tryMigration(SharedPreferences prefs) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    await db.customStatement('PRAGMA foreign_keys = OFF');
+    return db._migrateFromPrefs(prefs);
   }
 
   Future<String?> backupDatabaseFile() async {
@@ -283,17 +325,4 @@ class AppDatabase extends _$AppDatabase {
         updatedAt: Value(d.updatedAt),
       );
 
-  // ── 移行 ─────────────────────────────────────────────
-
-  static AppSnapshot? _loadSnapshotFromPrefs(SharedPreferences prefs) {
-    const key = 'ashita_motsumono_snapshot_v1';
-    final raw = prefs.getString(key);
-    if (raw == null || raw.trim().isEmpty) return null;
-    try {
-      final jsonMap = jsonDecode(raw) as Map<String, dynamic>;
-      return AppSnapshot.fromJson(jsonMap).migrate();
-    } on Object {
-      return null;
-    }
-  }
 }

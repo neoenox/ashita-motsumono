@@ -52,6 +52,14 @@ void main() {
       expect(drafts.single.items, ['軍手']);
       expect(drafts.single.title, '持ち物：軍手');
     });
+
+    test('returns empty list for non-actionable text', () {
+      final drafts = ExtractionService.extractMany(
+        'これはテストです。特に何も書いていません。',
+        now: now,
+      );
+      expect(drafts, isEmpty);
+    });
   });
 
   group('ExtractionService.extract', () {
@@ -66,9 +74,10 @@ void main() {
       expect(draft.category, TodoCategory.payment);
     });
 
-    test('rolls month/day date to next year when already past', () {
+    test('returns null dueDate for past month/day date and flags confirmation', () {
       final draft = ExtractionService.extract('1月10日 体操着を持参', now: now);
-      expect(draft.dueDate, DateTime(2027, 1, 10));
+      expect(draft.dueDate, isNull);
+      expect(draft.title, contains('期限確認'));
     });
 
     test('normalizes full-width digits', () {

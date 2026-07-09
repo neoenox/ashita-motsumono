@@ -1,10 +1,10 @@
 // lib/src/screens/add_todo_screen.dart
 // Todo 追加画面。OCR撮影・テキスト貼り付け抽出・手入力の3手段を提供。
 // Stitch デザインに合わせて OCR ファーストのレイアウトに刷新。
-// 関連: services/ocr_service.dart, services/extraction_service.dart,
-//       services/image_file_service.dart, screens/review_extraction_screen.dart
+// 関連: services/ocr_pick_service.dart, services/extraction_service.dart,
+//       screens/review_extraction_screen.dart
 
-import 'dart:io' show File, Platform;
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +16,7 @@ import '../models/entities.dart';
 import '../theme/app_theme.dart';
 import '../services/app_settings.dart';
 import '../services/extraction_service.dart';
-import '../services/image_file_service.dart';
+import '../services/ocr_pick_service.dart';
 import '../services/ocr_service.dart';
 import '../utils/amount.dart';
 import '../utils/date_picker.dart';
@@ -386,62 +386,48 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
 
   Future<void> _pickAndOcr(ImageSource source) async {
     setState(() => _busy = true);
-    File? imageFile;
     try {
-      final appState = context.read<AppState>();
-      final settings = context.read<AppSettings>();
-      final navigator = Navigator.of(context);
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(source: source, imageQuality: 92);
-      if (picked == null) return;
-      imageFile = await ImageFileService().copyFromXFile(picked);
-      final ocrText = await OcrService().recognize(imageFile);
+      final service = OcrPickService(
+        appState: context.read<AppState>(),
+        appSettings: context.read<AppSettings>(),
+      );
+      final result = await service.pickAndProcess(source);
+      if (result == null) return;
       if (!mounted) return;
-      if (ocrText.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('文字を読み取れませんでした。撮り直すか、テキスト貼り付けを使ってください。'),
-          ),
-        );
-        await ImageFileService.deleteIfExists(imageFile.path);
-        imageFile = null;
-        return;
+      switch (result) {
+        case OcrPickEmpty():
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('文字を読み取れませんでした。撮り直すか、テキスト貼り付けを使ってください。'),
+            ),
+          );
+        case OcrPickSuccess():
+          if (result.drafts.isEmpty) {
+            await context.read<AppState>().deleteDocument(result.document.id);
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Todo情報を抽出できませんでした。手入力で登録してください。'),
+              ),
+            );
+            return;
+          }
+          await Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) =>
+                  _reviewScreenFor(drafts: result.drafts, documentId: result.document.id),
+            ),
+          );
       }
-      final document = await appState.addDocument(
-        sourceType: source == ImageSource.camera ? 'camera' : 'gallery',
-        localImagePath: imageFile.path,
-        ocrText: ocrText,
-      );
-      imageFile = null;
-      final drafts = ExtractionService.extractMany(
-        ocrText,
-        learnedItemLabels: settings.learnedItemLabels,
-      );
-      if (!mounted) return;
-      await navigator.pushReplacement(
-        MaterialPageRoute(
-          builder: (_) =>
-              _reviewScreenFor(drafts: drafts, documentId: document.id),
-        ),
-      );
     } on OcrException catch (e) {
       if (kDebugMode) debugPrint('OCR error: ${e.cause ?? e}');
-      await _deleteTemporaryImage(imageFile);
-      imageFile = null;
       _showOcrError(e.message);
     } on Object catch (e) {
       if (kDebugMode) debugPrint('OCR error: $e');
-      await _deleteTemporaryImage(imageFile);
-      imageFile = null;
       _showOcrError('読み取りに失敗しました。画像を撮り直すか、テキスト貼り付けを使ってください。');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
-  }
-
-  Future<void> _deleteTemporaryImage(File? imageFile) async {
-    if (imageFile == null) return;
-    await ImageFileService.deleteIfExists(imageFile.path);
   }
 
   void _showOcrError(String message) {

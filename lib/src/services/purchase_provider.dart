@@ -54,8 +54,25 @@ class InAppPurchaseGateway implements PurchaseGateway {
   }
 }
 
-class PurchaseProvider extends ChangeNotifier {
-  PurchaseProvider(this._settings, {PurchaseGateway? gateway})
+abstract class PurchaseProvider extends ChangeNotifier {
+  bool get adRemoved;
+  bool get busy;
+  String get priceLabel;
+  bool get canPurchase;
+  String? get statusMessage;
+  Future<void> get ready;
+
+  static const productId = String.fromEnvironment(
+    'IAP_REMOVE_ADS_PRODUCT_ID',
+    defaultValue: 'remove_ads',
+  );
+
+  Future<void> purchase();
+  Future<void> restore();
+}
+
+class AppPurchaseProvider extends PurchaseProvider {
+  AppPurchaseProvider(this._settings, {PurchaseGateway? gateway})
     : _purchase = gateway ?? InAppPurchaseGateway() {
     _ready = _init();
   }
@@ -64,26 +81,27 @@ class PurchaseProvider extends ChangeNotifier {
   final PurchaseGateway _purchase;
   StreamSubscription<List<PurchaseDetails>>? _subscription;
   late final Future<void> _ready;
+  @override
   Future<void> get ready => _ready;
 
-  static const productId = String.fromEnvironment(
-    'IAP_REMOVE_ADS_PRODUCT_ID',
-    defaultValue: 'remove_ads',
-  );
-
   bool _adRemoved = false;
+  @override
   bool get adRemoved => _adRemoved;
 
   bool _busy = false;
+  @override
   bool get busy => _busy;
 
   bool _storeAvailable = false;
   bool _productLoaded = false;
   String? _statusMessage;
+  @override
   bool get canPurchase => _storeAvailable && _productLoaded && !_busy;
+  @override
   String? get statusMessage => _statusMessage;
 
   String? _storePrice;
+  @override
   String get priceLabel =>
       _storePrice == null ? '価格は購入前に表示' : '買い切り $_storePrice';
 
@@ -115,7 +133,7 @@ class PurchaseProvider extends ChangeNotifier {
 
   void _onPurchase(List<PurchaseDetails> details) {
     for (final purchase in details) {
-      if (purchase.productID != productId) continue;
+      if (purchase.productID != PurchaseProvider.productId) continue;
       switch (purchase.status) {
         case PurchaseStatus.purchased || PurchaseStatus.restored:
           _adRemoved = true;
@@ -134,6 +152,7 @@ class PurchaseProvider extends ChangeNotifier {
     }
   }
 
+  @override
   Future<void> purchase() async {
     if (_busy) return;
     _busy = true;
@@ -156,6 +175,7 @@ class PurchaseProvider extends ChangeNotifier {
     }
   }
 
+  @override
   Future<void> restore() async {
     if (_busy) return;
     _busy = true;
@@ -175,7 +195,7 @@ class PurchaseProvider extends ChangeNotifier {
   }
 
   Future<ProductDetails?> _loadProductDetails() async {
-    final productDetails = await _purchase.queryProductDetails({productId});
+      final productDetails = await _purchase.queryProductDetails({PurchaseProvider.productId});
     final product = productDetails.productDetails.firstOrNull;
     if (product != null) {
       _storePrice = product.price;
