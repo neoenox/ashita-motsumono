@@ -4,7 +4,6 @@
 
 import 'dart:io';
 
-import 'package:ashita_motsumono/src/models/entities.dart';
 import 'package:ashita_motsumono/src/services/ocr_service.dart';
 import 'package:ashita_motsumono/src/services/extraction_service.dart';
 
