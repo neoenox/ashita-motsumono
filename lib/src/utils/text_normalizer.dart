@@ -1,4 +1,4 @@
-// lib/src/services/text_normalizer.dart
+// lib/src/utils/text_normalizer.dart
 // OCR テキストの正規化処理。全角→半角変換、OCR誤認識補正、空白整理。
 // 関連: extraction_service.dart
 

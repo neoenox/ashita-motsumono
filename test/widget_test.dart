@@ -29,7 +29,7 @@ Future<AppSettings> _createSettings() async {
 }
 
 /// テスト用の PurchaseProvider（実際の課金処理は行わない）。
-class _TestPurchaseProvider extends ChangeNotifier implements PurchaseProvider {
+class _TestPurchaseProvider extends PurchaseProvider {
   _TestPurchaseProvider({
     this.adRemoved = false,
     this.priceLabel = '買い切り ¥190',

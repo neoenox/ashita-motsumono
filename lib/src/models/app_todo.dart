@@ -85,7 +85,7 @@ class AppTodo {
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': title,
-        'childId': personId,
+        'personId': personId,
         'documentId': documentId,
         'dueDate': dueDate?.toIso8601String(),
         'category': category.name,
@@ -102,11 +102,11 @@ class AppTodo {
   factory AppTodo.fromJson(Map<String, dynamic> json) => AppTodo(
         id: (json['id'] as String?) ?? '',
         title: (json['title'] as String?) ?? '',
-        personId: json['childId'] as String?,
+        personId: json['personId'] as String?,
         documentId: json['documentId'] as String?,
-        dueDate: (json['dueDate'] as String?) == null
-            ? null
-            : DateTime.parse(json['dueDate'] as String),
+        dueDate: (json['dueDate'] as String?) != null
+            ? DateTime.tryParse(json['dueDate'] as String)
+            : null,
         category: TodoCategory.fromName(json['category'] as String?),
         amount: json['amount'] as int?,
         note: json['note'] as String?,

@@ -10,10 +10,10 @@ Google Play へ初回提出する直前に使う作業順です。ストア掲�
 - [ ] Android実機でカメラ撮影、画像選択、日本語OCR、通知許可、通知予約を確認する
 - [ ] 内部テスト版で広告削除の購入・復元を確認する
 
-2026-07-08 時点のローカル結果:
+2026-07-09 時点のローカル結果:
 
 - `flutter analyze`: No issues found
-- `flutter test --no-pub -r compact`: All tests passed, 129 tests
+- `flutter test --no-pub -r compact`: All tests passed, 206 tests
 
 ## 2. Play Console で事前作成するもの
 

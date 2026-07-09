@@ -135,13 +135,21 @@ class AppState extends ChangeNotifier {
 
   // ── 人物 CRUD ──────────────────────────────────────────
 
+  int _assignPersonColor() {
+    final usedColors = _children.map((c) => c.colorValue).toSet();
+    for (final color in _personColors) {
+      if (!usedColors.contains(color.toARGB32())) return color.toARGB32();
+    }
+    // 全色使用中 → パレットをローテーション
+    return _personColors[_children.length % _personColors.length].toARGB32();
+  }
+
   Future<PersonProfile> addChild(String name) async {
     final now = DateTime.now();
     final child = PersonProfile(
       id: _uuid.v4(),
       name: name.trim(),
-      colorValue: _personColors[_children.length % _personColors.length]
-          .toARGB32(),
+      colorValue: _assignPersonColor(),
       createdAt: now,
       updatedAt: now,
     );
@@ -351,6 +359,22 @@ class AppState extends ChangeNotifier {
         }),
       ),
     );
+  }
+
+  /// 未保存状態で画面破棄時にドキュメントを削除する。
+  Future<void> tryDeleteDocumentOnDispose({
+    required bool saved,
+    required String? documentId,
+  }) async {
+    if (saved || documentId == null) return;
+    try {
+      final deleted = await deleteDocument(documentId);
+      if (kDebugMode) {
+        debugPrint('Document cleanup: ${deleted ? "deleted" : "still in use"}');
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('Failed to clean up document: $e');
+    }
   }
 
   Future<void> _persist() {

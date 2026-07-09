@@ -127,11 +127,24 @@ class DateExtractor {
     }
   }
 
+  static bool hasPastMonthDayDate(String text, DateTime now) {
+    final match = _monthDayPattern.firstMatch(text) ??
+        _slashDatePattern.firstMatch(text);
+    if (match == null) return false;
+    final month = int.parse(match.group(1)!);
+    final day = int.parse(match.group(2)!);
+    final dateThisYear = _safeDate(now.year, month, day);
+    if (dateThisYear == null) return false;
+    final today = DateTime(now.year, now.month, now.day);
+    return dateThisYear.isBefore(today);
+  }
+
   static DateTime? _futureMonthDay(DateTime now, int month, int day) {
     final thisYear = _safeDate(now.year, month, day);
     if (thisYear == null) return null;
     final today = DateTime(now.year, now.month, now.day);
     if (!thisYear.isBefore(today)) return thisYear;
-    return _safeDate(now.year + 1, month, day);
+    // 過去の月日は黙って翌年にロールせず、呼び出し元で確認を促す
+    return null;
   }
 }

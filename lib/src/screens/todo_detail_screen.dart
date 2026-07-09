@@ -181,233 +181,24 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     PersonProfile? child,
     DocumentRecord? document,
   ) {
-    final cs = Theme.of(context).colorScheme;
     return ListView(
       padding: const EdgeInsets.all(Spacing.md),
       children: [
-        // メイン情報カード
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(Spacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // カテゴリバッジ
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: todo.category.color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    todo.category.label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: todo.category.color,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: Spacing.sm),
-                Text(
-                  todo.title,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: Spacing.md),
-                _detailRow(Icons.event, '期限', formatDueDate(todo.dueDate)),
-                if (child != null)
-                  _detailRow(Icons.person, '対象', child.name),
-                if (todo.amount != null)
-                  _detailRow(Icons.monetization_on_outlined, '金額', '${todo.amount}円'),
-              ],
-            ),
-          ),
-        ),
+        _buildInfoCard(todo, child),
         const SizedBox(height: Spacing.md),
-
-        // 完了ボタン
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: () =>
-                context.read<AppState>().toggleTodoDone(todo.id),
-            icon: Icon(todo.isDone ? Icons.undo : Icons.check_circle),
-            label: Text(todo.isDone ? '未完了に戻す' : '完了にする'),
-          ),
-        ),
-
-        // チェック項目
+        _buildCompletionButton(todo),
         if (todo.items.isNotEmpty) ...[
           const SizedBox(height: Spacing.md),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(Spacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.checklist, size: 18),
-                      const SizedBox(width: Spacing.sm),
-                      Text('チェック項目',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${todo.items.where((i) => i.isChecked).length}/${todo.items.length}',
-                        style: TextStyle(
-                          color: cs.onSurfaceVariant,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: Spacing.sm),
-                  ...todo.items.map(
-                    (item) => CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: item.isChecked,
-                      title: Text(item.label),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      onChanged: (_) =>
-                          context.read<AppState>().toggleItem(todo.id, item.id),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          _buildChecklistSection(todo),
         ],
-
-        // メモ
         if (todo.note != null && todo.note!.trim().isNotEmpty) ...[
           const SizedBox(height: Spacing.md),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(Spacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.description_outlined, size: 18),
-                      const SizedBox(width: Spacing.sm),
-                      Text('メモ・OCR全文',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: Spacing.sm),
-                  SelectableText(todo.note!),
-                  const SizedBox(height: Spacing.sm),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: todo.note!));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('全文をコピーしました')),
-                      );
-                    },
-                    icon: const Icon(Icons.content_copy, size: 16),
-                    label: const Text('全文をコピー'),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          _buildNoteSection(todo.note!),
         ],
-
-        // 元画像
-        if (document?.localImagePath != null) ...[
-          const SizedBox(height: Spacing.md),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(Spacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.image_outlined, size: 18),
-                      const SizedBox(width: Spacing.sm),
-                      Text('元画像',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: Spacing.sm),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(File(document!.localImagePath!)),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ] else ...[
-          const SizedBox(height: Spacing.md),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(Spacing.md),
-              child: Row(
-                children: [
-                  const Icon(Icons.image_outlined, size: 18),
-                  const SizedBox(width: Spacing.sm),
-                  Expanded(
-                    child: Text(
-                      'OCRスキャン元画像の履歴はありません',
-                      style: TextStyle(color: cs.onSurfaceVariant),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-
-        // アクション
         const SizedBox(height: Spacing.md),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('共有機能は準備中です')),
-                  );
-                },
-                icon: const Icon(Icons.share, size: 16),
-                label: const Text('共有'),
-              ),
-            ),
-            const SizedBox(width: Spacing.sm),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('カレンダー機能は準備中です')),
-                  );
-                },
-                icon: const Icon(Icons.calendar_month, size: 16),
-                label: const Text('カレンダーへ'),
-              ),
-            ),
-            const SizedBox(width: Spacing.sm),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _confirmDelete(todo),
-                icon: const Icon(Icons.delete_outline, size: 16),
-                label: const Text('削除'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: cs.error,
-                  side: BorderSide(color: cs.error.withValues(alpha: 0.5)),
-                ),
-              ),
-            ),
-          ],
-        ),
+        _buildImageSection(document),
+        const SizedBox(height: Spacing.md),
+        _buildActionButtons(todo),
       ],
     );
   }
@@ -424,6 +215,189 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
           const SizedBox(width: Spacing.xs),
           Text(value),
         ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(AppTodo todo, PersonProfile? child) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: todo.category.color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                todo.category.label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: todo.category.color,
+                ),
+              ),
+            ),
+            const SizedBox(height: Spacing.sm),
+            Text(todo.title, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: Spacing.md),
+            _detailRow(Icons.event, '期限', formatDueDate(todo.dueDate)),
+            if (child != null) _detailRow(Icons.person, '対象', child.name),
+            if (todo.amount != null)
+              _detailRow(Icons.monetization_on_outlined, '金額', '${todo.amount}円'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompletionButton(AppTodo todo) {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: () => context.read<AppState>().toggleTodoDone(todo.id),
+        icon: Icon(todo.isDone ? Icons.undo : Icons.check_circle),
+        label: Text(todo.isDone ? '未完了に戻す' : '完了にする'),
+      ),
+    );
+  }
+
+  Widget _buildChecklistSection(AppTodo todo) {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.checklist, size: 18),
+                const SizedBox(width: Spacing.sm),
+                Text('チェック項目',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const Spacer(),
+                Text(
+                  '${todo.items.where((i) => i.isChecked).length}/${todo.items.length}',
+                  style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+                ),
+              ],
+            ),
+            const SizedBox(height: Spacing.sm),
+            ...todo.items.map(
+              (item) => CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: item.isChecked,
+                title: Text(item.label),
+                controlAffinity: ListTileControlAffinity.leading,
+                onChanged: (_) =>
+                    context.read<AppState>().toggleItem(todo.id, item.id),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoteSection(String note) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.description_outlined, size: 18),
+                const SizedBox(width: Spacing.sm),
+                Text('メモ・OCR全文',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
+            ),
+            const SizedBox(height: Spacing.sm),
+            SelectableText(note),
+            const SizedBox(height: Spacing.sm),
+            OutlinedButton.icon(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: note));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('全文をコピーしました')),
+                );
+              },
+              icon: const Icon(Icons.content_copy, size: 16),
+              label: const Text('全文をコピー'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageSection(DocumentRecord? document) {
+    final cs = Theme.of(context).colorScheme;
+    if (document?.localImagePath != null) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(Spacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.image_outlined, size: 18),
+                  const SizedBox(width: Spacing.sm),
+                  Text('元画像',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: Spacing.sm),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(File(document!.localImagePath!)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Row(
+          children: [
+            const Icon(Icons.image_outlined, size: 18),
+            const SizedBox(width: Spacing.sm),
+            Expanded(
+              child: Text(
+                'OCRスキャン元画像の履歴はありません',
+                style: TextStyle(color: cs.onSurfaceVariant),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(AppTodo todo) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => _confirmDelete(todo),
+        icon: Icon(Icons.delete_outline, size: 16),
+        label: const Text('削除'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: cs.error,
+          side: BorderSide(color: cs.error.withValues(alpha: 0.5)),
+        ),
       ),
     );
   }

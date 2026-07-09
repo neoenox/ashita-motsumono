@@ -59,12 +59,9 @@ void main() {
       );
     });
 
-    test('rolls month/day to next year when already past', () {
+    test('returns null for past month/day date instead of rolling', () {
       final pastNow = DateTime(2026, 12, 15);
-      expect(
-        DateExtractor.extract('1月10日まで', pastNow),
-        DateTime(2027, 1, 10),
-      );
+      expect(DateExtractor.extract('1月10日まで', pastNow), isNull);
     });
 
     test('subtracts one day for "前日まで" with concrete date', () {
@@ -122,6 +119,34 @@ void main() {
 
     test('returns false for unrelated text', () {
       expect(DateExtractor.hasAmbiguousDeadline('今日はいい天気'), false);
+    });
+  });
+
+  group('DateExtractor.hasPastMonthDayDate', () {
+    test('returns true for past month/day date', () {
+      final now = DateTime(2026, 7, 15);
+      expect(DateExtractor.hasPastMonthDayDate('7月10日まで', now), true);
+    });
+
+    test('returns false for future month/day date', () {
+      final now = DateTime(2026, 7, 5);
+      expect(DateExtractor.hasPastMonthDayDate('7月10日まで', now), false);
+    });
+
+    test('returns true for past slash date', () {
+      final now = DateTime(2026, 12, 15);
+      expect(DateExtractor.hasPastMonthDayDate('1/10まで', now), true);
+    });
+
+    test('returns false when no month/day pattern found', () {
+      expect(DateExtractor.hasPastMonthDayDate('タオルを持参', DateTime(2026, 7, 2)), false);
+    });
+
+    test('matches month/day substring within full date', () {
+      // 年ありの日付にも「7月10日」の部分文字列としてマッチする
+      // 実際の抽出では _extractConcreteDate が先にマッチして dueDate が null にならないので
+      // hasPastMonthDayDate は参照されない
+      expect(DateExtractor.hasPastMonthDayDate('2026年7月10日まで', DateTime(2026, 7, 15)), true);
     });
   });
 }

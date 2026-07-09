@@ -1,10 +1,10 @@
 // test/text_normalizer_test.dart
 // TextNormalizer の正規化ロジックをテストする。
 // 全角→半角変換、OCR誤認識補正、空白整理を網羅。
-// 関連: lib/src/services/text_normalizer.dart
+// 関連: lib/src/utils/text_normalizer.dart
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ashita_motsumono/src/services/text_normalizer.dart';
+import 'package:ashita_motsumono/src/utils/text_normalizer.dart';
 
 void main() {
   group('TextNormalizer.normalize', () {

@@ -4,6 +4,7 @@
 
 import 'package:drift/drift.dart' hide isNull;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ashita_motsumono/src/models/entities.dart';
 import 'package:ashita_motsumono/src/repositories/app_database.dart';
 
@@ -98,5 +99,81 @@ void main() {
 
   test('backupDatabaseFile returns null for in-memory db', () async {
     expect(await db.backupDatabaseFile(), isNull);
+  });
+
+  group('legacy migration safety', () {
+    test('migrates valid legacy snapshot', () async {
+      SharedPreferences.setMockInitialValues({
+        'ashita_motsumono_snapshot_v1': '''
+        {
+          "version": 1,
+          "children": [],
+          "todos": [
+            {
+              "id": "todo-1",
+              "title": "水筒持参",
+              "category": "item",
+              "status": "active",
+              "items": [],
+              "notifyPreviousNight": true,
+              "notifySameMorning": true,
+              "createdAt": "2026-01-01T00:00:00.000",
+              "updatedAt": "2026-01-01T00:00:00.000"
+            }
+          ],
+          "documents": []
+        }
+        ''',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final ok = await AppDatabase.tryMigration(prefs);
+      expect(ok, isTrue);
+    });
+
+    test('marks migration done when no legacy data', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final ok = await AppDatabase.tryMigration(prefs);
+      expect(ok, isTrue);
+    });
+
+    test('does not mark migration done when legacy JSON is corrupt', () async {
+      SharedPreferences.setMockInitialValues({
+        'ashita_motsumono_snapshot_v1': 'not valid json at all',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final ok = await AppDatabase.tryMigration(prefs);
+      expect(ok, isFalse);
+    });
+
+    test('migrates todo with invalid dueDate gracefully', () async {
+      SharedPreferences.setMockInitialValues({
+        'ashita_motsumono_snapshot_v1': '''
+        {
+          "version": 1,
+          "children": [],
+          "todos": [
+            {
+              "id": "todo-1",
+              "title": "Bad date",
+              "category": "other",
+              "status": "active",
+              "items": [],
+              "dueDate": "not-a-date",
+              "notifyPreviousNight": true,
+              "notifySameMorning": true,
+              "createdAt": "2026-01-01T00:00:00.000",
+              "updatedAt": "2026-01-01T00:00:00.000"
+            }
+          ],
+          "documents": []
+        }
+        ''',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final ok = await AppDatabase.tryMigration(prefs);
+      // dueDate is invalid but DateTime.tryParse returns null gracefully
+      expect(ok, isTrue);
+    });
   });
 }

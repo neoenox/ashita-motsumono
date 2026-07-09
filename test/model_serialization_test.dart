@@ -38,7 +38,7 @@ void main() {
       expect(json['status'], 'active');
       expect(json['amount'], 500);
       expect(json['note'], '忘れずに');
-      expect(json['childId'], 'person-1');
+      expect(json['personId'], 'person-1');
       expect(json['documentId'], 'doc-1');
       expect(json['dueDate'], '2026-07-10T00:00:00.000');
       expect(json['notifyPreviousNight'], true);
@@ -109,6 +109,24 @@ void main() {
       final done = todo.copyWith(status: TodoStatus.done);
       expect(done.isDone, true);
       expect(todo.isDone, false);
+    });
+
+    test('fromJson handles invalid dueDate gracefully', () {
+      final json = {
+        'id': 'todo-1',
+        'title': 'Test',
+        'category': 'other',
+        'status': 'active',
+        'dueDate': 'not-a-date',
+        'items': <Map<String, dynamic>>[],
+        'notifyPreviousNight': true,
+        'notifySameMorning': true,
+        'createdAt': '2026-01-01T00:00:00.000',
+        'updatedAt': '2026-01-01T00:00:00.000',
+      };
+      final restored = AppTodo.fromJson(json);
+      expect(restored.dueDate, isNull);
+      expect(restored.title, 'Test');
     });
   });
 

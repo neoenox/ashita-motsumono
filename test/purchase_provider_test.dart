@@ -28,7 +28,7 @@ void main() {
       ],
     );
 
-    final provider = PurchaseProvider(settings, gateway: gateway);
+    final provider = AppPurchaseProvider(settings, gateway: gateway);
     await provider.ready;
 
     expect(provider.priceLabel, '買い切り ¥240');
@@ -43,7 +43,7 @@ void main() {
     final settings = AppSettings(await SharedPreferences.getInstance());
     final gateway = _FakePurchaseGateway(available: false);
 
-    final provider = PurchaseProvider(settings, gateway: gateway);
+    final provider = AppPurchaseProvider(settings, gateway: gateway);
     await provider.ready;
 
     expect(provider.canPurchase, isFalse);
@@ -61,7 +61,7 @@ void main() {
       notFoundIDs: [PurchaseProvider.productId],
     );
 
-    final provider = PurchaseProvider(settings, gateway: gateway);
+    final provider = AppPurchaseProvider(settings, gateway: gateway);
     await provider.ready;
 
     expect(provider.canPurchase, isFalse);
