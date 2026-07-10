@@ -64,6 +64,13 @@ jobs:
             echo "GEMINI_PROXY_URL=" >> $GITHUB_ENV
           fi
 
+      - name: Show runner memory and versions
+        run: |
+          free -h
+          df -h
+          java -version
+          flutter --version
+
       - name: Build release APK (unsigned, validation only)
         env:
           ADMOB_APP_ID: ca-app-pub-3940256099942544~3347511713
