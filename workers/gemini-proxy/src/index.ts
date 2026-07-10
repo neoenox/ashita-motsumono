@@ -43,6 +43,12 @@ export default {
     let body: AnalysisRequest;
     try {
       body = await request.json();
+      if (!body.imageBase64 || !body.mimeType) {
+        return new Response(
+          JSON.stringify({ error: 'Missing imageBase64 or mimeType' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
     } catch {
       return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
         status: 400,

@@ -450,7 +450,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
         appState: context.read<AppState>(),
         appSettings: context.read<AppSettings>(),
       );
-      final proxyUrl = GeminiApiService.defaultInstance().proxyUrl!;
+      final proxyUrl = GeminiApiService.defaultInstance().proxyUrl ?? 'http://localhost:8787';
       final result = await service.pickAndProcessWithAi(proxyUrl);
       if (result == null) return;
       if (!mounted) return;
@@ -468,7 +468,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
           final appState = context.read<AppState>();
           final document = await appState.addDocument(
             sourceType: 'camera',
-            localImagePath: '',
+            localImagePath: doc.localImagePath ?? '',
             ocrText: doc.ocrText,
           );
           if (!mounted) return;

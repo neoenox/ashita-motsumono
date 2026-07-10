@@ -118,6 +118,9 @@ class AppPurchaseProvider extends PurchaseProvider {
   @override
   String? get statusMessage => _statusMessage;
 
+  ProductDetails? _adsProduct;
+  ProductDetails? _aiProduct;
+
   String? _storePrice;
   @override
   String get priceLabel =>
@@ -209,10 +212,10 @@ class AppPurchaseProvider extends PurchaseProvider {
         _statusMessage = 'ストアに接続できないため、購入は現在利用できません。';
         return;
       }
-      final product = await _loadProductDetails();
-      if (product == null) return;
+      if (_adsProduct == null) await _loadProductDetails();
+      if (_adsProduct == null) return;
       await _purchase.buyNonConsumable(
-        purchaseParam: PurchaseParam(productDetails: product),
+        purchaseParam: PurchaseParam(productDetails: _adsProduct!),
       );
     } finally {
       _busy = false;
@@ -232,10 +235,10 @@ class AppPurchaseProvider extends PurchaseProvider {
         _statusMessage = 'ストアに接続できないため、購入は現在利用できません。';
         return;
       }
-      final product = await _loadProductDetails();
-      if (product == null) return;
+      await _loadProductDetails();
+      if (_aiProduct == null) return;
       await _purchase.buyNonConsumable(
-        purchaseParam: PurchaseParam(productDetails: product),
+        purchaseParam: PurchaseParam(productDetails: _aiProduct!),
       );
     } finally {
       _busy = false;
@@ -276,6 +279,8 @@ class AppPurchaseProvider extends PurchaseProvider {
         aiProduct = p;
       }
     }
+    _adsProduct = adsProduct;
+    _aiProduct = aiProduct;
     _productLoaded = adsProduct != null;
     if (adsProduct != null) {
       _storePrice = adsProduct.price;

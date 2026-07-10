@@ -4,6 +4,7 @@
 // 関連: services/ocr_pick_service.dart, services/extraction_service.dart,
 //       workers/gemini-proxy/src/index.ts
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -27,7 +28,7 @@ class _GeminiDraft {
       title: json['title'] as String? ?? '',
       category: json['category'] as String? ?? 'other',
       dueDate: json['dueDate'] as String?,
-      amount: json['amount'] as int?,
+      amount: (json['amount'] as num?)?.toInt(),
       items: (json['items'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
@@ -137,8 +138,12 @@ class GeminiApiService {
       return GeminiError('ネットワークに接続できません');
     } on http.ClientException {
       return GeminiError('サーバーに接続できません');
+    } on TimeoutException {
+      return GeminiError('通信がタイムアウトしました。接続状況を確認してください');
     } on FormatException {
       return GeminiError('応答の解析に失敗しました');
+    } on Object catch (e) {
+      return GeminiError('予期せぬエラーが発生しました: $e');
     }
   }
 
@@ -184,6 +189,8 @@ class GeminiApiService {
       if (drafts.isEmpty) return GeminiEmpty();
       return GeminiSuccess(drafts: drafts);
     } on FormatException {
+      return GeminiEmpty();
+    } on Object {
       return GeminiEmpty();
     }
   }

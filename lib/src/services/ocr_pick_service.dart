@@ -106,20 +106,25 @@ class OcrPickService {
       final result = await gemini.analyzeImage(imageFile);
 
       final now = DateTime.now();
-      return switch (result) {
-        GeminiSuccess(drafts: final drafts) => OcrPickSuccess(
-          document: DocumentRecord(
-            id: '',
-            sourceType: 'camera',
-            ocrText: 'AI分析\n${drafts.map((d) => d.title).join('\n')}',
-            createdAt: now,
-            updatedAt: now,
-          ),
-          drafts: drafts,
-        ),
-        GeminiEmpty() => OcrPickEmpty(),
-        GeminiError(message: final msg) => throw OcrException(msg),
-      };
+      switch (result) {
+        case GeminiSuccess(drafts: final drafts):
+          return OcrPickSuccess(
+            document: DocumentRecord(
+              id: '',
+              sourceType: 'camera',
+              localImagePath: imageFile.path,
+              ocrText: 'AI分析\n${drafts.map((d) => d.title).join('\n')}',
+              createdAt: now,
+              updatedAt: now,
+            ),
+            drafts: drafts,
+          );
+        case GeminiEmpty():
+          await ImageFileService.deleteIfExists(imageFile.path);
+          return OcrPickEmpty();
+        case GeminiError(message: final msg):
+          throw OcrException(msg);
+      }
     } on Object {
       await ImageFileService.deleteIfExists(imageFile.path);
       rethrow;
