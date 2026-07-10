@@ -28,6 +28,9 @@ class AppSettings extends ChangeNotifier {
   /// 広告除去購入済みなら true
   bool get adRemoved => _prefs.getBool(_keyAdRemoved) ?? false;
 
+  /// AI分析購入済みなら true
+  bool get aiAccess => _prefs.getBool(_keyAiAccess) ?? false;
+
   List<String> get learnedItemLabels => List.unmodifiable(
     _prefs.getStringList(_keyLearnedItemLabels) ?? const [],
   );
@@ -43,6 +46,7 @@ class AppSettings extends ChangeNotifier {
   static const _keySameMorningHour = 'notification_same_morning_hour';
   static const _keySameMorningMinute = 'notification_same_morning_minute';
   static const _keyAdRemoved = 'purchase_ad_removed';
+  static const _keyAiAccess = 'purchase_ai_access';
   static const _keyLearnedItemLabels = 'learned_item_labels_v1';
 
   Future<void> setPreviousNightTime(int hour, int minute) async {
@@ -59,6 +63,11 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> setAdRemoved(bool removed) async {
     await _prefs.setBool(_keyAdRemoved, removed);
+    notifyListeners();
+  }
+
+  Future<void> setAiAccess(bool enabled) async {
+    await _prefs.setBool(_keyAiAccess, enabled);
     notifyListeners();
   }
 

@@ -116,6 +116,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               builder: (context, purchase, _) => _SupporterCard(purchase: purchase),
             ),
           ),
+          const SizedBox(height: Spacing.sm),
+          _SectionCard(
+            icon: Icons.auto_awesome_outlined,
+            title: 'AI分析',
+            description: '手書きメモも解析できるAI画像認識',
+            child: Consumer<PurchaseProvider>(
+              builder: (context, purchase, _) => _AiAccessCard(purchase: purchase),
+            ),
+          ),
           const SizedBox(height: Spacing.lg),
           const Divider(),
           const SizedBox(height: Spacing.sm),
@@ -138,7 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             contentPadding: EdgeInsets.zero,
             onTap: () async {
               final uri = Uri.parse(
-                'https://gist.githubusercontent.com/kaenozu/784d808fd74d5ed717beaaa087d7162e/raw/index.html',
+                'https://lp-5t7.pages.dev/apps/ashita-motsumono/privacy',
               );
               try {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -158,7 +167,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             contentPadding: EdgeInsets.zero,
             onTap: () async {
               final uri = Uri.parse(
-                'https://gist.githubusercontent.com/kaenozu/784d808fd74d5ed717beaaa087d7162e/raw/index.html',
+                'https://lp-5t7.pages.dev/apps/ashita-motsumono/contact',
               );
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -168,7 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: Spacing.lg),
           Center(
             child: Text(
-              'Version 0.6.1+1',
+              'Version 0.6.2',
               style: TextStyle(
                 color: cs.onSurfaceVariant.withValues(alpha: 0.5),
                 fontSize: 12,
@@ -419,6 +428,103 @@ class _SupporterCard extends StatelessWidget {
               onPressed: purchase.busy ? null : purchase.restore,
               child: const Text('購入を復元'),
             ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _AiAccessCard extends StatelessWidget {
+  const _AiAccessCard({required this.purchase});
+
+  final PurchaseProvider purchase;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    if (purchase.aiAccess) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.check_circle, color: cs.primary, size: 20),
+          const SizedBox(width: Spacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('AI分析 利用可能',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: cs.primary,
+                  ),
+                ),
+                const SizedBox(height: Spacing.xs),
+                const Text('画像の手書きメモもAIが読み取ってTodoに変換します。'),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.auto_awesome, color: cs.primary, size: 20),
+            const SizedBox(width: Spacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('AI画像認識',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: Spacing.xs),
+                  const Text('手書きのメモやお便りもAIが読み取り、Todoを自動生成します。'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: Spacing.sm),
+        _BenefitRow(icon: Icons.check, text: '手書き文字の読み取りに対応'),
+        const SizedBox(height: Spacing.xs),
+        _BenefitRow(icon: Icons.check, text: '¥190 買い切り／無制限に利用可能'),
+        const SizedBox(height: Spacing.xs),
+        _BenefitRow(icon: Icons.check, text: '広告除去とは別商品（両方購入で¥380）'),
+        const SizedBox(height: Spacing.md),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: purchase.canPurchaseAi ? purchase.purchaseAi : null,
+            icon: purchase.busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.workspace_premium),
+            label: const Text('AI分析を購入する'),
+          ),
+        ),
+        if (purchase.statusMessage != null) ...[
+          const SizedBox(height: Spacing.sm),
+          Text(
+            purchase.statusMessage!,
+            style: TextStyle(color: cs.error, fontSize: 13),
+          ),
+        ],
+        const SizedBox(height: Spacing.sm),
+        Row(
+          children: [
+            Text(
+              purchase.aiPriceLabel,
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+            ),
+            const Spacer(),
           ],
         ),
       ],
