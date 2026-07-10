@@ -93,6 +93,7 @@ class GeminiError extends GeminiResult {
 /// Gemini API に画像を送信し、構造化データを取得するサービス。
 ///
 /// [proxyUrl] には Cloudflare Workers プロキシの URL を指定する。
+/// release build では `--dart-define=GEMINI_PROXY_URL=...` で本番URLを渡すこと。
 class GeminiApiService {
   GeminiApiService({this.proxyUrl});
 
@@ -100,15 +101,33 @@ class GeminiApiService {
 
   static const _defaultProxyUrl = String.fromEnvironment(
     'GEMINI_PROXY_URL',
-    defaultValue: 'http://localhost:8787',
+    defaultValue: '',
   );
 
   factory GeminiApiService.defaultInstance() =>
       GeminiApiService(proxyUrl: _defaultProxyUrl);
 
+  /// proxy URL が未設定か localhost の場合に true を返す。
+  static bool _isUnconfigured(String? url) {
+    if (url == null || url.isEmpty) return true;
+    try {
+      final uri = Uri.parse(url);
+      if (uri.host == 'localhost' || uri.host == '127.0.0.1') return true;
+    } on Object {
+      return true;
+    }
+    return false;
+  }
+
   /// 画像ファイルを Gemini API で解析し、抽出 draft を返す。
   Future<GeminiResult> analyzeImage(File imageFile) async {
     final url = proxyUrl ?? _defaultProxyUrl;
+
+    // release build で localhost のまま事故を防ぐ
+    if (_isUnconfigured(url)) {
+      return GeminiError('AI解析サーバーが設定されていません');
+    }
+
     if (!await imageFile.exists()) {
       return GeminiError('画像ファイルが見つかりません');
     }
@@ -119,12 +138,19 @@ class GeminiApiService {
       final bytes = await imageFile.readAsBytes();
       final base64Data = base64Encode(bytes);
 
+      final now = DateTime.now();
+      final todayStr =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      const timezone = 'Asia/Tokyo';
+
       final response = await http.post(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'imageBase64': base64Data,
           'mimeType': mimeType,
+          'today': todayStr,
+          'timezone': timezone,
         }),
       ).timeout(const Duration(seconds: 60));
 

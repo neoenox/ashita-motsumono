@@ -165,17 +165,20 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
     final navigator = Navigator.of(context);
     final settings = context.read<AppSettings>();
     final learnedLabels = <String>[];
+    final selectedDrafts = <ExtractionDraft>[];
+
+    for (var i = 0; i < widget.drafts.length; i++) {
+      if (!_selected[i]) continue;
+      selectedDrafts.add(widget.drafts[i]);
+      learnedLabels.addAll(widget.drafts[i].items);
+    }
 
     try {
-      for (var i = 0; i < widget.drafts.length; i++) {
-        if (!_selected[i]) continue;
-        learnedLabels.addAll(widget.drafts[i].items);
-        await _appState.addTodoFromDraft(
-          draft: widget.drafts[i],
-          personId: _personId,
-          documentId: widget.documentId,
-        );
-      }
+      await _appState.addTodosFromDrafts(
+        drafts: selectedDrafts,
+        personId: _personId,
+        documentId: widget.documentId,
+      );
       await settings.addLearnedItemLabels(learnedLabels);
       _saved = true;
       if (!mounted) return;

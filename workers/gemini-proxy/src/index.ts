@@ -11,6 +11,8 @@ const BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODE
 interface AnalysisRequest {
   imageBase64: string;
   mimeType: string;
+  today?: string;
+  timezone?: string;
 }
 
 interface Draft {
@@ -56,8 +58,15 @@ export default {
       });
     }
 
+    // today と timezone はクライアントから渡されなければ現在日時/既定値を使う
+
+    const today = body.today ?? new Date().toISOString().slice(0, 10);
+    const timezone = body.timezone ?? 'Asia/Tokyo';
+
     const prompt = `あなたは学校・園からのお知らせを解析するアシスタントです。
 与えられた画像から以下の情報を抽出し、JSONの配列で返してください。
+
+今日の日付は ${today}、タイムゾーンは ${timezone} です。
 
 各ToDoは以下を含みます：
 - title: タイトル（例：「体操着を持参」「集金袋を提出」）
@@ -68,7 +77,7 @@ export default {
 - note: 補足事項
 
 重要：
-- 日付は「明日」「明後日」などの相対表現は今日を基準に解決する
+- 「明日」「明後日」「来週」などの相対表現は今日の日付 ${today} を基準に解決すること
 - 手書き文字も可能な限り読み取ること
 - 複数のToDoがある場合はそれぞれ個別のdraftとして返す`;
 
