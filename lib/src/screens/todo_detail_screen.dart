@@ -342,6 +342,10 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
   Widget _buildImageSection(DocumentRecord? document) {
     final cs = Theme.of(context).colorScheme;
     if (document?.localImagePath != null) {
+      final imageFile = File(document!.localImagePath!);
+      final screenWidth = MediaQuery.of(context).size.width;
+      final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+      final cacheWidth = (screenWidth * devicePixelRatio).round();
       return Card(
         child: Padding(
           padding: const EdgeInsets.all(Spacing.md),
@@ -360,7 +364,18 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
               const SizedBox(height: Spacing.sm),
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.file(File(document!.localImagePath!)),
+                child: imageFile.existsSync()
+                    ? Image.file(imageFile, cacheWidth: cacheWidth)
+                    : Container(
+                        height: 120,
+                        color: cs.surfaceContainerLow,
+                        child: Center(
+                          child: Text(
+                            '画像ファイルが見つかりません',
+                            style: TextStyle(color: cs.onSurfaceVariant),
+                          ),
+                        ),
+                      ),
               ),
             ],
           ),

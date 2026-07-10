@@ -55,6 +55,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Determine GEMINI_PROXY_URL
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.GEMINI_PROXY_URL }}" ]; then
+            echo "GEMINI_PROXY_URL=${{ secrets.GEMINI_PROXY_URL }}" >> $GITHUB_ENV
+          else
+            echo "GEMINI_PROXY_URL=" >> $GITHUB_ENV
+          fi
+
       - name: Build release APK (unsigned, validation only)
         env:
           ADMOB_APP_ID: ca-app-pub-3940256099942544~3347511713
@@ -62,6 +71,7 @@ jobs:
           flutter build apk --release
           --dart-define=ADMOB_BANNER_AD_UNIT_ID=ca-app-pub-3940256099942544/6300978111
           --dart-define=IAP_REMOVE_ADS_PRODUCT_ID=remove_ads
+          --dart-define=GEMINI_PROXY_URL=$GEMINI_PROXY_URL
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -78,6 +88,7 @@ jobs:
           flutter build appbundle --release
           --dart-define=ADMOB_BANNER_AD_UNIT_ID=ca-app-pub-3940256099942544/6300978111
           --dart-define=IAP_REMOVE_ADS_PRODUCT_ID=remove_ads
+          --dart-define=GEMINI_PROXY_URL=$GEMINI_PROXY_URL
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4

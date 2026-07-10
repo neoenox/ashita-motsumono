@@ -40,6 +40,7 @@ Windows PowerShellの場合:
 - `KEYSTORE_KEY_ALIAS`
 - `ADMOB_APP_ID`
 - `ADMOB_BANNER_AD_UNIT_ID`
+- `GEMINI_PROXY_URL`（AI解析を使う場合。Cloudflare WorkersのURL。未設定でも検証ビルドは通る）
 
 任意のRepository Variables:
 

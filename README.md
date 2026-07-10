@@ -84,6 +84,7 @@ git push origin v0.6.0
 - `KEYSTORE_KEY_ALIAS`
 - `ADMOB_APP_ID`
 - `ADMOB_BANNER_AD_UNIT_ID`
+- `GEMINI_PROXY_URL`（AI解析を使う場合。Cloudflare WorkersのURL）
 
 署名鍵の作成とSecrets登録の詳細は `docs/ANDROID_RELEASE.md` を参照してください。
 Google Play ストア掲載文、審査メモ、データセーフティ回答の下書きは `docs/STORE_LISTING_JA.md` を参照してください。
@@ -129,3 +130,5 @@ Play Console での提出順と最終確認項目は `docs/PLAY_CONSOLE_SUBMISSI
 - データ保存はDrift/SQLiteを使用しています。
 - ローカル通知は端末タイムゾーンを自動検出します（検出できない場合はJST固定）。
 - 通知時刻はアプリ内の設定画面からカスタマイズできます。
+- AI解析（Gemini連携）を使うには、release build時に `--dart-define=GEMINI_PROXY_URL=<プロキシURL>` が必要です。
+- release buildで `GEMINI_PROXY_URL` が未設定またはlocalhostのままの場合、AI解析は実行されず「AI解析サーバーが設定されていません」と表示されます。開発中のデバッグビルドでは問題ありませんが、リリース前に正しいURLを設定してください。

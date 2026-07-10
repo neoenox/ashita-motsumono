@@ -30,6 +30,7 @@ Future<void> main() async {
   final notifications = NotificationService(settings: settings);
   final appState = AppState(store: store, notifications: notifications);
   await appState.load();
+  unawaited(appState.rescheduleAllNotifications());
   unawaited(AdService.initialize());
   runApp(
     AshitaMotsumonoApp(

@@ -313,6 +313,50 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 複数の ExtractionDraft を一括追加する。
+  ///
+  /// メモリ上の更新と DB 保存を1回にまとめ、N+1 問題を回避する。
+  /// 通知は各 Todo に対して個別に予約する。
+  Future<List<AppTodo>> addTodosFromDrafts({
+    required List<ExtractionDraft> drafts,
+    String? personId,
+    String? documentId,
+    bool notifyPreviousNight = true,
+    bool notifySameMorning = true,
+  }) async {
+    final now = DateTime.now();
+    final todos = <AppTodo>[];
+    for (final draft in drafts) {
+      final todo = AppTodo(
+        id: _uuid.v4(),
+        title: draft.title.trim().isEmpty ? 'プリントを確認' : draft.title.trim(),
+        personId: personId,
+        documentId: documentId,
+        dueDate: draft.dueDate,
+        category: draft.category,
+        amount: draft.amount,
+        note: draft.note,
+        status: TodoStatus.active,
+        items: draft.items
+            .where((e) => e.trim().isNotEmpty)
+            .map((label) => ChecklistItem(id: _uuid.v4(), label: label.trim()))
+            .toList(),
+        notifyPreviousNight: notifyPreviousNight,
+        notifySameMorning: notifySameMorning,
+        createdAt: now,
+        updatedAt: now,
+      );
+      todos.add(todo);
+    }
+    _todos = [..._todos, ...todos];
+    await _persist();
+    for (final todo in todos) {
+      await _safeSchedule(todo);
+    }
+    notifyListeners();
+    return todos;
+  }
+
   // ── 通知 ──────────────────────────────────────────────
 
   Future<void> rescheduleAllNotifications() async {
