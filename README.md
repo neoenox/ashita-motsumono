@@ -69,31 +69,70 @@ flutter test
 
 ## Androidリリース生成
 
-GitHub Actions の `Release Android` ワークフローは、`v*` 形式のタグをpushしたときに署名済みAPKとPlay Store提出用AABを生成します。
+GitHub Actions の `Flutter CI` ワークフローを `workflow_dispatch` で手動実行、または `v*` 形式のタグをpushすると、署名済みAPKとPlay Store提出用AABを生成します。
 
 ```bash
 git tag v0.6.0
 git push origin v0.6.0
 ```
 
+### 必須GitHub Secrets
+
 事前にGitHub Secretsへ以下を登録してください。
 
-- `KEYSTORE_BASE64`
+- `KEYSTORE_BASE64` — `upload-keystore.jks` を base64 エンコードした文字列
 - `KEYSTORE_STORE_PASSWORD`
 - `KEYSTORE_KEY_PASSWORD`
 - `KEYSTORE_KEY_ALIAS`
-- `ADMOB_APP_ID`
-- `ADMOB_BANNER_AD_UNIT_ID`
-- `GEMINI_PROXY_URL`（AI解析を使う場合。Cloudflare WorkersのURL）
+- `ADMOB_APP_ID` — 本番AdMob App ID（`ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy`）
+- `ADMOB_BANNER_AD_UNIT_ID` — 本番バナー広告ユニットID（`ca-app-pub-xxxxxxxxxxxxxxxx/zzzzzzzzzz`）
+- `GEMINI_PROXY_URL` — Cloudflare Workers の Gemini プロキシURL（AI解析を使う場合）
 
-署名鍵の作成とSecrets登録の詳細は `docs/ANDROID_RELEASE.md` を参照してください。
-Google Play ストア掲載文、審査メモ、データセーフティ回答の下書きは `docs/STORE_LISTING_JA.md` を参照してください。
-Play Console での提出順と最終確認項目は `docs/PLAY_CONSOLE_SUBMISSION.md` を参照してください。
-ストア用スクリーンショットは `tool/generate_store_screenshots.py` で `assets/store/screenshots/` に生成できます。
+### 署名鍵の作成
 
-ワークフロー内では Android 雛形を生成し、`tool/configure_android_release.sh` でAndroid向けのOCR・通知・desugaring設定を反映してから `flutter build apk --release` と `flutter build appbundle --release` を実行します。
+ローカルで一度だけ作成します。
 
-生成されたAPKは artifact `ashita-motsumono-<tag>-release-apk`、AABは artifact `ashita-motsumono-<tag>-release-aab` からダウンロードできます。
+```bash
+keytool -genkeypair \
+  -v \
+  -keystore upload-keystore.jks \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000 \
+  -alias upload
+```
+
+作成した `upload-keystore.jks` は安全な場所に保管してください。紛失すると同じアプリの更新が難しくなります。
+
+base64エンコード:
+
+```bash
+# Linux / Git Bash
+base64 -w 0 upload-keystore.jks
+
+# Windows PowerShell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("upload-keystore.jks"))
+```
+
+### 成果物
+
+- APK: `ashita-motsumono-signed-release-apk`（署名済み、実機検証用）
+- AAB: `ashita-motsumono-signed-release-aab`（署名済み、Play Console提出用）
+
+### セキュリティ
+
+- `upload-keystore.jks`、`key.properties` はリポジトリに含めないでください。
+- `.gitignore` により `android/app/*.jks`、`android/key.properties` などは除外されています。
+- Secretsの値はCIログに出力されません（`::add-mask::` でマスクされます）。
+
+### 注意
+
+- Android/iOSネイティブ設定を行わないと、日本語OCRや通知権限で失敗する可能性があります。
+- データ保存はDrift/SQLiteを使用しています。
+- ローカル通知は端末タイムゾーンを自動検出します（検出できない場合はJST固定）。
+- 通知時刻はアプリ内の設定画面からカスタマイズできます。
+- AI解析（Gemini連携）を使うには、release build時に `GEMINI_PROXY_URL` が必須です。未設定の場合、CIは失敗します。
+- release buildで `GEMINI_PROXY_URL` が未設定またはlocalhostのままの場合、AI解析は実行されず「AI解析サーバーが設定されていません」と表示されます。開発中のデバッグビルドでは問題ありませんが、リリース前に正しいURLを設定してください。
 
 ## 今後の作業
 

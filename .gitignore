@@ -17,6 +17,8 @@ android/key.properties
 android/app/key.properties
 android/app/*.jks
 android/app/*.keystore
+android/*.jks
+android/*.keystore
 ios/
 linux/
 macos/
