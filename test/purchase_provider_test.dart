@@ -33,7 +33,7 @@ void main() {
 
     expect(provider.priceLabel, '買い切り ¥240');
     expect(gateway.queriedIds, [
-      {PurchaseProvider.productId},
+      {PurchaseProvider.productId, PurchaseProvider.aiProductId},
     ]);
     expect(gateway.restoreCount, 1);
   });

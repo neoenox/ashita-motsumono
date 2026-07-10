@@ -16,8 +16,10 @@ import '../models/entities.dart';
 import '../theme/app_theme.dart';
 import '../services/app_settings.dart';
 import '../services/extraction_service.dart';
+import '../services/gemini_api_service.dart';
 import '../services/ocr_pick_service.dart';
 import '../services/ocr_service.dart';
+import '../services/purchase_provider.dart';
 import '../utils/amount.dart';
 import '../utils/date_picker.dart';
 import '../utils/string_utils.dart';
@@ -145,6 +147,17 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
+          if (context.watch<PurchaseProvider>().aiAccess) ...[
+            const SizedBox(height: Spacing.sm),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _busy ? null : () => _pickAndOcrWithAi(),
+                icon: const Icon(Icons.auto_awesome),
+                label: const Text('AIで解析（手書きも対応）'),
+              ),
+            ),
+          ],
           const SizedBox(height: Spacing.lg),
 
           // OCRテキスト貼り付け
@@ -425,6 +438,53 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
     } on Object catch (e) {
       if (kDebugMode) debugPrint('OCR error: $e');
       _showOcrError('読み取りに失敗しました。画像を撮り直すか、テキスト貼り付けを使ってください。');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _pickAndOcrWithAi() async {
+    setState(() => _busy = true);
+    try {
+      final service = OcrPickService(
+        appState: context.read<AppState>(),
+        appSettings: context.read<AppSettings>(),
+      );
+      final proxyUrl = GeminiApiService.defaultInstance().proxyUrl!;
+      final result = await service.pickAndProcessWithAi(proxyUrl);
+      if (result == null) return;
+      if (!mounted) return;
+      switch (result) {
+        case OcrPickEmpty():
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Todo情報を抽出できませんでした。撮り直すか、テキスト貼り付けを使ってください。'),
+            ),
+          );
+        case OcrPickSuccess(
+            document: final doc,
+            drafts: final drafts,
+          ):
+          final appState = context.read<AppState>();
+          final document = await appState.addDocument(
+            sourceType: 'camera',
+            localImagePath: '',
+            ocrText: doc.ocrText,
+          );
+          if (!mounted) return;
+          await Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) =>
+                  _reviewScreenFor(drafts: drafts, documentId: document.id),
+            ),
+          );
+      }
+    } on OcrException catch (e) {
+      if (kDebugMode) debugPrint('Gemini error: ${e.cause ?? e}');
+      _showOcrError(e.message);
+    } on Object catch (e) {
+      if (kDebugMode) debugPrint('Gemini error: $e');
+      _showOcrError('AI解析に失敗しました。画像を撮り直すか、テキスト貼り付けを使ってください。');
     } finally {
       if (mounted) setState(() => _busy = false);
     }

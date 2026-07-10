@@ -32,6 +32,7 @@ Future<AppSettings> _createSettings() async {
 class _TestPurchaseProvider extends PurchaseProvider {
   _TestPurchaseProvider({
     this.adRemoved = false,
+    this.aiAccess = false,
     this.priceLabel = '買い切り ¥190',
     this.canPurchase = true,
     this.statusMessage,
@@ -41,13 +42,22 @@ class _TestPurchaseProvider extends PurchaseProvider {
   final bool adRemoved;
 
   @override
+  final bool aiAccess;
+
+  @override
   bool get busy => false;
 
   @override
   final String priceLabel;
 
   @override
+  String get aiPriceLabel => '買い切り ¥190';
+
+  @override
   final bool canPurchase;
+
+  @override
+  bool get canPurchaseAi => true;
 
   @override
   final String? statusMessage;
@@ -57,6 +67,9 @@ class _TestPurchaseProvider extends PurchaseProvider {
 
   @override
   Future<void> purchase() async {}
+
+  @override
+  Future<void> purchaseAi() async {}
 
   @override
   Future<void> restore() async {}
@@ -480,7 +493,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await _openSettings(tester);
-      await tester.drag(find.byType(ListView), const Offset(0, -500));
+      await tester.drag(find.byType(ListView), const Offset(0, -800));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('登録データをすべて削除'));

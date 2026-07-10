@@ -10,6 +10,7 @@ import '../app_state.dart';
 import '../models/entities.dart';
 import 'app_settings.dart';
 import 'extraction_service.dart';
+import 'gemini_api_service.dart';
 import 'image_file_service.dart';
 import 'ocr_service.dart';
 
@@ -48,6 +49,11 @@ class OcrPickService {
   final ImagePicker _picker;
   final ImageFileService _imageFileService;
   final OcrService _ocrService;
+  GeminiApiService? _geminiService;
+
+  void setGeminiProxyUrl(String url) {
+    _geminiService = GeminiApiService(proxyUrl: url);
+  }
 
   /// 画像を選択し、OCR認識・文書保存・抽出を実行する。
   ///
@@ -80,6 +86,40 @@ class OcrPickService {
       );
 
       return OcrPickSuccess(document: document, drafts: drafts);
+    } on Object {
+      await ImageFileService.deleteIfExists(imageFile.path);
+      rethrow;
+    }
+  }
+
+  /// 画像を選択し、Gemini API で解析して構造化 Todo を抽出する。
+  ///
+  /// [proxyUrl] には Cloudflare Workers プロキシの URL を指定する。
+  /// 戻り値は [pickAndProcess] と同様。
+  Future<OcrPickResult?> pickAndProcessWithAi(String proxyUrl) async {
+    final gemini = _geminiService ?? GeminiApiService(proxyUrl: proxyUrl);
+    final picked = await _picker.pickImage(source: ImageSource.camera, imageQuality: 92);
+    if (picked == null) return null;
+
+    final imageFile = await _imageFileService.copyFromXFile(picked);
+    try {
+      final result = await gemini.analyzeImage(imageFile);
+
+      final now = DateTime.now();
+      return switch (result) {
+        GeminiSuccess(drafts: final drafts) => OcrPickSuccess(
+          document: DocumentRecord(
+            id: '',
+            sourceType: 'camera',
+            ocrText: 'AI分析\n${drafts.map((d) => d.title).join('\n')}',
+            createdAt: now,
+            updatedAt: now,
+          ),
+          drafts: drafts,
+        ),
+        GeminiEmpty() => OcrPickEmpty(),
+        GeminiError(message: final msg) => throw OcrException(msg),
+      };
     } on Object {
       await ImageFileService.deleteIfExists(imageFile.path);
       rethrow;
