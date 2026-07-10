@@ -32,7 +32,6 @@ Future<AppSettings> _createSettings() async {
 class _TestPurchaseProvider extends PurchaseProvider {
   _TestPurchaseProvider({
     this.adRemoved = false,
-    this.aiAccess = false,
     this.priceLabel = '買い切り ¥190',
     this.canPurchase = true,
     this.statusMessage,
@@ -42,7 +41,7 @@ class _TestPurchaseProvider extends PurchaseProvider {
   final bool adRemoved;
 
   @override
-  final bool aiAccess;
+  final bool aiAccess = false;
 
   @override
   bool get busy => false;
