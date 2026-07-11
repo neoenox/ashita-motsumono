@@ -22,11 +22,12 @@ void main() {
   );
 
   test('release configuration script preserves production permissions', () {
-    final script = File('tool/configure_android_release.sh').readAsStringSync();
-
-    expect(script, contains('android.permission.CAMERA'));
-    expect(script, contains('android.permission.POST_NOTIFICATIONS'));
-    expect(script, contains('android.permission.INTERNET'));
+    // The shell script delegates to a Python script; check both.
+    final py = File('tool/configure_android_release.py').readAsStringSync();
+    expect(py, contains('android.permission.CAMERA'));
+    expect(py, contains('android.permission.POST_NOTIFICATIONS'));
+    expect(py, contains('android.permission.INTERNET'));
+    expect(py, contains('android.permission.RECEIVE_BOOT_COMPLETED'));
   });
 
   test('release Gradle config does not fall back to test AdMob app id', () {
@@ -42,6 +43,7 @@ void main() {
       File('android/app/build.gradle.kts'),
       File('lib/src/services/ad_service.dart'),
       File('tool/configure_android_release.sh'),
+      File('tool/configure_android_release.py'),
       File('.github/workflows/release-apk.yml'),
     ];
 

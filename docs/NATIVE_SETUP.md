@@ -14,7 +14,7 @@
 - targetSdkVersion 36
 - compileSdkVersion 36
 
-このリポジトリの `tool/configure_android_release.sh` は、Androidリリースビルド時に `minSdk 24`、`targetSdk 36`、`compileSdk 36` に揃えます。
+このリポジトリの `tool/configure_android_release.py` （または `tool/configure_android_release.sh`）は、Androidリリースビルド時に `minSdk 24`、`targetSdk 36`、`compileSdk 36` に揃えます。
 `flutter_local_notifications` は `compileSdk` 35以上を要求するため、36で統一しています。
 
 ### 2. flutter_local_notifications の desugaring
@@ -59,9 +59,27 @@ dependencies {
 
 ### 4. 権限と通知設定
 
-`AndroidManifest.xml` にカメラ権限、Android 13以降の通知権限、広告表示/アプリ内課金に必要なインターネット権限を追加します。
+`AndroidManifest.xml` にカメラ権限、Android 13以降の通知権限、広告表示/アプリ内課金に必要なインターネット権限、ブート完了受信権限を追加します。
 
-スケジュール通知を端末再起動後にも維持したい場合は、`flutter_local_notifications` の公式 README の AndroidManifest 設定も追加してください。このMVPは `AndroidScheduleMode.inexactAllowWhileIdle` を使っているため、正確なアラーム権限は追加しません。
+スケジュール通知を端末再起動後にも維持するため、`flutter_local_notifications` の `ScheduledNotificationReceiver` と `ScheduledNotificationBootReceiver` を追加します。このMVPは `AndroidScheduleMode.inexactAllowWhileIdle` を使っているため、正確なアラーム権限 (`SCHEDULE_EXACT_ALARM`) は追加しません。
+
+**これらの設定は `tool/configure_android_release.py` で自動的に適用されます。** 以下の内容が冪等的に追加されます：
+
+実行方法:
+- **Windows**: `python tool/configure_android_release.py`
+- **Linux/macOS / CI**: `bash tool/configure_android_release.sh`
+- **クロスプラットフォーム（直接）**: `python tool/configure_android_release.py`
+
+- 権限:
+  - `android.permission.CAMERA`
+  - `android.permission.POST_NOTIFICATIONS`
+  - `android.permission.INTERNET`
+  - `android.permission.RECEIVE_BOOT_COMPLETED`
+- Receiver:
+  - `com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver` (exported=false)
+  - `com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver` (exported=true)
+    - intent-filter: `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `QUICKBOOT_POWERON`, `com.htc.intent.action.QUICKBOOT_POWERON`
+- AdMob メタデータ: `com.google.android.gms.ads.APPLICATION_ID` (プレースホルダ `${admobAppId}`)
 
 Android 13以降の通知は実行時許可が必要です。MVPコードでは、初回説明ダイアログでユーザーが「通知を有効にする」を押した後に `flutter_local_notifications` 経由で通知許可を要求します。
 
