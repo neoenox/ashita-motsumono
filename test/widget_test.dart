@@ -615,11 +615,13 @@ void main() {
       await tester.tap(find.text('追加'));
       await tester.pumpAndSettle();
 
+      // 相対日付を使い、ウォールクロック依存を排除（固定日付だと
+      // 実行日が過ぎたときに期限確認表記に変わりテストが壊れる）
       await tester.enterText(
         find.byType(TextField).first,
-        '7月10日までに水着、帽子、タオルを持参してください。\n'
+        '明日までに水着、帽子、タオルを持参してください。\n'
         '集金袋に500円を入れて提出してください。\n'
-        '申込書は7月12日までに提出してください。',
+        '申込書は明後日までに提出してください。',
       );
       await tester.tap(find.text('貼り付け文からTodo候補を作る'));
       await tester.pumpAndSettle();
@@ -690,7 +692,8 @@ void main() {
 
       await tester.tap(find.text('追加'));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).first, '7月10日までに軍手を持参');
+      // 相対日付（ウォールクロック依存を排除）
+      await tester.enterText(find.byType(TextField).first, '明日までに軍手を持参');
       await tester.tap(find.text('貼り付け文からTodo候補を作る'));
       await tester.pumpAndSettle();
 
