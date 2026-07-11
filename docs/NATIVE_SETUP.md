@@ -77,7 +77,7 @@ dependencies {
   - `android.permission.RECEIVE_BOOT_COMPLETED`
 - Receiver:
   - `com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver` (exported=false)
-  - `com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver` (exported=true)
+  - `com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver` (exported=false)
     - intent-filter: `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `QUICKBOOT_POWERON`, `com.htc.intent.action.QUICKBOOT_POWERON`
 - AdMob メタデータ: `com.google.android.gms.ads.APPLICATION_ID` (プレースホルダ `${admobAppId}`)
 
