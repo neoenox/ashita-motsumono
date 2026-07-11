@@ -164,7 +164,7 @@ class AppState extends ChangeNotifier {
     // 削除済みなど_childrenに存在しないpersonIdのTodoがあれば末尾に追加
     final orphanIds = ids.difference(_children.map((c) => c.id).toSet());
     if (orphanIds.isNotEmpty) {
-      names.addAll(orphanIds.map((_) => '?'));
+      names.addAll(orphanIds.map((_) => '人物未設定'));
     }
     return names;
   }
@@ -179,17 +179,17 @@ class AppState extends ChangeNotifier {
     return _documents.where((d) => d.id == id).firstOrNull;
   }
 
-  // preparedDate付きのソート: 子ども登録順→personId nullは最後→期限順→作成日順
+  // preparedDate付きのソート: 子ども登録順→孤立personId→personId nullは最後→期限順→作成日順
   int _prepSort(AppTodo a, AppTodo b) {
-    final aIdx = a.personId != null
-        ? _children.indexWhere((c) => c.id == a.personId)
-        : -1;
-    final bIdx = b.personId != null
-        ? _children.indexWhere((c) => c.id == b.personId)
-        : -1;
-    if (a.personId == null && b.personId != null) return 1;
-    if (a.personId != null && b.personId == null) return -1;
-    if (aIdx != bIdx) return aIdx.compareTo(bIdx);
+    final registeredLength = _children.length;
+    int _sortIndex(String? personId) {
+      if (personId == null) return registeredLength + 1;
+      final idx = _children.indexWhere((c) => c.id == personId);
+      return idx < 0 ? registeredLength : idx;
+    }
+    final aSort = _sortIndex(a.personId);
+    final bSort = _sortIndex(b.personId);
+    if (aSort != bSort) return aSort.compareTo(bSort);
     final ad = a.dueDate;
     final bd = b.dueDate;
     if (ad == null && bd == null) return a.createdAt.compareTo(b.createdAt);

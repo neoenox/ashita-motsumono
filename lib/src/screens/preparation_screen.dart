@@ -3,6 +3,7 @@
 // 準備確認・あとで・今回除外の操作を提供する。完了画面で安心感を与える。
 // 関連: screens/home_screen.dart, app_state.dart, theme/app_theme.dart
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -33,37 +34,41 @@ class PreparationScreen extends StatefulWidget {
 /// 画面のフェーズ
 enum _Phase { normal, complete }
 
-/// 1件の準備項目
-class _PrepItem {
-  _PrepItem({required this.todo, required this.person});
-  final AppTodo todo;
-  final PersonProfile? person;
-}
-
 class _PreparationScreenState extends State<PreparationScreen> {
-  List<_PrepItem> _allItems = [];
-  int _currentIndex = 0;
+  // セッション開始時の全対象ID
+  final Set<String> _sessionTargetIds = {};
   final Set<String> _deferredTodoIds = {};
   final Set<String> _excludedTodoIds = {};
   final Set<String> _preparedTodoIds = {};
   bool _inDeferredPass = false;
   int _completedCount = 0;
   _Phase _phase = _Phase.normal;
+  bool _isProcessing = false;
 
-  List<_PrepItem> get _visibleItems {
-    return _allItems.where((item) {
-      final id = item.todo.id;
+  /// 現在の表示対象（動的に最新Todoを取得するためID＋人物情報のみ保持）
+  List<_SessionItem> _visibleItems() {
+    final state = context.read<AppState>();
+    final allTodos = state.todos;
+    return _sessionTargetIds.where((id) {
       if (_excludedTodoIds.contains(id)) return false;
       if (_preparedTodoIds.contains(id)) return false;
       if (_inDeferredPass) return _deferredTodoIds.contains(id);
       return !_deferredTodoIds.contains(id);
+    }).map((id) {
+      final todo = allTodos.firstWhereOrNull((t) => t.id == id);
+      final person = todo?.personId != null && todo != null
+          ? state.personById(todo.personId)
+          : null;
+      return _SessionItem(todoId: id, person: person);
     }).toList();
   }
+
+  int _currentIndex = 0;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_allItems.isEmpty) {
+    if (_sessionTargetIds.isEmpty) {
       _loadItems();
     }
   }
@@ -71,16 +76,22 @@ class _PreparationScreenState extends State<PreparationScreen> {
   void _loadItems() {
     final state = context.read<AppState>();
     final todos = state.todosForPreparation(widget.date);
-    _allItems = todos.map((todo) {
-      final person = todo.personId != null
-          ? state.personById(todo.personId)
-          : null;
-      return _PrepItem(todo: todo, person: person);
-    }).toList();
+    for (final todo in todos) {
+      _sessionTargetIds.add(todo.id);
+    }
+  }
+
+  /// 完了判定: 全対象 - prepared - excluded が0なら完了
+  bool get _isAllDone {
+    return _sessionTargetIds
+        .difference(_preparedTodoIds)
+        .difference(_excludedTodoIds)
+        .isEmpty;
   }
 
   void _advanceOrComplete() {
-    if (_currentIndex >= _visibleItems.length) {
+    final items = _visibleItems();
+    if (_currentIndex >= items.length) {
       if (!_inDeferredPass && _deferredTodoIds.isNotEmpty) {
         setState(() {
           _inDeferredPass = true;
@@ -104,30 +115,46 @@ class _PreparationScreenState extends State<PreparationScreen> {
     await state.clearTodoPrepared(todoId);
   }
 
-  void _onPrepared(String todoId) {
-    if (_preparedTodoIds.contains(todoId)) return;
-    _preparedTodoIds.add(todoId);
-    _completedCount++;
-    // 非同期で永続化（画面操作を止めない）
-    _markPrepared(todoId);
-    final todo = _allItems.firstWhere((i) => i.todo.id == todoId).todo;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        duration: const Duration(seconds: 4),
-        content: Text('「${todo.title}」を準備済みにしました'),
-        action: SnackBarAction(
-          label: '元に戻す',
-          onPressed: () {
-            _preparedTodoIds.remove(todoId);
-            _completedCount--;
-            // 可能なら現在位置の直後に再挿入、実装が複雑なら末尾へ
-            _clearPrepared(todoId);
-            setState(() {});
-          },
+  Future<void> _onPrepared(String todoId) async {
+    if (_isProcessing || _preparedTodoIds.contains(todoId)) return;
+    setState(() => _isProcessing = true);
+    try {
+      await _markPrepared(todoId);
+      if (!mounted) return;
+      _preparedTodoIds.add(todoId);
+      _completedCount++;
+      final state = context.read<AppState>();
+      final todo = state.todos.firstWhereOrNull((t) => t.id == todoId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 4),
+          content: Text('「${todo?.title ?? ''}」を準備済みにしました'),
+          action: SnackBarAction(
+            label: '元に戻す',
+            onPressed: () async {
+              _preparedTodoIds.remove(todoId);
+              _completedCount--;
+              _phase = _Phase.normal;
+              try {
+                await _clearPrepared(todoId);
+              } on Object {
+                // UndoのDBエラーは無視（既にローカル状態は元に戻した）
+              }
+              if (mounted) setState(() {});
+            },
+          ),
         ),
-      ),
-    );
-    _advanceOrComplete();
+      );
+      _advanceOrComplete();
+    } on Object catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('保存に失敗しました: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
   }
 
   void _onDefer(String todoId) {
@@ -138,11 +165,12 @@ class _PreparationScreenState extends State<PreparationScreen> {
   void _onExclude(String todoId) {
     if (_excludedTodoIds.contains(todoId)) return;
     _excludedTodoIds.add(todoId);
-    final todo = _allItems.firstWhere((i) => i.todo.id == todoId).todo;
+    final state = context.read<AppState>();
+    final todo = state.todos.firstWhereOrNull((t) => t.id == todoId);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 3),
-        content: Text('「${todo.title}」を今回は外しました'),
+        content: Text('「${todo?.title ?? ''}」を今回は外しました'),
         action: SnackBarAction(
           label: '元に戻す',
           onPressed: () {
@@ -187,13 +215,12 @@ class _PreparationScreenState extends State<PreparationScreen> {
     if (_phase == _Phase.complete) {
       return _buildCompletionScreen();
     }
-    final items = _visibleItems;
+    final items = _visibleItems();
     if (_currentIndex >= items.length && items.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _advanceOrComplete());
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (items.isEmpty) {
-      // すでに全件準備済み、または準備対象なし
       if (_completedCount == 0) {
         final preparedCount =
             context.read<AppState>().todosPreparedToday(widget.date).length;
@@ -205,8 +232,9 @@ class _PreparationScreenState extends State<PreparationScreen> {
     return _buildItemScreen(item, items.length);
   }
 
-  Widget _buildItemScreen(_PrepItem item, int total) {
-    final todo = item.todo;
+  Widget _buildItemScreen(_SessionItem item, int total) {
+    final state = context.watch<AppState>();
+    final todo = state.todos.firstWhereOrNull((t) => t.id == item.todoId);
     final person = item.person;
     final current = _currentIndex + 1;
     final isDeferredPass = _inDeferredPass;
@@ -223,7 +251,7 @@ class _PreparationScreenState extends State<PreparationScreen> {
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == 'exclude') _onExclude(todo.id);
+              if (value == 'exclude') _onExclude(item.todoId);
             },
             itemBuilder: (_) => [
               const PopupMenuItem(
@@ -328,15 +356,15 @@ class _PreparationScreenState extends State<PreparationScreen> {
                             children: [
                               Chip(
                                 avatar: Icon(
-                                  _categoryIcon(todo.category),
+                                  _categoryIcon(todo?.category ?? TodoCategory.other),
                                   size: 16,
-                                  color: todo.category.color,
+                                  color: (todo?.category ?? TodoCategory.other).color,
                                 ),
                                 label: Text(
-                                  todo.category.label,
+                                  (todo?.category ?? TodoCategory.other).label,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: todo.category.color,
+                                    color: (todo?.category ?? TodoCategory.other).color,
                                   ),
                                 ),
                                 materialTapTargetSize:
@@ -344,9 +372,9 @@ class _PreparationScreenState extends State<PreparationScreen> {
                                 visualDensity: VisualDensity.compact,
                               ),
                               const Spacer(),
-                              if (todo.dueDate != null)
+                              if (todo?.dueDate != null)
                                 Text(
-                                  _formatDate(todo.dueDate!),
+                                  _formatDate(todo!.dueDate!),
                                   style: TextStyle(
                                     color: Theme.of(context)
                                         .colorScheme
@@ -358,13 +386,13 @@ class _PreparationScreenState extends State<PreparationScreen> {
                           ),
                           const SizedBox(height: Spacing.sm),
                           Text(
-                            todo.title,
+                            todo?.title ?? '',
                             style: Theme.of(context).textTheme.headlineSmall,
                           ),
-                          if (todo.amount != null) ...[
+                          if (todo?.amount != null) ...[
                             const SizedBox(height: Spacing.sm),
                             Text(
-                              '${todo.amount}円',
+                              '${todo!.amount}円',
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w700,
@@ -372,7 +400,7 @@ class _PreparationScreenState extends State<PreparationScreen> {
                               ),
                             ),
                           ],
-                          if (todo.items.isNotEmpty) ...[
+                          if (todo != null && todo.items.isNotEmpty) ...[
                             const SizedBox(height: Spacing.md),
                             const Divider(),
                             const SizedBox(height: Spacing.sm),
@@ -402,8 +430,8 @@ class _PreparationScreenState extends State<PreparationScreen> {
                                       ListTileControlAffinity.leading,
                                 )),
                           ],
-                          if (todo.note != null &&
-                              todo.note!.isNotEmpty) ...[
+                          if (todo?.note != null &&
+                              todo!.note!.isNotEmpty) ...[
                             const SizedBox(height: Spacing.sm),
                             const Divider(),
                             const SizedBox(height: Spacing.sm),
@@ -435,8 +463,16 @@ class _PreparationScreenState extends State<PreparationScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: () => _onPrepared(todo.id),
-                      icon: const Icon(Icons.check_circle_outline),
+                      onPressed: _isProcessing
+                          ? null
+                          : () => _onPrepared(item.todoId),
+                      icon: _isProcessing
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.check_circle_outline),
                       label: const Text('準備できた'),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -452,7 +488,8 @@ class _PreparationScreenState extends State<PreparationScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: () => _onDefer(todo.id),
+                        onPressed:
+                            _isProcessing ? null : () => _onDefer(item.todoId),
                         icon: const Icon(Icons.access_time),
                         label: const Text('あとで'),
                         style: OutlinedButton.styleFrom(
@@ -500,7 +537,7 @@ class _PreparationScreenState extends State<PreparationScreen> {
               Text(
                 preparedCount > 0
                     ? '$preparedCount件準備できました'
-                    : '今日は準備が必要な項目はありません',
+                    : '追加の確認は不要です',
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -521,12 +558,13 @@ class _PreparationScreenState extends State<PreparationScreen> {
   }
 
   Widget _buildCompletionScreen() {
-    final allDone = _deferredTodoIds
-        .every((id) => _preparedTodoIds.contains(id) || _excludedTodoIds.contains(id));
-    final unresolved = _deferredTodoIds
+    final allDone = _isAllDone;
+    final isEmptyState = allDone && _completedCount == 0;
+    final unresolved = _sessionTargetIds
         .where((id) =>
             !_preparedTodoIds.contains(id) && !_excludedTodoIds.contains(id))
         .toList();
+    final state = context.read<AppState>();
 
     return Scaffold(
       appBar: AppBar(
@@ -551,15 +589,17 @@ class _PreparationScreenState extends State<PreparationScreen> {
               ),
               const SizedBox(height: Spacing.md),
               Text(
-                allDone ? '今日の準備は完了です' : '準備できていないものが${unresolved.length}件あります',
+                isEmptyState
+                    ? '今日は準備するものはありません'
+                    : (allDone ? '今日の準備は完了です' : '準備できていないものが${unresolved.length}件あります'),
                 style: Theme.of(context).textTheme.headlineSmall,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: Spacing.sm),
               Text(
-                allDone
-                    ? '$_completedCount件すべて確認しました'
-                    : '$_completedCount件準備できました',
+                isEmptyState
+                    ? '追加の確認は不要です'
+                    : (allDone ? '$_completedCount件すべて確認しました' : '$_completedCount件準備できました'),
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -569,8 +609,10 @@ class _PreparationScreenState extends State<PreparationScreen> {
                 const Divider(),
                 const SizedBox(height: Spacing.sm),
                 ...unresolved.map((id) {
-                  final item = _allItems.firstWhere((i) => i.todo.id == id);
-                  final person = item.person;
+                  final todo = state.todos.firstWhereOrNull((t) => t.id == id);
+                  final person = todo?.personId != null && todo != null
+                      ? state.personById(todo.personId)
+                      : null;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: Spacing.xs),
                     child: Row(
@@ -589,7 +631,7 @@ class _PreparationScreenState extends State<PreparationScreen> {
                         ],
                         Expanded(
                           child: Text(
-                            item.todo.title,
+                            todo?.title ?? '',
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -641,4 +683,11 @@ class _PreparationScreenState extends State<PreparationScreen> {
   String _formatDate(DateTime date) {
     return '${date.month}/${date.day}';
   }
+}
+
+/// セッション中の1件の項目（Todo自体はビルド時にcontext.watchで最新を取得）
+class _SessionItem {
+  _SessionItem({required this.todoId, this.person});
+  final String todoId;
+  final PersonProfile? person;
 }

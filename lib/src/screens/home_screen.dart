@@ -271,14 +271,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => PreparationScreen(date: today),
-                    ),
-                  ),
-                  child: const Text('確認し直す'),
-                ),
               ],
             ),
           ),
