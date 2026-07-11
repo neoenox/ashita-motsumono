@@ -43,6 +43,7 @@ class DbTodo extends Table {
   BoolColumn get notifySameMorning => boolean()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
+  DateTimeColumn get preparedDate => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -79,14 +80,15 @@ class AppDatabase extends _$AppDatabase {
   final File? databaseFile;
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async => m.createAll(),
         onUpgrade: (m, from, to) async {
-          // v1→v2: 将来のスキーマ変更対応（現状はプレースホルダー）
-          // from == 1 && to == 2 の場合に migrate 処理を記述
+          if (from == 1) {
+            await m.addColumn(dbTodo, dbTodo.preparedDate);
+          }
         },
       );
 
@@ -285,6 +287,7 @@ class AppDatabase extends _$AppDatabase {
         notifySameMorning: r.notifySameMorning,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
+        preparedDate: r.preparedDate,
       );
 
   DbTodoCompanion _fromAppTodo(AppTodo t) => DbTodoCompanion(
@@ -301,6 +304,7 @@ class AppDatabase extends _$AppDatabase {
         notifySameMorning: Value(t.notifySameMorning),
         createdAt: Value(t.createdAt),
         updatedAt: Value(t.updatedAt),
+        preparedDate: Value(t.preparedDate),
       );
 
   DbChecklistItemCompanion _fromChecklistItem(String todoId, ChecklistItem item) =>

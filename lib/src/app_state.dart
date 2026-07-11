@@ -109,6 +109,66 @@ class AppState extends ChangeNotifier {
       ..sort(_sortTodo);
   }
 
+  /// 指定日の準備対象Todoを返す。
+  /// 条件: status==active, dueDate!=null, dueDate<=指定日, preparedDate!=指定日
+  List<AppTodo> todosForPreparation(DateTime date) {
+    final d = DateTime(date.year, date.month, date.day);
+    return _todos
+        .where((todo) {
+          if (todo.status != TodoStatus.active) return false;
+          if (todo.dueDate == null) return false;
+          final dd = DateTime(
+            todo.dueDate!.year, todo.dueDate!.month, todo.dueDate!.day,
+          );
+          if (dd.isAfter(d)) return false;
+          if (todo.preparedDate != null) {
+            final pd = DateTime(
+              todo.preparedDate!.year,
+              todo.preparedDate!.month,
+              todo.preparedDate!.day,
+            );
+            if (pd == d) return false;
+          }
+          return true;
+        })
+        .toList()
+      ..sort(_prepSort);
+  }
+
+  /// 今日すでに準備済みのTodo（preparedDate == 今日）を返す。
+  List<AppTodo> todosPreparedToday(DateTime date) {
+    final d = DateTime(date.year, date.month, date.day);
+    return _todos.where((todo) {
+      if (todo.preparedDate == null) return false;
+      final pd = DateTime(
+        todo.preparedDate!.year,
+        todo.preparedDate!.month,
+        todo.preparedDate!.day,
+      );
+      return pd == d;
+    }).toList();
+  }
+
+  /// 準備対象の子どもの表示名リスト（最大2名＋「他N人」）。
+  /// 子どもの登録順に返す。
+  List<String> prepChildNames(DateTime date) {
+    final todos = todosForPreparation(date);
+    final ids = todos.map((t) => t.personId).whereType<String>().toSet();
+    final names = <String>[];
+    // 子どもの登録順に表示
+    for (final child in _children) {
+      if (ids.contains(child.id)) {
+        names.add(child.name);
+      }
+    }
+    // 削除済みなど_childrenに存在しないpersonIdのTodoがあれば末尾に追加
+    final orphanIds = ids.difference(_children.map((c) => c.id).toSet());
+    if (orphanIds.isNotEmpty) {
+      names.addAll(orphanIds.map((_) => '?'));
+    }
+    return names;
+  }
+
   PersonProfile? personById(String? id) {
     if (id == null) return null;
     return _children.where((c) => c.id == id).firstOrNull;
@@ -117,6 +177,27 @@ class AppState extends ChangeNotifier {
   DocumentRecord? documentById(String? id) {
     if (id == null) return null;
     return _documents.where((d) => d.id == id).firstOrNull;
+  }
+
+  // preparedDate付きのソート: 子ども登録順→personId nullは最後→期限順→作成日順
+  int _prepSort(AppTodo a, AppTodo b) {
+    final aIdx = a.personId != null
+        ? _children.indexWhere((c) => c.id == a.personId)
+        : -1;
+    final bIdx = b.personId != null
+        ? _children.indexWhere((c) => c.id == b.personId)
+        : -1;
+    if (a.personId == null && b.personId != null) return 1;
+    if (a.personId != null && b.personId == null) return -1;
+    if (aIdx != bIdx) return aIdx.compareTo(bIdx);
+    final ad = a.dueDate;
+    final bd = b.dueDate;
+    if (ad == null && bd == null) return a.createdAt.compareTo(b.createdAt);
+    if (ad == null) return 1;
+    if (bd == null) return -1;
+    final d = ad.compareTo(bd);
+    if (d != 0) return d;
+    return a.createdAt.compareTo(b.createdAt);
   }
 
   // 人物に割り当てる色のパレット（視覚的に離れた色）
@@ -286,6 +367,28 @@ class AppState extends ChangeNotifier {
       await _safeSchedule(updated);
     }
     notifyListeners();
+  }
+
+  /// Todoを準備済みにする。
+  /// statusは変更せず、通知もキャンセルしない。
+  Future<void> markTodoPrepared(String todoId, DateTime date) async {
+    final todo = _todos.where((e) => e.id == todoId).firstOrNull;
+    if (todo == null) return;
+    final d = DateTime(date.year, date.month, date.day);
+    await _updateTodo(
+      todo.copyWith(preparedDate: d, updatedAt: DateTime.now()),
+      rescheduleNotification: false,
+    );
+  }
+
+  /// Todoの準備済みを解除する。
+  Future<void> clearTodoPrepared(String todoId) async {
+    final todo = _todos.where((e) => e.id == todoId).firstOrNull;
+    if (todo == null) return;
+    await _updateTodo(
+      todo.copyWith(clearPreparedDate: true, updatedAt: DateTime.now()),
+      rescheduleNotification: false,
+    );
   }
 
   Future<void> toggleItem(String todoId, String itemId) async {

@@ -23,6 +23,7 @@ import '../services/export_service.dart';
 import '../services/purchase_provider.dart';
 import 'add_child_screen.dart';
 import 'add_todo_screen.dart';
+import 'preparation_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/home_status_cards.dart';
 import 'widgets/todo_section.dart';
@@ -184,6 +185,111 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
   }
 
+  List<Widget> _buildPrepCards(AppState state, DateTime today) {
+    final prepTodos = state.todosForPreparation(today);
+    final preparedTodos = state.todosPreparedToday(today);
+
+    if (prepTodos.isNotEmpty) {
+      final names = state.prepChildNames(today);
+      final namesText = names.take(2).join('・');
+      final suffix = names.length > 2 ? ' 他${names.length - 2}人' : '';
+
+      return [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(Spacing.md),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.wb_sunny_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: Spacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '今日の準備',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '$namesText$suffix　${prepTodos.length}件',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => PreparationScreen(date: today),
+                    ),
+                  ),
+                  child: const Text('準備を始める'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: Spacing.md),
+      ];
+    }
+
+    if (preparedTodos.isNotEmpty) {
+      return [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(Spacing.md),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: Spacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '今日の準備は確認済み',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${preparedTodos.length}件準備できました',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => PreparationScreen(date: today),
+                    ),
+                  ),
+                  child: const Text('確認し直す'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: Spacing.md),
+      ];
+    }
+
+    return [];
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
@@ -315,6 +421,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     allFiltered &&
                     _searchQuery.isNotEmpty)
                   NoSearchResults(query: _searchQuery),
+                if (state.children.isNotEmpty && _searchQuery.isEmpty)
+                  ..._buildPrepCards(state, today),
                 if (todayTodos.isNotEmpty || _searchQuery.isEmpty) ...[
                   TodoSection(title: '今日やること', todos: todayTodos),
                   const SizedBox(height: Spacing.md),

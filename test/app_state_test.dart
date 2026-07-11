@@ -125,4 +125,171 @@ void main() {
       expect(loaded.documents, isEmpty);
     },
   );
+
+  group('preparation mode', () {
+    late DriftStore store;
+    late _FakeNotificationService notifications;
+    late AppState appState;
+    late PersonProfile childA;
+    late PersonProfile childB;
+
+    setUp(() async {
+      store = await DriftStore.createInMemory();
+      notifications = _FakeNotificationService();
+      appState = AppState(store: store, notifications: notifications);
+      await appState.load();
+
+      childA = await appState.addChild('太郎');
+      childB = await appState.addChild('次郎');
+
+      // 今日期限
+      final today = DateTime.now();
+      await appState.addTodosFromDrafts(
+        drafts: [
+          ExtractionDraft(
+            title: '水筒',
+            category: TodoCategory.item,
+            dueDate: today,
+            items: [],
+          ),
+          ExtractionDraft(
+            title: '連絡帳',
+            category: TodoCategory.submit,
+            dueDate: today,
+            items: [],
+          ),
+        ],
+        personId: childA.id,
+      );
+      // 昨日期限（childB）
+      await appState.addTodosFromDrafts(
+        drafts: [
+          ExtractionDraft(
+            title: '集金',
+            category: TodoCategory.payment,
+            dueDate: today.subtract(const Duration(days: 1)),
+            items: [],
+          ),
+        ],
+        personId: childB.id,
+      );
+    });
+
+    test('todosForPreparation includes active todos with past or today dueDate',
+        () async {
+      final todos = appState.todosForPreparation(DateTime.now());
+      expect(todos.length, 3);
+    });
+
+    test('todosForPreparation excludes done todos', () async {
+      final todos = appState.todosForPreparation(DateTime.now());
+      await appState.toggleTodoDone(todos.first.id);
+      final after = appState.todosForPreparation(DateTime.now());
+      expect(after.length, 2);
+    });
+
+    test('todosForPreparation excludes undated todos', () async {
+      await appState.addTodosFromDrafts(
+        drafts: [
+          ExtractionDraft(
+            title: '期限なし',
+            category: TodoCategory.other,
+            items: [],
+          ),
+        ],
+      );
+      final todos = appState.todosForPreparation(DateTime.now());
+      // 3 (既存) + 0 (undatedは除外)
+      expect(todos.length, 3);
+    });
+
+    test('todosForPreparation excludes future dueDate', () async {
+      final todos = appState.todosForPreparation(DateTime.now());
+      for (final t in todos) {
+        expect(t.dueDate!.isAfter(DateTime.now()), isFalse);
+      }
+    });
+
+    test('todosForPreparation excludes already prepared todos', () async {
+      final todos = appState.todosForPreparation(DateTime.now());
+      final first = todos.first;
+      await appState.markTodoPrepared(first.id, DateTime.now());
+      final after = appState.todosForPreparation(DateTime.now());
+      expect(after.length, 2);
+      expect(after.every((t) => t.id != first.id), isTrue);
+    });
+
+    test('todosForPreparation sorts by child order, personId null last',
+        () async {
+      // 3つ目をpersonId nullで追加
+      final today = DateTime.now();
+      await appState.addTodosFromDrafts(
+        drafts: [
+          ExtractionDraft(
+            title: '未割当',
+            category: TodoCategory.other,
+            dueDate: today,
+            items: [],
+          ),
+        ],
+      );
+
+      // 子ども順は 太郎 (childA) → 次郎 (childB) → null
+      final todos = appState.todosForPreparation(today);
+      final persons = todos.map((t) => t.personId).toList();
+      final aIdx = persons.indexOf(childA.id);
+      final bIdx = persons.indexOf(childB.id);
+      final nullIdx = persons.indexOf(null);
+      expect(aIdx, lessThan(bIdx));
+      expect(bIdx, lessThan(nullIdx));
+    });
+
+    test('markTodoPrepared does not change status', () async {
+      final todos = appState.todosForPreparation(DateTime.now());
+      final first = todos.first;
+      expect(first.status, TodoStatus.active);
+      await appState.markTodoPrepared(first.id, DateTime.now());
+      final after = appState.todosForPreparation(DateTime.now());
+      // 対象外になったので直接todosから取得
+      final todo = appState.todos.firstWhere((t) => t.id == first.id);
+      expect(todo.status, TodoStatus.active);
+    });
+
+    test('markTodoPrepared does not cancel notification', () async {
+      final todos = appState.todosForPreparation(DateTime.now());
+      final first = todos.first;
+      final beforeCancelCount = notifications.canceledTodoIds.length;
+      await appState.markTodoPrepared(first.id, DateTime.now());
+      expect(notifications.canceledTodoIds.length, beforeCancelCount);
+    });
+
+    test('clearTodoPrepared makes todo eligible again', () async {
+      final todos = appState.todosForPreparation(DateTime.now());
+      final first = todos.first;
+      await appState.markTodoPrepared(first.id, DateTime.now());
+      var after = appState.todosForPreparation(DateTime.now());
+      expect(after.every((t) => t.id != first.id), isTrue);
+
+      await appState.clearTodoPrepared(first.id);
+      after = appState.todosForPreparation(DateTime.now());
+      expect(after.any((t) => t.id == first.id), isTrue);
+    });
+
+    test('todosPreparedToday returns only today-prepared todos', () async {
+      final todos = appState.todosForPreparation(DateTime.now());
+      final today = DateTime.now();
+      await appState.markTodoPrepared(todos[0].id, today);
+      final prepared = appState.todosPreparedToday(today);
+      expect(prepared.length, 1);
+      expect(prepared.first.id, todos[0].id);
+    });
+
+    test('prepChildNames returns names in child registration order', () async {
+      final names = appState.prepChildNames(DateTime.now());
+      // 太郎(childA) + 次郎(childB)
+      expect(names.length, 2);
+      expect(names[0], '太郎');
+      expect(names[1], '次郎');
+    });
+  });
 }

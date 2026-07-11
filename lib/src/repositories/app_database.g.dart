@@ -507,6 +507,17 @@ class $DbTodoTable extends DbTodo with TableInfo<$DbTodoTable, DbTodoData> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _preparedDateMeta = const VerificationMeta(
+    'preparedDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> preparedDate = GeneratedColumn<DateTime>(
+    'prepared_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -522,6 +533,7 @@ class $DbTodoTable extends DbTodo with TableInfo<$DbTodoTable, DbTodoData> {
     notifySameMorning,
     createdAt,
     updatedAt,
+    preparedDate,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -632,6 +644,15 @@ class $DbTodoTable extends DbTodo with TableInfo<$DbTodoTable, DbTodoData> {
     } else if (isInserting) {
       context.missing(_updatedAtMeta);
     }
+    if (data.containsKey('prepared_date')) {
+      context.handle(
+        _preparedDateMeta,
+        preparedDate.isAcceptableOrUnknown(
+          data['prepared_date']!,
+          _preparedDateMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -693,6 +714,10 @@ class $DbTodoTable extends DbTodo with TableInfo<$DbTodoTable, DbTodoData> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      preparedDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}prepared_date'],
+      ),
     );
   }
 
@@ -716,6 +741,7 @@ class DbTodoData extends DataClass implements Insertable<DbTodoData> {
   final bool notifySameMorning;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final DateTime? preparedDate;
   const DbTodoData({
     required this.id,
     required this.title,
@@ -730,6 +756,7 @@ class DbTodoData extends DataClass implements Insertable<DbTodoData> {
     required this.notifySameMorning,
     required this.createdAt,
     required this.updatedAt,
+    this.preparedDate,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -757,6 +784,9 @@ class DbTodoData extends DataClass implements Insertable<DbTodoData> {
     map['notify_same_morning'] = Variable<bool>(notifySameMorning);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || preparedDate != null) {
+      map['prepared_date'] = Variable<DateTime>(preparedDate);
+    }
     return map;
   }
 
@@ -783,6 +813,9 @@ class DbTodoData extends DataClass implements Insertable<DbTodoData> {
       notifySameMorning: Value(notifySameMorning),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      preparedDate: preparedDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(preparedDate),
     );
   }
 
@@ -807,6 +840,7 @@ class DbTodoData extends DataClass implements Insertable<DbTodoData> {
       notifySameMorning: serializer.fromJson<bool>(json['notifySameMorning']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      preparedDate: serializer.fromJson<DateTime?>(json['preparedDate']),
     );
   }
   @override
@@ -826,6 +860,7 @@ class DbTodoData extends DataClass implements Insertable<DbTodoData> {
       'notifySameMorning': serializer.toJson<bool>(notifySameMorning),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'preparedDate': serializer.toJson<DateTime?>(preparedDate),
     };
   }
 
@@ -843,6 +878,7 @@ class DbTodoData extends DataClass implements Insertable<DbTodoData> {
     bool? notifySameMorning,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Value<DateTime?> preparedDate = const Value.absent(),
   }) => DbTodoData(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -857,6 +893,7 @@ class DbTodoData extends DataClass implements Insertable<DbTodoData> {
     notifySameMorning: notifySameMorning ?? this.notifySameMorning,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    preparedDate: preparedDate.present ? preparedDate.value : this.preparedDate,
   );
   DbTodoData copyWithCompanion(DbTodoCompanion data) {
     return DbTodoData(
@@ -879,6 +916,9 @@ class DbTodoData extends DataClass implements Insertable<DbTodoData> {
           : this.notifySameMorning,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      preparedDate: data.preparedDate.present
+          ? data.preparedDate.value
+          : this.preparedDate,
     );
   }
 
@@ -897,7 +937,8 @@ class DbTodoData extends DataClass implements Insertable<DbTodoData> {
           ..write('notifyPreviousNight: $notifyPreviousNight, ')
           ..write('notifySameMorning: $notifySameMorning, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('preparedDate: $preparedDate')
           ..write(')'))
         .toString();
   }
@@ -917,6 +958,7 @@ class DbTodoData extends DataClass implements Insertable<DbTodoData> {
     notifySameMorning,
     createdAt,
     updatedAt,
+    preparedDate,
   );
   @override
   bool operator ==(Object other) =>
@@ -934,7 +976,8 @@ class DbTodoData extends DataClass implements Insertable<DbTodoData> {
           other.notifyPreviousNight == this.notifyPreviousNight &&
           other.notifySameMorning == this.notifySameMorning &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.preparedDate == this.preparedDate);
 }
 
 class DbTodoCompanion extends UpdateCompanion<DbTodoData> {
@@ -951,6 +994,7 @@ class DbTodoCompanion extends UpdateCompanion<DbTodoData> {
   final Value<bool> notifySameMorning;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<DateTime?> preparedDate;
   final Value<int> rowid;
   const DbTodoCompanion({
     this.id = const Value.absent(),
@@ -966,6 +1010,7 @@ class DbTodoCompanion extends UpdateCompanion<DbTodoData> {
     this.notifySameMorning = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.preparedDate = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DbTodoCompanion.insert({
@@ -982,6 +1027,7 @@ class DbTodoCompanion extends UpdateCompanion<DbTodoData> {
     required bool notifySameMorning,
     required DateTime createdAt,
     required DateTime updatedAt,
+    this.preparedDate = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        title = Value(title),
@@ -1005,6 +1051,7 @@ class DbTodoCompanion extends UpdateCompanion<DbTodoData> {
     Expression<bool>? notifySameMorning,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<DateTime>? preparedDate,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1022,6 +1069,7 @@ class DbTodoCompanion extends UpdateCompanion<DbTodoData> {
       if (notifySameMorning != null) 'notify_same_morning': notifySameMorning,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (preparedDate != null) 'prepared_date': preparedDate,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1040,6 +1088,7 @@ class DbTodoCompanion extends UpdateCompanion<DbTodoData> {
     Value<bool>? notifySameMorning,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<DateTime?>? preparedDate,
     Value<int>? rowid,
   }) {
     return DbTodoCompanion(
@@ -1056,6 +1105,7 @@ class DbTodoCompanion extends UpdateCompanion<DbTodoData> {
       notifySameMorning: notifySameMorning ?? this.notifySameMorning,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      preparedDate: preparedDate ?? this.preparedDate,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1102,6 +1152,9 @@ class DbTodoCompanion extends UpdateCompanion<DbTodoData> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (preparedDate.present) {
+      map['prepared_date'] = Variable<DateTime>(preparedDate.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1124,6 +1177,7 @@ class DbTodoCompanion extends UpdateCompanion<DbTodoData> {
           ..write('notifySameMorning: $notifySameMorning, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('preparedDate: $preparedDate, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2102,6 +2156,7 @@ typedef $$DbTodoTableCreateCompanionBuilder =
       required bool notifySameMorning,
       required DateTime createdAt,
       required DateTime updatedAt,
+      Value<DateTime?> preparedDate,
       Value<int> rowid,
     });
 typedef $$DbTodoTableUpdateCompanionBuilder =
@@ -2119,6 +2174,7 @@ typedef $$DbTodoTableUpdateCompanionBuilder =
       Value<bool> notifySameMorning,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<DateTime?> preparedDate,
       Value<int> rowid,
     });
 
@@ -2193,6 +2249,11 @@ class $$DbTodoTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get preparedDate => $composableBuilder(
+    column: $table.preparedDate,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2270,6 +2331,11 @@ class $$DbTodoTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get preparedDate => $composableBuilder(
+    column: $table.preparedDate,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$DbTodoTableAnnotationComposer
@@ -2325,6 +2391,11 @@ class $$DbTodoTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get preparedDate => $composableBuilder(
+    column: $table.preparedDate,
+    builder: (column) => column,
+  );
 }
 
 class $$DbTodoTableTableManager
@@ -2368,6 +2439,7 @@ class $$DbTodoTableTableManager
                 Value<bool> notifySameMorning = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> preparedDate = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DbTodoCompanion(
                 id: id,
@@ -2383,6 +2455,7 @@ class $$DbTodoTableTableManager
                 notifySameMorning: notifySameMorning,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                preparedDate: preparedDate,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2400,6 +2473,7 @@ class $$DbTodoTableTableManager
                 required bool notifySameMorning,
                 required DateTime createdAt,
                 required DateTime updatedAt,
+                Value<DateTime?> preparedDate = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DbTodoCompanion.insert(
                 id: id,
@@ -2415,6 +2489,7 @@ class $$DbTodoTableTableManager
                 notifySameMorning: notifySameMorning,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                preparedDate: preparedDate,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

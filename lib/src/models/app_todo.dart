@@ -1,5 +1,5 @@
 // lib/src/models/app_todo.dart
-// Todo本体（タイトル、カテゴリ、ステータス、チェックリスト、締切、通知設定など）。
+// Todo本体（タイトル、カテゴリ、ステータス、チェックリスト、締切、通知設定、準備日）。
 // アプリの中心的なドメインモデル。toJson/fromJson で永続化可能。
 // 関連: entities.dart, enums.dart, checklist_item.dart, app_snapshot.dart
 
@@ -24,6 +24,7 @@ class AppTodo {
     this.note,
     this.notifyPreviousNight = true,
     this.notifySameMorning = true,
+    this.preparedDate,
   });
 
   final String id;
@@ -40,6 +41,7 @@ class AppTodo {
   final bool notifySameMorning;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final DateTime? preparedDate;
 
   bool get isDone => status == TodoStatus.done;
 
@@ -58,11 +60,13 @@ class AppTodo {
     bool? notifySameMorning,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? preparedDate,
     bool clearPersonId = false,
     bool clearDocumentId = false,
     bool clearDueDate = false,
     bool clearAmount = false,
     bool clearNote = false,
+    bool clearPreparedDate = false,
   }) {
     return AppTodo(
       id: id ?? this.id,
@@ -79,6 +83,7 @@ class AppTodo {
       notifySameMorning: notifySameMorning ?? this.notifySameMorning,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      preparedDate: clearPreparedDate ? null : preparedDate ?? this.preparedDate,
     );
   }
 
@@ -95,6 +100,7 @@ class AppTodo {
         'items': items.map((e) => e.toJson()).toList(),
         'notifyPreviousNight': notifyPreviousNight,
         'notifySameMorning': notifySameMorning,
+        'preparedDate': preparedDate?.toIso8601String(),
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
       };
@@ -116,6 +122,9 @@ class AppTodo {
             .toList(),
         notifyPreviousNight: json['notifyPreviousNight'] as bool? ?? true,
         notifySameMorning: json['notifySameMorning'] as bool? ?? true,
+        preparedDate: (json['preparedDate'] as String?) != null
+            ? DateTime.tryParse(json['preparedDate'] as String)
+            : null,
         createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
         updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
       );

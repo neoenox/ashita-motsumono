@@ -153,6 +153,41 @@ void main() {
       expect(restored.dueDate, isNull);
       expect(restored.title, 'Test');
     });
+
+    test('preparedDate serializes and restores in JSON round-trip', () {
+      final todoWithPrep = todo.copyWith(
+        preparedDate: DateTime(2026, 7, 10),
+      );
+      final json = todoWithPrep.toJson();
+      expect(json['preparedDate'], '2026-07-10T00:00:00.000');
+      final restored = AppTodo.fromJson(json);
+      expect(restored.preparedDate, DateTime(2026, 7, 10));
+    });
+
+    test('preparedDate is null when not in JSON', () {
+      final json = <String, dynamic>{
+        'id': 't1',
+        'title': 'test',
+        'category': 'item',
+        'status': 'active',
+      };
+      final restored = AppTodo.fromJson(json);
+      expect(restored.preparedDate, isNull);
+    });
+
+    test('preparedDate survives copyWith of other fields', () {
+      final todoWithPrep = todo.copyWith(preparedDate: DateTime(2026, 7, 10));
+      final copy = todoWithPrep.copyWith(title: 'new title');
+      expect(copy.preparedDate, DateTime(2026, 7, 10));
+      expect(copy.title, 'new title');
+    });
+
+    test('clearPreparedDate flag clears preparedDate', () {
+      final todoWithPrep = todo.copyWith(preparedDate: DateTime(2026, 7, 10));
+      final cleared = todoWithPrep.copyWith(clearPreparedDate: true);
+      expect(cleared.preparedDate, isNull);
+      expect(cleared.title, todoWithPrep.title);
+    });
   });
 
   group('PersonProfile', () {

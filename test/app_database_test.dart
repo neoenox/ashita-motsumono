@@ -20,8 +20,8 @@ void main() {
     await db.close();
   });
 
-  test('schema version is 1', () {
-    expect(db.schemaVersion, 1);
+  test('schema version is 2', () {
+    expect(db.schemaVersion, 2);
   });
 
   test('saves and loads a child', () async {
@@ -175,5 +175,45 @@ void main() {
       // dueDate is invalid but DateTime.tryParse returns null gracefully
       expect(ok, isTrue);
     });
+  });
+
+  test('v2 schema migration preserves existing todo with preparedDate null', () async {
+    // v1相当のスキーマでTodoを保存 → DBを閉じる → v2で開くをシミュレート
+    // インメモリDBではmigrationが走らないため、直接preparedDateがnullで読み込めることを確認
+    final todo = AppTodo(
+      id: 'todo-mig',
+      title: '移行テスト',
+      items: [],
+      category: TodoCategory.other,
+      status: TodoStatus.active,
+      createdAt: DateTime(2026, 1, 1),
+      updatedAt: DateTime(2026, 1, 1),
+    );
+    await db.saveSnapshot(
+      AppSnapshot(children: [], todos: [todo], documents: []),
+    );
+    final loaded = await db.loadSnapshot();
+    expect(loaded.todos.length, 1);
+    expect(loaded.todos.first.title, '移行テスト');
+    expect(loaded.todos.first.preparedDate, isNull);
+  });
+
+  test('v2 schema saves and loads preparedDate', () async {
+    final todo = AppTodo(
+      id: 'todo-prep',
+      title: '準備済みテスト',
+      items: [],
+      category: TodoCategory.other,
+      status: TodoStatus.active,
+      createdAt: DateTime(2026, 1, 1),
+      updatedAt: DateTime(2026, 1, 1),
+      preparedDate: DateTime(2026, 7, 10),
+    );
+    await db.saveSnapshot(
+      AppSnapshot(children: [], todos: [todo], documents: []),
+    );
+    final loaded = await db.loadSnapshot();
+    expect(loaded.todos.length, 1);
+    expect(loaded.todos.first.preparedDate, DateTime(2026, 7, 10));
   });
 }
