@@ -40,7 +40,8 @@ def read_text(path: Path) -> str:
 
 
 def write_text(path: Path, text: str) -> None:
-    path.write_text(text, encoding="utf-8", newline="\n")
+    with path.open("w", encoding="utf-8", newline="\n") as output:
+        output.write(text)
 
 
 def replace_or_insert(pattern: str, replacement, text: str) -> str:
