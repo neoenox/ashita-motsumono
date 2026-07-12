@@ -69,7 +69,7 @@ class AshitaMotsumonoApp extends StatelessWidget {
         final currentSettings = context.watch<AppSettings>();
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'あした持つもの',
+          title: 'あしたもつもの',
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
           themeMode: currentSettings.themeMode,
