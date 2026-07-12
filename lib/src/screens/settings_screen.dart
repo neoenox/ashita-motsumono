@@ -5,6 +5,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -30,6 +31,15 @@ Future<bool> tryOpenExternalPage({
   }
 }
 
+@visibleForTesting
+String formatAppVersion(PackageInfo packageInfo) {
+  final version = packageInfo.version.trim();
+  final buildNumber = packageInfo.buildNumber.trim();
+  if (version.isEmpty) return '';
+  if (buildNumber.isEmpty) return 'Version $version';
+  return 'Version $version+$buildNumber';
+}
+
 final _themeModes = {
   ThemeMode.system: 'システム',
   ThemeMode.light: 'ライト',
@@ -47,6 +57,13 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   AppSettings get settings => widget.settings;
+  late final Future<String?> _versionLabel;
+
+  @override
+  void initState() {
+    super.initState();
+    _versionLabel = _loadVersionLabel();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +72,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(title: const Text('設定')),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
-          Spacing.md, Spacing.md, Spacing.md,
+          Spacing.md,
+          Spacing.md,
+          Spacing.md,
           MediaQuery.paddingOf(context).bottom + Spacing.lg,
         ),
         children: [
@@ -63,9 +82,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.only(bottom: Spacing.md),
             child: Text(
               '通知やサポーター機能の管理ができます',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
           _SectionCard(
@@ -76,7 +95,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 _TimeTile(
                   icon: Icons.nightlight_round,
-                  title: '夜 前日 ${_fmt(settings.previousNightHour, settings.previousNightMinute)}',
+                  title:
+                      '夜 前日 ${_fmt(settings.previousNightHour, settings.previousNightMinute)}',
                   subtitle: '前日の持ち物を確認しましょう',
                   onTap: () => _pickTime(
                     context,
@@ -88,7 +108,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(),
                 _TimeTile(
                   icon: Icons.wb_sunny_outlined,
-                  title: '朝 当日 ${_fmt(settings.sameMorningHour, settings.sameMorningMinute)}',
+                  title:
+                      '朝 当日 ${_fmt(settings.sameMorningHour, settings.sameMorningMinute)}',
                   subtitle: '最終チェックで安心な1日を',
                   onTap: () => _pickTime(
                     context,
@@ -131,7 +152,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'サポーター',
             description: '広告除去と開発支援',
             child: Consumer<PurchaseProvider>(
-              builder: (context, purchase, _) => _SupporterCard(purchase: purchase),
+              builder: (context, purchase, _) =>
+                  _SupporterCard(purchase: purchase),
             ),
           ),
           const SizedBox(height: Spacing.sm),
@@ -140,7 +162,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'AI分析',
             description: '手書きメモも解析できるAI画像認識',
             child: Consumer<PurchaseProvider>(
-              builder: (context, purchase, _) => _AiAccessCard(purchase: purchase),
+              builder: (context, purchase, _) =>
+                  _AiAccessCard(purchase: purchase),
             ),
           ),
           const SizedBox(height: Spacing.lg),
@@ -164,7 +187,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.open_in_new, size: 16),
             contentPadding: EdgeInsets.zero,
             onTap: () => _openExternalPage(
-              Uri.parse('https://lp-5t7.pages.dev/apps/ashita-motsumono/privacy'),
+              Uri.parse(
+                'https://lp-5t7.pages.dev/apps/ashita-motsumono/privacy',
+              ),
               'リンクを開けませんでした',
             ),
           ),
@@ -174,19 +199,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.chevron_right, size: 16),
             contentPadding: EdgeInsets.zero,
             onTap: () => _openExternalPage(
-              Uri.parse('https://lp-5t7.pages.dev/apps/ashita-motsumono/contact'),
+              Uri.parse(
+                'https://lp-5t7.pages.dev/apps/ashita-motsumono/contact',
+              ),
               'お問い合わせページを開けませんでした',
             ),
           ),
           const SizedBox(height: Spacing.lg),
-          Center(
-            child: Text(
-              'Version 0.6.2',
-              style: TextStyle(
-                color: cs.onSurfaceVariant.withValues(alpha: 0.5),
-                fontSize: 12,
-              ),
-            ),
+          _AppVersionLabel(
+            versionLabel: _versionLabel,
+            textColor: cs.onSurfaceVariant.withValues(alpha: 0.5),
           ),
         ],
       ),
@@ -194,17 +216,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _openExternalPage(
-    Uri uri,
-    String errorMessage,
-  ) async {
+  Future<String?> _loadVersionLabel() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      return formatAppVersion(packageInfo);
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<void> _openExternalPage(Uri uri, String errorMessage) async {
     final opened = await tryOpenExternalPage(
       uri: uri,
       canOpen: canLaunchUrl,
-      launch: (target) => launchUrl(
-        target,
-        mode: LaunchMode.externalApplication,
-      ),
+      launch: (target) =>
+          launchUrl(target, mode: LaunchMode.externalApplication),
     );
     if (!opened && mounted) {
       ScaffoldMessenger.of(
@@ -277,6 +303,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text('登録データの削除に失敗しました: $e')));
     }
+  }
+}
+
+class _AppVersionLabel extends StatelessWidget {
+  const _AppVersionLabel({required this.versionLabel, required this.textColor});
+
+  final Future<String?> versionLabel;
+  final Color textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: versionLabel,
+      builder: (context, snapshot) {
+        final label = snapshot.data;
+        if (label == null || label.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Center(
+          child: Text(label, style: TextStyle(color: textColor, fontSize: 12)),
+        );
+      },
+    );
   }
 }
 
@@ -375,10 +424,11 @@ class _SupporterCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('サポーター登録済み',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: cs.primary,
-                  ),
+                Text(
+                  'サポーター登録済み',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(color: cs.primary),
                 ),
                 const SizedBox(height: Spacing.xs),
                 const Text('広告なしで使えます。ご購入ありがとうございます。'),
@@ -401,7 +451,8 @@ class _SupporterCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('買い切りサポーター',
+                  Text(
+                    '買い切りサポーター',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: Spacing.xs),
@@ -476,10 +527,11 @@ class _AiAccessCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('AI分析 利用可能',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: cs.primary,
-                  ),
+                Text(
+                  'AI分析 利用可能',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(color: cs.primary),
                 ),
                 const SizedBox(height: Spacing.xs),
                 const Text('画像の手書きメモもAIが読み取ってTodoに変換します。'),
@@ -502,9 +554,7 @@ class _AiAccessCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('AI画像認識',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
+                  Text('AI画像認識', style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: Spacing.xs),
                   const Text('手書きのメモやお便りもAIが読み取り、Todoを自動生成します。'),
                 ],
