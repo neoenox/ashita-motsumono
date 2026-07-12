@@ -145,10 +145,15 @@ class AppState extends ChangeNotifier {
   }
 
   Future<PersonProfile> addChild(String name) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'must not be empty');
+    }
+
     final now = DateTime.now();
     final child = PersonProfile(
       id: _uuid.v4(),
-      name: name.trim(),
+      name: trimmedName,
       colorValue: _assignPersonColor(),
       createdAt: now,
       updatedAt: now,
