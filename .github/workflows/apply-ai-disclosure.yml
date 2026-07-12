@@ -1,0 +1,209 @@
+name: Apply AI image disclosure
+
+on:
+  push:
+    branches:
+      - agent/ai-image-disclosure-consent
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/ai-image-disclosure-consent
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Apply implementation and tests
+        shell: python
+        run: |
+          from pathlib import Path
+
+          add_path = Path('lib/src/screens/add_todo_screen.dart')
+          add_text = add_path.read_text(encoding='utf-8')
+
+          class_marker = 'class AddTodoScreen extends StatefulWidget {\n'
+          disclosure = '''@visibleForTesting
+          Future<void> requestAiImageAnalysisWithDisclosure(
+            BuildContext context, {
+            required Future<void> Function() startAnalysis,
+          }) async {
+            final consent = await showDialog<bool>(
+              context: context,
+              barrierDismissible: false,
+              builder: (dialogContext) => AlertDialog(
+                title: const Text('AI画像解析について'),
+                content: const Text(
+                  'AI画像解析では、選択した画像と画像形式、解析基準日、タイムゾーンを、'
+                  'Cloudflare Workersを経由してGoogle Gemini APIへ送信します。\\n\\n'
+                  '通常のOCRでは画像を外部送信しません。',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext, false),
+                    child: const Text('キャンセル'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(dialogContext, true),
+                    child: const Text('同意して画像を選ぶ'),
+                  ),
+                ],
+              ),
+            );
+            if (!context.mounted || consent != true) return;
+            await startAnalysis();
+          }
+
+          '''
+          if class_marker not in add_text:
+              raise SystemExit('AddTodoScreen class marker not found')
+          add_text = add_text.replace(class_marker, disclosure + class_marker, 1)
+
+          old_button = 'onPressed: _busy ? null : () => _pickAndOcrWithAi(),'
+          new_button = '''onPressed: _busy
+                                  ? null
+                                  : () => requestAiImageAnalysisWithDisclosure(
+                                      context,
+                                      startAnalysis: _pickAndOcrWithAi,
+                                    ),'''
+          if old_button not in add_text:
+              raise SystemExit('AI button callback not found')
+          add_text = add_text.replace(old_button, new_button, 1)
+          add_path.write_text(add_text, encoding='utf-8')
+
+          test_path = Path('test/widget_test.dart')
+          test_text = test_path.read_text(encoding='utf-8')
+
+          import_marker = "import 'package:ashita_motsumono/src/screens/review_extraction_screen.dart';\n"
+          import_line = "import 'package:ashita_motsumono/src/screens/add_todo_screen.dart';\n"
+          if import_marker not in test_text:
+              raise SystemExit('Widget test import marker not found')
+          test_text = test_text.replace(import_marker, import_line + import_marker, 1)
+
+          constructor_old = '''  _TestPurchaseProvider({
+              this.adRemoved = false,
+              this.priceLabel = '買い切り ¥190',
+          '''
+          constructor_new = '''  _TestPurchaseProvider({
+              this.adRemoved = false,
+              this.aiAccess = false,
+              this.priceLabel = '買い切り ¥190',
+          '''
+          if constructor_old not in test_text:
+              raise SystemExit('Purchase provider constructor marker not found')
+          test_text = test_text.replace(constructor_old, constructor_new, 1)
+
+          ai_old = '''  @override
+            final bool aiAccess = false;
+          '''
+          ai_new = '''  @override
+            final bool aiAccess;
+          '''
+          if ai_old not in test_text:
+              raise SystemExit('aiAccess field marker not found')
+          test_text = test_text.replace(ai_old, ai_new, 1)
+
+          group_marker = "  group('AddTodoScreen', () {\n"
+          tests = '''  group('AddTodoScreen', () {
+              testWidgets('AI button opens external data disclosure', (tester) async {
+                final appState = await _createAppState();
+                final settings = await _createSettings();
+                await appState.addChild('長女');
+
+                await tester.pumpWidget(
+                  AshitaMotsumonoApp(
+                    appState: appState,
+                    settings: settings,
+                    purchaseProvider: _TestPurchaseProvider(
+                      adRemoved: true,
+                      aiAccess: true,
+                    ),
+                  ),
+                );
+                await tester.pumpAndSettle();
+
+                await tester.tap(find.text('追加'));
+                await tester.pumpAndSettle();
+                await tester.tap(find.text('AIで解析（手書きも対応）'));
+                await tester.pumpAndSettle();
+
+                expect(find.text('AI画像解析について'), findsOneWidget);
+                expect(find.textContaining('Cloudflare Workers'), findsOneWidget);
+                expect(find.textContaining('Google Gemini API'), findsOneWidget);
+                expect(find.textContaining('通常のOCRでは画像を外部送信しません'), findsOneWidget);
+                expect(find.text('同意して画像を選ぶ'), findsOneWidget);
+
+                await tester.tap(find.text('キャンセル'));
+                await tester.pumpAndSettle();
+                expect(find.text('AI画像解析について'), findsNothing);
+              });
+
+              testWidgets('AI analysis starts only after explicit consent', (tester) async {
+                var startCount = 0;
+
+                await tester.pumpWidget(
+                  MaterialApp(
+                    home: Builder(
+                      builder: (context) => Scaffold(
+                        body: FilledButton(
+                          onPressed: () => requestAiImageAnalysisWithDisclosure(
+                            context,
+                            startAnalysis: () async => startCount++,
+                          ),
+                          child: const Text('AI解析を開始'),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+
+                await tester.tap(find.text('AI解析を開始'));
+                await tester.pumpAndSettle();
+                await tester.tap(find.text('キャンセル'));
+                await tester.pumpAndSettle();
+                expect(startCount, 0);
+
+                await tester.tap(find.text('AI解析を開始'));
+                await tester.pumpAndSettle();
+                await tester.tap(find.text('同意して画像を選ぶ'));
+                await tester.pumpAndSettle();
+                expect(startCount, 1);
+              });
+
+          '''
+          if group_marker not in test_text:
+              raise SystemExit('AddTodoScreen test group marker not found')
+          test_text = test_text.replace(group_marker, tests, 1)
+          test_path.write_text(test_text, encoding='utf-8')
+
+      - name: Format Dart files
+        run: dart format lib/src/screens/add_todo_screen.dart test/widget_test.dart
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run widget tests
+        run: flutter test test/widget_test.dart
+
+      - name: Commit implementation and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/apply-ai-disclosure.yml
+          git add lib/src/screens/add_todo_screen.dart test/widget_test.dart
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "feat: require consent before AI image upload"
+          git push origin HEAD:agent/ai-image-disclosure-consent
