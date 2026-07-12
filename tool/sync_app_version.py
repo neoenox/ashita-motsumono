@@ -47,9 +47,9 @@ def main() -> int:
     actual = GENERATED.read_text(encoding="utf-8") if GENERATED.exists() else ""
     if actual != expected:
         print(
-  "Displayed app version is out of sync. "
-  "Run: python3 tool/sync_app_version.py --write",
-  file=sys.stderr,
+            "Displayed app version is out of sync. "
+            "Run: python3 tool/sync_app_version.py --write",
+            file=sys.stderr,
         )
         return 1
     return 0
