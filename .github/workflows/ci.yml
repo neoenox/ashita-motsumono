@@ -21,6 +21,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Verify displayed app version
+        run: python3 tool/sync_app_version.py
+
       - name: Verify Android notification manifest
         run: python3 tool/verify_android_manifest.py
 
