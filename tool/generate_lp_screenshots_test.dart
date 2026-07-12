@@ -87,6 +87,7 @@ Future<void> _loadScreenshotFonts() async {
   final manifestJson = await rootBundle.loadString('FontManifest.json');
   final manifest = jsonDecode(manifestJson) as List<dynamic>;
   final loadedFamilies = <String>{};
+  final loadFutures = <Future<void>>[];
 
   for (final entry in manifest) {
     final font = entry as Map<String, dynamic>;
@@ -100,9 +101,11 @@ Future<void> _loadScreenshotFonts() async {
       final asset = (descriptor as Map<String, dynamic>)['asset'] as String;
       loader.addFont(rootBundle.load(asset));
     }
-    await loader.load();
+    loadFutures.add(loader.load());
     loadedFamilies.add(family);
   }
+
+  await Future.wait(loadFutures);
 
   final missingFamilies = _requiredFontFamilies.difference(loadedFamilies);
   if (missingFamilies.isNotEmpty) {
