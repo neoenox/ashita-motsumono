@@ -64,7 +64,7 @@ git push origin v0.6.0
 - APK: `ashita-motsumono-signed-release-apk`
 - AAB: `ashita-motsumono-signed-release-aab`（Play Console提出用）
 
-releaseタスクで署名鍵を読み込めない場合、ビルドはエラーで停止します。debug署名へのフォールバックは行いません。
+`release-build`は署名Secretsを事前検証し、不足していればビルド前に失敗します。Gradle設定はreleaseへdebug署名を割り当てません。署名情報なしでローカルreleaseタスクを直接実行して生成された未署名成果物は、Play Consoleへ提出しないでください。
 
 ## 4. AABの署名を確認する
 
