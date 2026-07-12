@@ -23,9 +23,17 @@ class AndroidCertificateFingerprintTest(unittest.TestCase):
     def test_normalizes_colon_separated_uppercase_value(self) -> None:
         self.assertEqual(normalize_fingerprint(COLON), RAW)
 
+    def test_normalizes_sha256_prefixed_value(self) -> None:
+        self.assertEqual(normalize_fingerprint(f"SHA256: {COLON}"), RAW)
+        self.assertEqual(normalize_fingerprint(f"sha-256 = {RAW}"), RAW)
+
     def test_rejects_non_sha256_length(self) -> None:
         with self.assertRaisesRegex(ValueError, "64 hexadecimal digits"):
             normalize_fingerprint("AA:BB")
+
+    def test_rejects_unsupported_characters(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unsupported characters"):
+            normalize_fingerprint(f"certificate={RAW}")
 
     def test_compares_equivalent_formats(self) -> None:
         expected, actual, matches = compare_fingerprints(COLON, RAW)
@@ -42,7 +50,7 @@ class AndroidCertificateFingerprintTest(unittest.TestCase):
             argv = [
                 "verify_android_certificate_fingerprint.py",
                 "--expected",
-                COLON,
+                f"SHA256: {COLON}",
                 "--actual",
                 RAW,
                 "--label",
