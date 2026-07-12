@@ -30,8 +30,9 @@
 - [x] AdMob本番ID・Google Play Billing商品ID・購入復元の提出前ガードを追加する。
 - [x] Play Console 用のストア掲載文、スクリーンショット、アプリアイコン、提出チェックリストを作成する。
 - [x] プライバシーポリシー、データ削除導線、JSONエクスポート説明を整備する。
-
 - [x] 設定画面のバージョン表示を`pubspec.yaml`から生成し、CIで同期を検証する。
+- [x] Release AndroidでAPK/AABの署名を自動検証し、検証ログとSHA-256をartifactへ保存する。
+- [x] リリースビルドの商品IDをRepository Variableから取得し、未設定時だけ`remove_ads`へフォールバックする。
 
 ## v0.7以降の候補
 
