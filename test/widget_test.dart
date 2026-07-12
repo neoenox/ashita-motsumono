@@ -19,6 +19,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ashita_motsumono/src/screens/add_todo_screen.dart';
 import 'package:ashita_motsumono/src/screens/review_extraction_screen.dart';
 import 'package:ashita_motsumono/src/screens/todo_detail_screen.dart';
 
@@ -32,6 +33,7 @@ Future<AppSettings> _createSettings() async {
 class _TestPurchaseProvider extends PurchaseProvider {
   _TestPurchaseProvider({
     this.adRemoved = false,
+    this.aiAccess = false,
     this.priceLabel = '買い切り ¥190',
     this.canPurchase = true,
     this.statusMessage,
@@ -41,7 +43,7 @@ class _TestPurchaseProvider extends PurchaseProvider {
   final bool adRemoved;
 
   @override
-  final bool aiAccess = false;
+  final bool aiAccess;
 
   @override
   bool get busy => false;
@@ -509,6 +511,73 @@ void main() {
   });
 
   group('AddTodoScreen', () {
+    testWidgets('AI button opens external data disclosure', (tester) async {
+      final appState = await _createAppState();
+      final settings = await _createSettings();
+      await appState.addChild('長女');
+
+      await tester.pumpWidget(
+        AshitaMotsumonoApp(
+          appState: appState,
+          settings: settings,
+          purchaseProvider: _TestPurchaseProvider(
+            adRemoved: true,
+            aiAccess: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('追加'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('AIで解析（手書きも対応）'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('AI画像解析について'), findsOneWidget);
+      expect(find.textContaining('Cloudflare Workers'), findsOneWidget);
+      expect(find.textContaining('Google Gemini API'), findsOneWidget);
+      expect(find.textContaining('通常のOCRでは画像を外部送信しません'), findsOneWidget);
+      expect(find.text('同意して画像を選ぶ'), findsOneWidget);
+
+      await tester.tap(find.text('キャンセル'));
+      await tester.pumpAndSettle();
+      expect(find.text('AI画像解析について'), findsNothing);
+    });
+
+    testWidgets('AI analysis starts only after explicit consent', (
+      tester,
+    ) async {
+      var startCount = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: FilledButton(
+                onPressed: () => requestAiImageAnalysisWithDisclosure(
+                  context,
+                  startAnalysis: () async => startCount++,
+                ),
+                child: const Text('AI解析を開始'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('AI解析を開始'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('キャンセル'));
+      await tester.pumpAndSettle();
+      expect(startCount, 0);
+
+      await tester.tap(find.text('AI解析を開始'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('同意して画像を選ぶ'));
+      await tester.pumpAndSettle();
+      expect(startCount, 1);
+    });
+
     testWidgets('shows add screen with OCR and paste options', (tester) async {
       final appState = await _createAppState();
       final settings = await _createSettings();

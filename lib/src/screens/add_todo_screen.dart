@@ -27,6 +27,37 @@ import 'review_extraction_screen.dart';
 import 'review_extractions_screen.dart';
 import 'widgets/child_dropdown.dart';
 
+@visibleForTesting
+Future<void> requestAiImageAnalysisWithDisclosure(
+  BuildContext context, {
+  required Future<void> Function() startAnalysis,
+}) async {
+  final consent = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('AI画像解析について'),
+      content: const Text(
+        'AI画像解析では、選択した画像と画像形式、解析基準日、タイムゾーンを、'
+        'Cloudflare Workersを経由してGoogle Gemini APIへ送信します。\n\n'
+        '通常のOCRでは画像を外部送信しません。',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('キャンセル'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: const Text('同意して画像を選ぶ'),
+        ),
+      ],
+    ),
+  );
+  if (!context.mounted || consent != true) return;
+  await startAnalysis();
+}
+
 class AddTodoScreen extends StatefulWidget {
   const AddTodoScreen({super.key});
 
@@ -84,13 +115,15 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('OCRアシスタント有効',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: cs.primary,
-                          ),
+                        Text(
+                          'OCRアシスタント有効',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleSmall?.copyWith(color: cs.primary),
                         ),
                         const SizedBox(height: 2),
-                        Text('入力をラクに。お手元の資料やスクリーンショットからTodoを自動生成します。',
+                        Text(
+                          '入力をラクに。お手元の資料やスクリーンショットからTodoを自動生成します。',
                           style: TextStyle(
                             color: cs.onSurfaceVariant,
                             fontSize: 12,
@@ -106,15 +139,15 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
           const SizedBox(height: Spacing.lg),
 
           // 画像・スクショから登録
-          Text('画像・スクショから登録',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('画像・スクショから登録', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: Spacing.sm),
           if (Platform.isWindows)
             const Padding(
               padding: EdgeInsets.only(bottom: Spacing.sm),
-              child: Text('カメラ・OCRはWindows未対応です。テキスト貼り付けまたは手入力を使ってください。',
-                  style: TextStyle(color: Colors.grey)),
+              child: Text(
+                'カメラ・OCRはWindows未対応です。テキスト貼り付けまたは手入力を使ってください。',
+                style: TextStyle(color: Colors.grey),
+              ),
             )
           else
             Row(
@@ -152,7 +185,12 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: _busy ? null : () => _pickAndOcrWithAi(),
+                onPressed: _busy
+                    ? null
+                    : () => requestAiImageAnalysisWithDisclosure(
+                        context,
+                        startAnalysis: _pickAndOcrWithAi,
+                      ),
                 icon: const Icon(Icons.auto_awesome),
                 label: const Text('AIで解析（手書きも対応）'),
               ),
@@ -161,7 +199,8 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
           const SizedBox(height: Spacing.lg),
 
           // OCRテキスト貼り付け
-          Text('OCRテキストを貼り付けて抽出',
+          Text(
+            'OCRテキストを貼り付けて抽出',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: Spacing.sm),
@@ -183,7 +222,9 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
               'Powered by OCR Engine',
               style: TextStyle(
                 fontSize: 11,
-                color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
               ),
             ),
           ),
@@ -419,16 +460,16 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
             await context.read<AppState>().deleteDocument(result.document.id);
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Todo情報を抽出できませんでした。手入力で登録してください。'),
-              ),
+              const SnackBar(content: Text('Todo情報を抽出できませんでした。手入力で登録してください。')),
             );
             return;
           }
           await Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (_) =>
-                  _reviewScreenFor(drafts: result.drafts, documentId: result.document.id),
+              builder: (_) => _reviewScreenFor(
+                drafts: result.drafts,
+                documentId: result.document.id,
+              ),
             ),
           );
       }
@@ -450,7 +491,9 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
         appState: context.read<AppState>(),
         appSettings: context.read<AppSettings>(),
       );
-      final proxyUrl = GeminiApiService.defaultInstance().proxyUrl ?? 'http://localhost:8787';
+      final proxyUrl =
+          GeminiApiService.defaultInstance().proxyUrl ??
+          'http://localhost:8787';
       final result = await service.pickAndProcessWithAi(proxyUrl);
       if (result == null) return;
       if (!mounted) return;
@@ -461,10 +504,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
               content: Text('Todo情報を抽出できませんでした。撮り直すか、テキスト貼り付けを使ってください。'),
             ),
           );
-        case OcrPickSuccess(
-            document: final doc,
-            drafts: final drafts,
-          ):
+        case OcrPickSuccess(document: final doc, drafts: final drafts):
           final appState = context.read<AppState>();
           final document = await appState.addDocument(
             sourceType: 'camera',
