@@ -17,7 +17,6 @@ extension DocumentAppStateOperations on AppState {
     );
     _replaceDocuments([...documents, record]);
     await _persist();
-    notifyListeners();
     return record;
   }
 
@@ -34,7 +33,6 @@ extension DocumentAppStateOperations on AppState {
     );
     await _persist();
     await _documentImageCleaner.deleteAll(deleted);
-    notifyListeners();
     return true;
   }
 
