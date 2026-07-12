@@ -26,7 +26,7 @@ const _devicePixelRatio = 3.0;
 const _captureKey = ValueKey<String>('lp-screenshot-boundary');
 
 class _TestPurchaseProvider extends PurchaseProvider {
-  const _TestPurchaseProvider();
+  _TestPurchaseProvider();
 
   @override
   bool get adRemoved => true;
@@ -83,7 +83,7 @@ Future<AppState> _createAppState() async {
   return appState;
 }
 
-Future<void> _configureViewport(WidgetTester tester) async {
+void _configureViewport(WidgetTester tester) {
   tester.view.physicalSize = _viewportPhysicalSize;
   tester.view.devicePixelRatio = _devicePixelRatio;
   addTearDown(tester.view.resetPhysicalSize);
@@ -107,6 +107,7 @@ Future<void> _writeScreenshot(
   );
   final image = await boundary.toImage(pixelRatio: _devicePixelRatio);
   final data = await image.toByteData(format: ui.ImageByteFormat.png);
+  image.dispose();
   if (data == null) {
     throw StateError('PNGの生成に失敗しました: $filename');
   }
@@ -166,7 +167,7 @@ void main() {
   });
 
   testWidgets('ホームの明日一覧を生成する', (tester) async {
-    await _configureViewport(tester);
+    _configureViewport(tester);
     final appState = await _createAppState();
     final settings = await _createSettings();
     await _seedTomorrowTodos(appState);
@@ -176,10 +177,11 @@ void main() {
         AshitaMotsumonoApp(
           appState: appState,
           settings: settings,
-          purchaseProvider: const _TestPurchaseProvider(),
+          purchaseProvider: _TestPurchaseProvider(),
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     expect(find.text('明日の持ち物・提出'), findsOneWidget);
     expect(find.text('遠足の持ち物を準備'), findsOneWidget);
@@ -187,7 +189,7 @@ void main() {
   });
 
   testWidgets('読み取り結果の確認画面を生成する', (tester) async {
-    await _configureViewport(tester);
+    _configureViewport(tester);
     final appState = await _createAppState();
     final settings = await _createSettings();
     await appState.addChild('こども');
@@ -217,6 +219,7 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     expect(find.text('読み取り結果の確認'), findsOneWidget);
     expect(find.text('登録する'), findsOneWidget);
@@ -224,7 +227,7 @@ void main() {
   });
 
   testWidgets('すべて完了したホーム画面を生成する', (tester) async {
-    await _configureViewport(tester);
+    _configureViewport(tester);
     final appState = await _createAppState();
     final settings = await _createSettings();
     await _seedTomorrowTodos(appState);
@@ -238,10 +241,11 @@ void main() {
         AshitaMotsumonoApp(
           appState: appState,
           settings: settings,
-          purchaseProvider: const _TestPurchaseProvider(),
+          purchaseProvider: _TestPurchaseProvider(),
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     expect(find.text('すべて完了'), findsWidgets);
     await _writeScreenshot(tester, 'all-complete.png');
