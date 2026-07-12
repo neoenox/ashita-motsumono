@@ -45,7 +45,6 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     _itemsController = TextEditingController();
     _amountController = TextEditingController();
     _noteController = TextEditingController();
-    _category = TodoCategory.other;
   }
 
   @override
