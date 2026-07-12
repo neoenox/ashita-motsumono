@@ -170,6 +170,8 @@ void main() {
   });
 
   setUp(() {
+    // このファイルはtool配下だが、CIではflutter testから実行するテスト専用コード。
+    // ignore: invalid_use_of_visible_for_testing_member
     SharedPreferences.setMockInitialValues({
       'notification_info_shown_v1': true,
     });
