@@ -57,8 +57,20 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.findByName("release")?.takeIf { it.storeFile != null }
-                ?: signingConfigs.getByName("debug")
+            // Play release signing enforcement: begin
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile != null) {
+                signingConfig = releaseSigning
+            } else if (
+                gradle.startParameter.taskNames.any {
+                    it.contains("Release", ignoreCase = true)
+                }
+            ) {
+                throw GradleException(
+                    "Release signing is not configured. Provide android/key.properties or KEYSTORE_* environment variables.",
+                )
+            }
+            // Play release signing enforcement: end
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
