@@ -65,13 +65,15 @@ class ItemExtractor {
 
       // 長い語の範囲内にしか現れない短い語は同一項目として抑制する。
       // 一方、別の位置にも明記されていれば、上履き／上履き袋のように両方残す。
-      final standaloneMatch = matches.where(
-        (match) => !coveredSpans.any((covered) => covered.contains(match)),
-      ).firstOrNull;
-      if (standaloneMatch == null) continue;
+      final standaloneMatches = matches
+          .where(
+            (match) => !coveredSpans.any((covered) => covered.contains(match)),
+          )
+          .toList(growable: false);
+      if (standaloneMatches.isEmpty) continue;
 
-      selectedPositions[item] = standaloneMatch.start;
-      coveredSpans.addAll(matches);
+      selectedPositions[item] = standaloneMatches.first.start;
+      coveredSpans.addAll(standaloneMatches);
     }
 
     final found = selectedPositions.entries.toList(growable: false);
@@ -81,12 +83,14 @@ class ItemExtractor {
 
   static List<_MatchSpan> _findMatches(String text, String item) {
     final matches = <_MatchSpan>[];
+    if (item.isEmpty) return matches;
+
     var offset = 0;
     while (offset <= text.length - item.length) {
       final index = text.indexOf(item, offset);
       if (index < 0) break;
       matches.add(_MatchSpan(index, index + item.length));
-      offset = index + 1;
+      offset = index + item.length;
     }
     return matches;
   }
