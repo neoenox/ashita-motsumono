@@ -11,21 +11,37 @@ void main() {
   test('store listing documents privacy-sensitive behavior', () {
     final listing = File('docs/STORE_LISTING_JA.md').readAsStringSync();
 
-    expect(listing, contains('独自サーバーには送信しません'));
+    expect(listing, contains('通常の日本語OCRは端末上'));
+    expect(listing, contains('Cloudflare Workers'));
+    expect(listing, contains('Google Gemini API'));
     expect(listing, contains('Google Mobile Ads'));
     expect(listing, contains('Google Play Billing'));
-    expect(listing, contains('設定」>「データ管理」>「登録データをすべて削除'));
+    expect(listing, contains('設定」から「登録データをすべて削除'));
     expect(listing, contains('学習済み持ち物候補'));
+    expect(
+      listing,
+      isNot(contains('子ども名、Todo、OCR全文、画像は外部サーバーへ送信しません')),
+    );
   });
 
   test('privacy policy documents local storage, export, and deletion', () {
     final privacyPolicy = File('docs/privacy_policy.md').readAsStringSync();
 
-    expect(privacyPolicy, contains('独自サーバーを運用しておらず'));
+    expect(
+      privacyPolicy,
+      contains('ログイン機能、家族共有機能、独自サーバーとのデータ同期機能はありません'),
+    );
+    expect(privacyPolicy, contains('通常の文字認識'));
+    expect(privacyPolicy, contains('Cloudflare Workers'));
+    expect(privacyPolicy, contains('Google Gemini API'));
     expect(privacyPolicy, contains('Google Mobile Ads'));
     expect(privacyPolicy, contains('Google Play Billing'));
-    expect(privacyPolicy, contains('保存画像のファイル本体と端末内画像パス'));
+    expect(privacyPolicy, contains('保存画像のファイル本体および端末内画像パス'));
     expect(privacyPolicy, contains('登録データをすべて削除'));
+    expect(
+      privacyPolicy,
+      isNot(contains('外部サーバーに送信されることはありません')),
+    );
   });
 
   test('submission checklist includes store assets and monetization checks', () {
