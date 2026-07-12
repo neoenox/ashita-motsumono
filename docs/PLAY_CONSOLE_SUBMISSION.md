@@ -7,6 +7,7 @@ Google Play へ初回提出する直前に使う作業順です。ストア掲�
 - [x] `dart format` を実行する
 - [x] `flutter analyze` を実行する
 - [x] `flutter test --no-pub -r compact` を実行する
+- [x] 設定画面の表示バージョンが`pubspec.yaml`と一致することをCIで確認する
 - [ ] Android実機でカメラ撮影、画像選択、日本語OCR、通知許可、通知予約を確認する
 - [ ] 内部テスト版で広告削除の購入・復元を確認する
 

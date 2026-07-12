@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app_state.dart';
+import '../app_version.g.dart';
 import '../services/app_settings.dart';
 import '../services/purchase_provider.dart';
 import '../theme/app_theme.dart';
@@ -181,7 +182,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: Spacing.lg),
           Center(
             child: Text(
-              'Version 0.6.2',
+              'Version $appVersion',
               style: TextStyle(
                 color: cs.onSurfaceVariant.withValues(alpha: 0.5),
                 fontSize: 12,
