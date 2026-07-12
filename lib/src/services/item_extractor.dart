@@ -10,6 +10,7 @@ class ItemExtractor {
   static const itemDictionary = <String>[
     '水筒',
     '上履き',
+    '上履き袋',
     '体操着',
     '帽子',
     'タオル',
@@ -55,17 +56,39 @@ class ItemExtractor {
     Iterable<String> learnedItemLabels,
   ) {
     final itemCandidates = _itemCandidates(learnedItemLabels);
-    final selected = <String>{};
+    final selectedPositions = <String, int>{};
+    final coveredSpans = <_MatchSpan>[];
+
     for (final item in itemCandidates) {
-      // 長い語を優先し、バスタオル→タオル、お弁当→弁当のような重複を避ける。
-      if (text.contains(item) &&
-          !selected.any((existing) => existing.contains(item))) {
-        selected.add(item);
-      }
+      final matches = _findMatches(text, item);
+      if (matches.isEmpty) continue;
+
+      // 長い語の範囲内にしか現れない短い語は同一項目として抑制する。
+      // 一方、別の位置にも明記されていれば、上履き／上履き袋のように両方残す。
+      final standaloneMatch = matches.where(
+        (match) => !coveredSpans.any((covered) => covered.contains(match)),
+      ).firstOrNull;
+      if (standaloneMatch == null) continue;
+
+      selectedPositions[item] = standaloneMatch.start;
+      coveredSpans.addAll(matches);
     }
-    final found = selected.toList(growable: false);
-    found.sort((a, b) => text.indexOf(a).compareTo(text.indexOf(b)));
-    return found;
+
+    final found = selectedPositions.entries.toList(growable: false);
+    found.sort((a, b) => a.value.compareTo(b.value));
+    return found.map((entry) => entry.key).toList(growable: false);
+  }
+
+  static List<_MatchSpan> _findMatches(String text, String item) {
+    final matches = <_MatchSpan>[];
+    var offset = 0;
+    while (offset <= text.length - item.length) {
+      final index = text.indexOf(item, offset);
+      if (index < 0) break;
+      matches.add(_MatchSpan(index, index + item.length));
+      offset = index + 1;
+    }
+    return matches;
   }
 
   static List<String> _itemCandidates(Iterable<String> learnedItemLabels) {
@@ -135,4 +158,13 @@ class ItemExtractor {
     if (title.startsWith('期限確認：')) return title;
     return '期限確認：$title';
   }
+}
+
+class _MatchSpan {
+  const _MatchSpan(this.start, this.end);
+
+  final int start;
+  final int end;
+
+  bool contains(_MatchSpan other) => start <= other.start && end >= other.end;
 }
