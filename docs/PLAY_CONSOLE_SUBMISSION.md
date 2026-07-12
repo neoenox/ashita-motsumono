@@ -22,6 +22,7 @@ Google Play へ初回提出する直前に使う作業順です。ストア掲�
 - [ ] アプリ名を「あした持つもの」にする
 - [ ] デフォルト言語を日本語にする
 - [ ] プライバシーポリシーURLを登録する
+- [ ] Play App Signingを設定し、アップロード証明書SHA-256を記録する
 - [ ] アプリ内商品を作成する
 - [ ] 商品IDを GitHub Repository Variable `IAP_REMOVE_ADS_PRODUCT_ID` と一致させる
 - [ ] 未設定で進める場合、商品IDを `remove_ads` にする
@@ -40,15 +41,19 @@ Secrets:
 
 Repository Variables:
 
+- [ ] `ANDROID_UPLOAD_CERT_SHA256`（Play Consoleのアップロード証明書SHA-256。必須）
 - [ ] `IAP_REMOVE_ADS_PRODUCT_ID`（未設定時は`remove_ads`）
 
 ## 4. リリース成果物
 
 - [ ] `Release Android` ワークフローを手動実行、または `v*` タグをpushする
+- [ ] 復元したキーストア証明書が`ANDROID_UPLOAD_CERT_SHA256`と一致する
 - [ ] APK artifact `ashita-motsumono-signed-release-apk` が生成される
+- [ ] APK artifact内の`upload-keystore-certificate.json`と`apk-certificate.json`が`matches: true`
 - [ ] APK artifact内の`apk-signature-verification.txt`と`APK_SHA256SUMS`を確認する
 - [ ] AAB artifact `ashita-motsumono-signed-release-aab` が生成される
-- [ ] AAB artifact内の`aab-signature-verification.txt`と`AAB_SHA256SUMS`を確認する
+- [ ] AAB artifact内の`upload-keystore-certificate.json`と`aab-certificate.json`が`matches: true`
+- [ ] AAB artifact内の`aab-signature-verification.txt`、`aab-signer-certificate.txt`、`AAB_SHA256SUMS`を確認する
 - [ ] APK artifact を実機に入れてスモークテストする
 - [ ] AAB artifact をPlay Consoleへアップロードする
 - [ ] 内部テストトラックでインストールできることを確認する
@@ -83,6 +88,7 @@ Repository Variables:
 
 ## 7. 提出直前の判断
 
+- [ ] Play Console、キーストア、APK、AABのアップロード証明書SHA-256がすべて一致する
 - [ ] クラッシュやOCR失敗時に、ユーザーが手入力へ戻れることを実機で確認する
 - [ ] 通知が許可されていない場合でも、Todo登録自体は継続できることを確認する
 - [ ] 広告読み込みに失敗しても主要機能が使えることを確認する

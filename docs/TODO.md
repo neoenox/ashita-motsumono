@@ -5,6 +5,7 @@
 ## リリース前に確認すること
 
 - [ ] GitHub Actions の `Flutter CI` が通ることを確認する。
+- [ ] Play Consoleのアップロード証明書SHA-256を確認し、Repository Variable `ANDROID_UPLOAD_CERT_SHA256`へ登録する。
 - [ ] GitHub Actions の `Release Android` を手動実行し、署名済みAPK/AAB artifact が生成されることを確認する。
 - [ ] APK artifact をAndroid実機に入れ、カメラ撮影、画像選択、日本語OCR、通知許可、通知予約を確認する。
 - [ ] 内部テスト版で広告削除の購入・復元を確認する。
@@ -33,6 +34,7 @@
 - [x] 設定画面のバージョン表示を`pubspec.yaml`から生成し、CIで同期を検証する。
 - [x] Release AndroidでAPK/AABの署名を自動検証し、検証ログとSHA-256をartifactへ保存する。
 - [x] リリースビルドの商品IDをRepository Variableから取得し、未設定時だけ`remove_ads`へフォールバックする。
+- [x] Play Consoleで確認したアップロード証明書SHA-256を、キーストア・APK・AABの3段階で照合するCIガードを追加する。
 
 ## v0.7以降の候補
 
