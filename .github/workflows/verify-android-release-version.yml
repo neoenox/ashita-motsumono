@@ -1,0 +1,60 @@
+name: Verify Android release version
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-release-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Create Android platform files
+        run: bash tool/create_platforms.sh
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Verify APK version metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk_path="$(find build/app/outputs/flutter-apk -name '*release.apk' -print -quit)"
+          if [[ -z "$apk_path" ]]; then
+            echo "Release APK was not generated" >&2
+            exit 1
+          fi
+          summary="$(apkanalyzer apk summary "$apk_path")"
+          printf '%s\n' "$summary" | tee release-version-summary.txt
+          read -r application_id version_code version_name <<< "$summary"
+          [[ "$application_id" == "com.ashita_motsumono" ]]
+          [[ "$version_code" == "2" ]]
+          [[ "$version_name" == "0.6.3" ]]
+
+      - name: Upload version verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-version-summary
+          path: release-version-summary.txt
+          if-no-files-found: warn
+          retention-days: 1
