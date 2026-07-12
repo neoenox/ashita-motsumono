@@ -18,7 +18,7 @@ void main() {
     );
     await appState.load();
 
-    for (final invalidName in ['', '   ', '\t\n']) {
+    for (final invalidName in ['', '   ', '\t\n', '　']) {
       await expectLater(
         appState.addChild(invalidName),
         throwsA(
@@ -41,7 +41,7 @@ void main() {
     );
     await appState.load();
 
-    final child = await appState.addChild('  長女  ');
+    final child = await appState.addChild(' 　長女　 ');
 
     expect(child.name, '長女');
     expect(appState.children.single.name, '長女');
