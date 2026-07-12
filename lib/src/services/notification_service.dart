@@ -4,7 +4,6 @@
 // 端末のタイムゾーンを自動検出（flutter_timezone）、フォールバックは Asia/Tokyo。
 // 関連: models/entities.dart, app_state.dart
 
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -14,9 +13,25 @@ import 'package:timezone/timezone.dart' as tz;
 import '../models/entities.dart';
 import 'app_settings.dart';
 
+@immutable
+class NotificationScheduleRequest {
+  const NotificationScheduleRequest({
+    required this.id,
+    required this.scheduledDate,
+    required this.title,
+    required this.body,
+  });
+
+  final int id;
+  final DateTime scheduledDate;
+  final String title;
+  final String body;
+}
+
 class NotificationService {
   /// [timezoneName] を指定すると flutter_timezone による自動検出をスキップする（テスト用）。
-  NotificationService({this.settings, this._timezoneName});
+  NotificationService({this.settings, String? timezoneName})
+    : _timezoneName = timezoneName;
 
   final AppSettings? settings;
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
@@ -33,10 +48,15 @@ class NotificationService {
   Future<void> _doInitialize() async {
     tzdata.initializeTimeZones();
     try {
-      final id = _timezoneName ?? (await FlutterTimezone.getLocalTimezone()).identifier;
+      final id =
+          _timezoneName ?? (await FlutterTimezone.getLocalTimezone()).identifier;
       tz.setLocalLocation(tz.getLocation(id));
     } on Object {
-      if (kDebugMode) debugPrint('NotificationService: failed to detect timezone, falling back to Asia/Tokyo');
+      if (kDebugMode) {
+        debugPrint(
+          'NotificationService: failed to detect timezone, falling back to Asia/Tokyo',
+        );
+      }
       tz.setLocalLocation(tz.getLocation('Asia/Tokyo'));
     }
 
@@ -60,41 +80,85 @@ class NotificationService {
   Future<void> requestPermissions() async {
     await initialize();
     await _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.requestNotificationsPermission();
     await _plugin
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >()
         ?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
   Future<void> scheduleTodo(AppTodo todo) async {
     await initialize();
+
+    // 同じTodoの既存2通知を必ず先に削除してから、必要な未来通知だけを再登録する。
     await cancelTodo(todo.id);
+    for (final request in buildScheduleRequests(todo)) {
+      await _scheduleIfFuture(
+        request.id,
+        request.scheduledDate,
+        request.title,
+        request.body,
+      );
+    }
+  }
+
+  @visibleForTesting
+  List<NotificationScheduleRequest> buildScheduleRequests(
+    AppTodo todo, {
+    DateTime? now,
+  }) {
     final due = todo.dueDate;
-    if (due == null || todo.isDone) return;
+    if (due == null || todo.isDone) return const [];
+
+    final referenceTime = now ?? DateTime.now();
+    final requests = <NotificationScheduleRequest>[];
 
     if (todo.notifyPreviousNight) {
-      final h = settings?.previousNightHour ?? AppSettings.defaultPreviousNightHour;
-      final m = settings?.previousNightMinute ?? AppSettings.defaultPreviousNightMinute;
-      final when = DateTime(due.year, due.month, due.day, h, m).subtract(const Duration(days: 1));
-      await _scheduleIfFuture(
-        _notificationId(todo.id, 1),
-        when,
-        '明日の支度',
-        _buildBody(todo),
-      );
+      final h =
+          settings?.previousNightHour ?? AppSettings.defaultPreviousNightHour;
+      final m = settings?.previousNightMinute ??
+          AppSettings.defaultPreviousNightMinute;
+      final when = DateTime(
+        due.year,
+        due.month,
+        due.day,
+        h,
+        m,
+      ).subtract(const Duration(days: 1));
+      if (when.isAfter(referenceTime)) {
+        requests.add(
+          NotificationScheduleRequest(
+            id: _notificationId(todo.id, 1),
+            scheduledDate: when,
+            title: '明日の支度',
+            body: _buildBody(todo),
+          ),
+        );
+      }
     }
+
     if (todo.notifySameMorning) {
       final h = settings?.sameMorningHour ?? AppSettings.defaultSameMorningHour;
-      final m = settings?.sameMorningMinute ?? AppSettings.defaultSameMorningMinute;
+      final m =
+          settings?.sameMorningMinute ?? AppSettings.defaultSameMorningMinute;
       final when = DateTime(due.year, due.month, due.day, h, m);
-      await _scheduleIfFuture(
-        _notificationId(todo.id, 2),
-        when,
-        '今日の支度・提出',
-        _buildBody(todo),
-      );
+      if (when.isAfter(referenceTime)) {
+        requests.add(
+          NotificationScheduleRequest(
+            id: _notificationId(todo.id, 2),
+            scheduledDate: when,
+            title: '今日の支度・提出',
+            body: _buildBody(todo),
+          ),
+        );
+      }
     }
+
+    return requests;
   }
 
   Future<void> cancelTodo(String todoId) async {
@@ -103,7 +167,12 @@ class NotificationService {
     await _plugin.cancel(id: _notificationId(todoId, 2));
   }
 
-  Future<void> _scheduleIfFuture(int id, DateTime when, String title, String body) async {
+  Future<void> _scheduleIfFuture(
+    int id,
+    DateTime when,
+    String title,
+    String body,
+  ) async {
     if (!when.isAfter(DateTime.now())) return;
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -113,7 +182,9 @@ class NotificationService {
         importance: Importance.high,
         priority: Priority.high,
       ),
-      iOS: DarwinNotificationDetails(threadIdentifier: 'preparation_reminders'),
+      iOS: DarwinNotificationDetails(
+        threadIdentifier: 'preparation_reminders',
+      ),
     );
     await _plugin.zonedSchedule(
       id: id,
