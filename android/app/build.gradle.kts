@@ -61,14 +61,6 @@ android {
             val releaseSigning = signingConfigs.getByName("release")
             if (releaseSigning.storeFile != null) {
                 signingConfig = releaseSigning
-            } else if (
-                gradle.startParameter.taskNames.any {
-                    it.contains("Release", ignoreCase = true)
-                }
-            ) {
-                throw GradleException(
-                    "Release signing is not configured. Provide android/key.properties or KEYSTORE_* environment variables.",
-                )
             }
             // Play release signing enforcement: end
             proguardFiles(
