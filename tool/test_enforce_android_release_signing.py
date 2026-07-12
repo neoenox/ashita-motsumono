@@ -21,7 +21,8 @@ android {
 
         self.assertIn('create("release")', result)
         self.assertIn('Play release signing enforcement: begin', result)
-        self.assertIn('throw GradleException', result)
+        self.assertIn('signingConfig = releaseSigning', result)
+        self.assertNotIn('startParameter', result)
         self.assertNotIn('getByName("debug")', result)
         self.assertEqual(transform_kts(result), result)
 
@@ -45,6 +46,24 @@ android {
         self.assertNotIn('getByName("debug")', result)
         self.assertEqual(result.count('Play release signing enforcement: begin'), 1)
 
+    def test_kts_parser_ignores_braces_inside_triple_quoted_strings(self) -> None:
+        source = '''android {
+    val sample = """
+        text with a single " quote and braces { }
+    """
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+}
+'''
+
+        result = transform_kts(source)
+
+        self.assertIn('text with a single " quote and braces { }', result)
+        self.assertNotIn('getByName("debug")', result)
+
     def test_groovy_adds_release_signing_and_removes_debug_fallback(self) -> None:
         source = '''android {
     buildTypes {
@@ -59,7 +78,8 @@ android {
 
         self.assertIn('signingConfigs {', result)
         self.assertIn('Play release signing enforcement: begin', result)
-        self.assertIn('throw new GradleException', result)
+        self.assertIn('signingConfig releaseSigning', result)
+        self.assertNotIn('startParameter', result)
         self.assertNotIn('signingConfigs.debug', result)
         self.assertEqual(transform_groovy(result), result)
 
