@@ -1,0 +1,41 @@
+name: Diagnose AI patch markers
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/ai-image-disclosure-consent
+
+      - name: Check patch markers
+        shell: python
+        run: |
+          from pathlib import Path
+
+          add_text = Path('lib/src/screens/add_todo_screen.dart').read_text(encoding='utf-8')
+          test_text = Path('test/widget_test.dart').read_text(encoding='utf-8')
+          checks = {
+              'class_marker': 'class AddTodoScreen extends StatefulWidget {\n' in add_text,
+              'button_marker': 'onPressed: _busy ? null : () => _pickAndOcrWithAi(),' in add_text,
+              'import_marker': "import 'package:ashita_motsumono/src/screens/review_extraction_screen.dart';\n" in test_text,
+              'constructor_marker': "  _TestPurchaseProvider({\n    this.adRemoved = false,\n" in test_text,
+              'ai_field_marker': "  @override\n  final bool aiAccess = false;" in test_text,
+              'group_marker': "  group('AddTodoScreen', () {\n" in test_text,
+          }
+          report = '\n'.join(f'{key}={value}' for key, value in checks.items()) + '\n'
+          Path('ai-patch-markers.txt').write_text(report, encoding='utf-8')
+          print(report)
+
+      - name: Upload marker report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-patch-markers
+          path: ai-patch-markers.txt
+          retention-days: 1
