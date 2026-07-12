@@ -8,7 +8,9 @@ import 'store.dart';
 import '../models/entities.dart';
 
 class DriftStore implements Store {
-  DriftStore(this._db) : _snapshotReplacer = SnapshotReplacer(_db);
+  DriftStore(AppDatabase db)
+    : _db = db,
+      _snapshotReplacer = SnapshotReplacer(db);
 
   final AppDatabase _db;
   final SnapshotReplacer _snapshotReplacer;
