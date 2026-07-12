@@ -10,7 +10,6 @@ extension CleanupAppStateOperations on AppState {
     await _store.clear();
     await _notificationCoordinator.cancelAll(todosToCancel);
     await _documentImageCleaner.deleteAll(documentsToDelete);
-    notifyListeners();
   }
 
   Future<void> tryDeleteDocumentOnDispose({
