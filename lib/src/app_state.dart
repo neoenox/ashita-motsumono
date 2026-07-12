@@ -33,7 +33,10 @@ int _sortTodo(AppTodo a, AppTodo b) {
 
 class AppState extends ChangeNotifier {
   AppState({required this._store, required this._notifications, Uuid? uuid})
-    : _uuid = uuid ?? const Uuid();
+    : _uuid = uuid ?? const Uuid() {
+    // 既存のcontext.watch<AppState>()は人物選択UIとの互換用に限定する。
+    childState.addListener(notifyListeners);
+  }
 
   final Store _store;
   final NotificationService _notifications;
@@ -147,5 +150,14 @@ class AppState extends ChangeNotifier {
         documents: documents,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    childState.removeListener(notifyListeners);
+    childState.dispose();
+    todoState.dispose();
+    documentState.dispose();
+    super.dispose();
   }
 }
