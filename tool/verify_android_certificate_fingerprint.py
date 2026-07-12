@@ -11,10 +11,17 @@ import sys
 
 
 _FINGERPRINT_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+_PREFIX_PATTERN = re.compile(r"^sha-?256\s*[:=]\s*", re.IGNORECASE)
+_ALLOWED_INPUT_PATTERN = re.compile(r"^[0-9A-Fa-f:\s-]+$")
 
 
 def normalize_fingerprint(value: str) -> str:
-    normalized = re.sub(r"[^0-9A-Fa-f]", "", value).lower()
+    candidate = _PREFIX_PATTERN.sub("", value.strip(), count=1)
+    if not candidate or not _ALLOWED_INPUT_PATTERN.fullmatch(candidate):
+        raise ValueError(
+            "SHA-256 certificate fingerprint contains unsupported characters"
+        )
+    normalized = re.sub(r"[:\s-]", "", candidate).lower()
     if not _FINGERPRINT_PATTERN.fullmatch(normalized):
         raise ValueError(
             "SHA-256 certificate fingerprint must contain exactly 64 hexadecimal digits"
