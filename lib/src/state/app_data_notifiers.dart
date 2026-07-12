@@ -8,11 +8,11 @@ import '../models/entities.dart';
 abstract class AppListState<T> extends ChangeNotifier {
   List<T> _values = const [];
 
-  List<T> get values => List.unmodifiable(_values);
+  List<T> get values => _values;
 
   @protected
   void replaceValues(Iterable<T> values) {
-    _values = List<T>.of(values);
+    _values = List<T>.unmodifiable(values);
     notifyListeners();
   }
 }
