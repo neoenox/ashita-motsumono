@@ -34,6 +34,9 @@ jobs:
       - name: Test Android release signing transform
         run: python3 -m unittest tool/test_enforce_android_release_signing.py
 
+      - name: Test Android release workflow
+        run: python3 -m unittest tool/test_release_workflow.py
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
@@ -123,6 +126,8 @@ jobs:
   release-build:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    env:
+      IAP_REMOVE_ADS_PRODUCT_ID: ${{ vars.IAP_REMOVE_ADS_PRODUCT_ID || 'remove_ads' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -192,14 +197,35 @@ jobs:
         run: >
           flutter build apk --release
           --dart-define=ADMOB_BANNER_AD_UNIT_ID=${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
-          --dart-define=IAP_REMOVE_ADS_PRODUCT_ID=remove_ads
+          --dart-define=IAP_REMOVE_ADS_PRODUCT_ID=${IAP_REMOVE_ADS_PRODUCT_ID}
           --dart-define=GEMINI_PROXY_URL=${{ secrets.GEMINI_PROXY_URL }}
+
+      - name: Verify signed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="build/app/outputs/flutter-apk/app-release.apk"
+          output_dir="build/release-verification"
+          mkdir -p "$output_dir"
+
+          apksigner_path="$(find "${ANDROID_HOME}/build-tools" -maxdepth 2 -type f -name apksigner -print | sort -V | tail -n 1)"
+          if [[ -z "$apksigner_path" ]]; then
+            echo "::error::apksigner was not found under ${ANDROID_HOME}/build-tools"
+            exit 1
+          fi
+
+          "$apksigner_path" verify --verbose --print-certs "$apk" \
+            | tee "$output_dir/apk-signature-verification.txt"
+          sha256sum "$apk" | tee "$output_dir/APK_SHA256SUMS"
 
       - name: Upload signed APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: ashita-motsumono-signed-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/release-verification/apk-signature-verification.txt
+            build/release-verification/APK_SHA256SUMS
           if-no-files-found: error
           retention-days: 7
 
@@ -209,13 +235,28 @@ jobs:
         run: >
           flutter build appbundle --release
           --dart-define=ADMOB_BANNER_AD_UNIT_ID=${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
-          --dart-define=IAP_REMOVE_ADS_PRODUCT_ID=remove_ads
+          --dart-define=IAP_REMOVE_ADS_PRODUCT_ID=${IAP_REMOVE_ADS_PRODUCT_ID}
           --dart-define=GEMINI_PROXY_URL=${{ secrets.GEMINI_PROXY_URL }}
+
+      - name: Verify signed AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          aab="build/app/outputs/bundle/release/app-release.aab"
+          output_dir="build/release-verification"
+          mkdir -p "$output_dir"
+
+          jarsigner -verify -verbose -certs "$aab" \
+            | tee "$output_dir/aab-signature-verification.txt"
+          sha256sum "$aab" | tee "$output_dir/AAB_SHA256SUMS"
 
       - name: Upload signed AAB artifact
         uses: actions/upload-artifact@v4
         with:
           name: ashita-motsumono-signed-release-aab
-          path: build/app/outputs/bundle/release/app-release.aab
+          path: |
+            build/app/outputs/bundle/release/app-release.aab
+            build/release-verification/aab-signature-verification.txt
+            build/release-verification/AAB_SHA256SUMS
           if-no-files-found: error
           retention-days: 7
