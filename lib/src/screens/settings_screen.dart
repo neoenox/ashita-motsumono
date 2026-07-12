@@ -3,6 +3,7 @@
 // Stitch デザインに合わせてカードベースのレイアウトに刷新。
 // 関連: app_settings.dart, home_screen.dart, notification_service.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,6 +12,23 @@ import '../app_state.dart';
 import '../services/app_settings.dart';
 import '../services/purchase_provider.dart';
 import '../theme/app_theme.dart';
+
+typedef UrlAvailabilityCheck = Future<bool> Function(Uri uri);
+typedef UrlLaunchAction = Future<bool> Function(Uri uri);
+
+@visibleForTesting
+Future<bool> tryOpenExternalPage({
+  required Uri uri,
+  required UrlAvailabilityCheck canOpen,
+  required UrlLaunchAction launch,
+}) async {
+  try {
+    if (!await canOpen(uri)) return false;
+    return await launch(uri);
+  } on Object {
+    return false;
+  }
+}
 
 final _themeModes = {
   ThemeMode.system: 'システム',
@@ -145,34 +163,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('プライバシーポリシー'),
             trailing: const Icon(Icons.open_in_new, size: 16),
             contentPadding: EdgeInsets.zero,
-            onTap: () async {
-              final uri = Uri.parse(
-                'https://lp-5t7.pages.dev/apps/ashita-motsumono/privacy',
-              );
-              try {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              } catch (_) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('リンクを開けませんでした')),
-                  );
-                }
-              }
-            },
+            onTap: () => _openExternalPage(
+              Uri.parse('https://lp-5t7.pages.dev/apps/ashita-motsumono/privacy'),
+              'リンクを開けませんでした',
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.mail_outline),
             title: const Text('お問い合わせ'),
             trailing: const Icon(Icons.chevron_right, size: 16),
             contentPadding: EdgeInsets.zero,
-            onTap: () async {
-              final uri = Uri.parse(
-                'https://lp-5t7.pages.dev/apps/ashita-motsumono/contact',
-              );
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
+            onTap: () => _openExternalPage(
+              Uri.parse('https://lp-5t7.pages.dev/apps/ashita-motsumono/contact'),
+              'お問い合わせページを開けませんでした',
+            ),
           ),
           const SizedBox(height: Spacing.lg),
           Center(
@@ -188,6 +192,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       bottomNavigationBar: const _SettingsBottomNav(),
     );
+  }
+
+  Future<void> _openExternalPage(
+    Uri uri,
+    String errorMessage,
+  ) async {
+    final opened = await tryOpenExternalPage(
+      uri: uri,
+      canOpen: canLaunchUrl,
+      launch: (target) => launchUrl(
+        target,
+        mode: LaunchMode.externalApplication,
+      ),
+    );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
+    }
   }
 
   Future<void> _pickTime(
