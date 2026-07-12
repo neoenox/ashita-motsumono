@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - agent/sync-displayed-app-version
+  pull_request:
 
 jobs:
   generate:
