@@ -155,8 +155,13 @@ void main() {
         ''',
       });
       final prefs = await SharedPreferences.getInstance();
-      final snapshot = await AppDatabase.migrateSnapshotForTesting(prefs);
+      AppSnapshot? snapshot;
+      final ok = await AppDatabase.tryMigration(
+        prefs,
+        onMigrated: (migrated) => snapshot = migrated,
+      );
 
+      expect(ok, isTrue);
       expect(snapshot, isNotNull);
       expect(snapshot!.todos.single.personId, 'child-legacy');
     });
@@ -187,8 +192,13 @@ void main() {
         ''',
       });
       final prefs = await SharedPreferences.getInstance();
-      final snapshot = await AppDatabase.migrateSnapshotForTesting(prefs);
+      AppSnapshot? snapshot;
+      final ok = await AppDatabase.tryMigration(
+        prefs,
+        onMigrated: (migrated) => snapshot = migrated,
+      );
 
+      expect(ok, isTrue);
       expect(snapshot, isNotNull);
       expect(snapshot!.todos.single.personId, 'person-current');
     });
