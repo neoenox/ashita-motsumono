@@ -18,7 +18,6 @@ extension TodoAppStateOperations on AppState {
     _replaceTodos([...todos, todo]);
     await _persist();
     await _notificationCoordinator.schedule(todo);
-    notifyListeners();
     return todo;
   }
 
@@ -39,7 +38,6 @@ extension TodoAppStateOperations on AppState {
     if (rescheduleNotification) {
       await _notificationCoordinator.schedule(updated);
     }
-    notifyListeners();
   }
 
   Future<void> toggleTodoDone(String id) async {
@@ -60,7 +58,6 @@ extension TodoAppStateOperations on AppState {
     } else {
       await _notificationCoordinator.schedule(updated);
     }
-    notifyListeners();
   }
 
   Future<void> toggleItem(String todoId, String itemId) async {
@@ -85,7 +82,6 @@ extension TodoAppStateOperations on AppState {
     await _persist();
     await _notificationCoordinator.cancel(id);
     await _documentImageCleaner.deleteAll(orphanDocuments);
-    notifyListeners();
   }
 
   Future<List<AppTodo>> addTodosFromDrafts({
@@ -105,7 +101,6 @@ extension TodoAppStateOperations on AppState {
     _replaceTodos([...todos, ...newTodos]);
     await _persist();
     await _notificationCoordinator.rescheduleAll(newTodos);
-    notifyListeners();
     return newTodos;
   }
 
