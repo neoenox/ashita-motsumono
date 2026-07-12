@@ -130,6 +130,69 @@ void main() {
       expect(ok, isTrue);
     });
 
+    test('preserves legacy childId through database migration', () async {
+      SharedPreferences.setMockInitialValues({
+        'ashita_motsumono_snapshot_v1': '''
+        {
+          "version": 1,
+          "children": [],
+          "todos": [
+            {
+              "id": "todo-legacy-child",
+              "title": "体操着",
+              "childId": "child-legacy",
+              "category": "item",
+              "status": "active",
+              "items": [],
+              "notifyPreviousNight": true,
+              "notifySameMorning": true,
+              "createdAt": "2026-01-01T00:00:00.000",
+              "updatedAt": "2026-01-01T00:00:00.000"
+            }
+          ],
+          "documents": []
+        }
+        ''',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final snapshot = await AppDatabase.migrateSnapshotForTesting(prefs);
+
+      expect(snapshot, isNotNull);
+      expect(snapshot!.todos.single.personId, 'child-legacy');
+    });
+
+    test('current personId takes precedence over legacy childId', () async {
+      SharedPreferences.setMockInitialValues({
+        'ashita_motsumono_snapshot_v1': '''
+        {
+          "version": 1,
+          "children": [],
+          "todos": [
+            {
+              "id": "todo-current-person",
+              "title": "提出物",
+              "personId": "person-current",
+              "childId": "child-legacy",
+              "category": "submission",
+              "status": "active",
+              "items": [],
+              "notifyPreviousNight": true,
+              "notifySameMorning": true,
+              "createdAt": "2026-01-01T00:00:00.000",
+              "updatedAt": "2026-01-01T00:00:00.000"
+            }
+          ],
+          "documents": []
+        }
+        ''',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final snapshot = await AppDatabase.migrateSnapshotForTesting(prefs);
+
+      expect(snapshot, isNotNull);
+      expect(snapshot!.todos.single.personId, 'person-current');
+    });
+
     test('marks migration done when no legacy data', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
