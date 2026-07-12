@@ -50,9 +50,7 @@ class DriftStore implements Store {
   }
 
   @override
-  Future<void> save(AppSnapshot snapshot) async {
-    await _db.saveSnapshot(snapshot);
-  }
+  Future<void> save(AppSnapshot snapshot) => _db.saveSnapshot(snapshot);
 
   @override
   String? loadCorruptBackup() => _corruptBackupInfo;

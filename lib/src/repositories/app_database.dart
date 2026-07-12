@@ -16,8 +16,6 @@ import '../models/entities.dart';
 
 part 'app_database.g.dart';
 
-// ── テーブル定義 ──────────────────────────────────────────────
-
 class DbChild extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
@@ -70,8 +68,6 @@ class DbDocument extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-// ── データベース ──────────────────────────────────────────────
-
 @DriftDatabase(tables: [DbChild, DbTodo, DbChecklistItem, DbDocument])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e, {this.databaseFile});
@@ -86,16 +82,13 @@ class AppDatabase extends _$AppDatabase {
         onCreate: (m) async => m.createAll(),
         onUpgrade: (m, from, to) async {
           // v1→v2: 将来のスキーマ変更対応（現状はプレースホルダー）
-          // from == 1 && to == 2 の場合に migrate 処理を記述
         },
       );
 
-  /// SharedPreferences から JSON データを SQLite に移行する。
   static Future<AppDatabase> createWithMigration() async {
     final dir = await getApplicationDocumentsDirectory();
     final file = File(p.join(dir.path, 'ashita_motsumono.db'));
     final db = AppDatabase(NativeDatabase(file), databaseFile: file);
-    // foreign_keys OFF: アプリ内では論理削除を使わず参照整合性をコード側で担保
     await db.customStatement('PRAGMA foreign_keys = OFF');
 
     final prefs = await SharedPreferences.getInstance();
@@ -105,18 +98,14 @@ class AppDatabase extends _$AppDatabase {
       if (ok) {
         await prefs.setBool(_migrationDoneKey, true);
       }
-      // ok == false の場合、レガシーデータは存在するがパースに失敗。
-      // 生JSONはバックアップ済み。次回起動時に再試行する。
     }
     return db;
   }
 
-  /// レガシーSharedPreferences からデータを移行する。
-  /// 戻り値: true=移行成功または移行不要 / false=データ存在→パース失敗（再試行必要）
   Future<bool> _migrateFromPrefs(SharedPreferences prefs) async {
     const key = 'ashita_motsumono_snapshot_v1';
     final raw = prefs.getString(key);
-    if (raw == null || raw.trim().isEmpty) return true; // 移行不要
+    if (raw == null || raw.trim().isEmpty) return true;
 
     await _backupRawSnapshot(raw);
 
@@ -126,16 +115,17 @@ class AppDatabase extends _$AppDatabase {
       await saveSnapshot(snapshot);
       return true;
     } on Object {
-      return false; // パース失敗 → migrationDone はセットしない
+      return false;
     }
   }
 
-  /// レガシー JSON をファイルに退避してからパースを試みる。
   Future<void> _backupRawSnapshot(String rawJson) async {
     try {
       final dir = databaseFile?.parent ?? await getApplicationDocumentsDirectory();
       final stamp = DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
-      final backup = File(p.join(dir.path, 'ashita_motsumono_legacy_backup_$stamp.json'));
+      final backup = File(
+        p.join(dir.path, 'ashita_motsumono_legacy_backup_$stamp.json'),
+      );
       await backup.writeAsString(rawJson);
     } on Object {
       // バックアップ失敗は移行をブロックしない
@@ -144,15 +134,12 @@ class AppDatabase extends _$AppDatabase {
 
   static const _migrationDoneKey = 'ashita_motsumono_drift_migrated_v1';
 
-  /// テスト用: 空のインメモリDB
   static Future<AppDatabase> createInMemory() async {
     final db = AppDatabase(NativeDatabase.memory());
     await db.customStatement('PRAGMA foreign_keys = OFF');
     return db;
   }
 
-  /// テスト用: 与えられた SharedPreferences で移行を試行する（インメモリDB）。
-  /// 戻り値: true=移行成功または不要 / false=レガシーデータが存在→パース失敗
   @visibleForTesting
   static Future<bool> tryMigration(SharedPreferences prefs) async {
     final db = AppDatabase(NativeDatabase.memory());
@@ -169,12 +156,12 @@ class AppDatabase extends _$AppDatabase {
     if (source == null || !await source.exists()) return null;
 
     final stamp = DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
-    final backup = File(p.join(source.parent.path, 'ashita_motsumono_corrupt_$stamp.db'));
+    final backup = File(
+      p.join(source.parent.path, 'ashita_motsumono_corrupt_$stamp.db'),
+    );
     await source.copy(backup.path);
     return backup.path;
   }
-
-  // ── CRUD ──────────────────────────────────────────────
 
   Future<AppSnapshot> loadSnapshot() async {
     final childRows = await select(dbChild).get();
@@ -189,144 +176,143 @@ class AppDatabase extends _$AppDatabase {
 
     return AppSnapshot(
       children: childRows.map(_toPersonProfile).toList(),
-      todos: todoRows.map((r) => _toAppTodo(r, itemsByTodo[r.id] ?? [])).toList(),
+      todos: todoRows
+          .map((row) => _toAppTodo(row, itemsByTodo[row.id] ?? []))
+          .toList(),
       documents: docRows.map(_toDocumentRecord).toList(),
     );
   }
 
   Future<void> saveSnapshot(AppSnapshot snapshot) async {
+    final childRows = snapshot.children.map(_fromPersonProfile).toList();
+    final documentRows = snapshot.documents.map(_fromDocumentRecord).toList();
+    final todoRows = snapshot.todos.map(_fromAppTodo).toList();
+    final checklistRows = snapshot.todos
+        .expand(
+          (todo) => todo.items.map(
+            (item) => _fromChecklistItem(todo.id, item),
+          ),
+        )
+        .toList();
+
     await transaction(() async {
-      // 現在のデータを取得
-      final currentChildren = await select(dbChild).get();
-      final currentTodos = await select(dbTodo).get();
-      final currentDocs = await select(dbDocument).get();
+      await batch((batch) {
+        batch.deleteAll(dbChecklistItem);
+        batch.deleteAll(dbTodo);
+        batch.deleteAll(dbChild);
+        batch.deleteAll(dbDocument);
 
-      final currentChildIds = currentChildren.map((c) => c.id).toSet();
-      final currentTodoIds = currentTodos.map((t) => t.id).toSet();
-      final currentDocIds = currentDocs.map((d) => d.id).toSet();
-
-      final newChildIds = snapshot.children.map((c) => c.id).toSet();
-      final newTodoIds = snapshot.todos.map((t) => t.id).toSet();
-      final newDocIds = snapshot.documents.map((d) => d.id).toSet();
-
-      await batch((b) {
-        // 削除: 新しいデータに存在しないもの
-        for (final id in currentChildIds.difference(newChildIds)) {
-          b.deleteWhere(dbChild, (t) => t.id.equals(id));
+        if (childRows.isNotEmpty) {
+          batch.insertAll(dbChild, childRows);
         }
-        for (final id in currentTodoIds.difference(newTodoIds)) {
-          b.deleteWhere(dbTodo, (t) => t.id.equals(id));
-          b.deleteWhere(dbChecklistItem, (t) => t.todoId.equals(id));
+        if (documentRows.isNotEmpty) {
+          batch.insertAll(dbDocument, documentRows);
         }
-        for (final id in currentDocIds.difference(newDocIds)) {
-          b.deleteWhere(dbDocument, (t) => t.id.equals(id));
+        if (todoRows.isNotEmpty) {
+          batch.insertAll(dbTodo, todoRows);
         }
-
-        // 追加・更新
-        for (final child in snapshot.children) {
-          b.insert(dbChild, _fromPersonProfile(child), mode: InsertMode.replace);
-        }
-        for (final todo in snapshot.todos) {
-          b.insert(dbTodo, _fromAppTodo(todo), mode: InsertMode.replace);
-          // 既存のチェックリスト項目を削除して再挿入
-          b.deleteWhere(dbChecklistItem, (t) => t.todoId.equals(todo.id));
-          for (final item in todo.items) {
-            b.insert(dbChecklistItem, _fromChecklistItem(todo.id, item));
-          }
-        }
-        for (final doc in snapshot.documents) {
-          b.insert(dbDocument, _fromDocumentRecord(doc), mode: InsertMode.replace);
+        if (checklistRows.isNotEmpty) {
+          batch.insertAll(dbChecklistItem, checklistRows);
         }
       });
     });
   }
 
   Future<void> clearAll() async {
-    await batch((b) {
-      b.deleteAll(dbChild);
-      b.deleteAll(dbTodo);
-      b.deleteAll(dbChecklistItem);
-      b.deleteAll(dbDocument);
+    await batch((batch) {
+      batch.deleteAll(dbChecklistItem);
+      batch.deleteAll(dbTodo);
+      batch.deleteAll(dbChild);
+      batch.deleteAll(dbDocument);
     });
   }
 
-  // ── 変換 ─────────────────────────────────────────────
-
-  PersonProfile _toPersonProfile(DbChildData c) => PersonProfile(
-        id: c.id,
-        name: c.name,
-        colorValue: c.colorValue,
-        createdAt: c.createdAt,
-        updatedAt: c.updatedAt,
+  PersonProfile _toPersonProfile(DbChildData child) => PersonProfile(
+        id: child.id,
+        name: child.name,
+        colorValue: child.colorValue,
+        createdAt: child.createdAt,
+        updatedAt: child.updatedAt,
       );
 
-  DbChildCompanion _fromPersonProfile(PersonProfile c) => DbChildCompanion(
-        id: Value(c.id),
-        name: Value(c.name),
-        colorValue: Value(c.colorValue),
-        createdAt: Value(c.createdAt),
-        updatedAt: Value(c.updatedAt),
+  DbChildCompanion _fromPersonProfile(PersonProfile child) => DbChildCompanion(
+        id: Value(child.id),
+        name: Value(child.name),
+        colorValue: Value(child.colorValue),
+        createdAt: Value(child.createdAt),
+        updatedAt: Value(child.updatedAt),
       );
 
-  AppTodo _toAppTodo(DbTodoData r, List<DbChecklistItemData> items) => AppTodo(
-        id: r.id,
-        title: r.title,
-        personId: r.childId,
-        documentId: r.documentId,
-        dueDate: r.dueDate,
-        category: TodoCategory.fromName(r.category),
-        amount: r.amount,
-        note: r.note,
-        status: TodoStatus.fromName(r.status),
+  AppTodo _toAppTodo(
+    DbTodoData row,
+    List<DbChecklistItemData> items,
+  ) => AppTodo(
+        id: row.id,
+        title: row.title,
+        personId: row.childId,
+        documentId: row.documentId,
+        dueDate: row.dueDate,
+        category: TodoCategory.fromName(row.category),
+        amount: row.amount,
+        note: row.note,
+        status: TodoStatus.fromName(row.status),
         items: items
-            .map((i) => ChecklistItem(id: i.id, label: i.label, isChecked: i.isChecked))
+            .map(
+              (item) => ChecklistItem(
+                id: item.id,
+                label: item.label,
+                isChecked: item.isChecked,
+              ),
+            )
             .toList(),
-        notifyPreviousNight: r.notifyPreviousNight,
-        notifySameMorning: r.notifySameMorning,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
+        notifyPreviousNight: row.notifyPreviousNight,
+        notifySameMorning: row.notifySameMorning,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
       );
 
-  DbTodoCompanion _fromAppTodo(AppTodo t) => DbTodoCompanion(
-        id: Value(t.id),
-        title: Value(t.title),
-        childId: Value(t.personId),
-        documentId: Value(t.documentId),
-        dueDate: Value(t.dueDate),
-        category: Value(t.category.name),
-        amount: Value(t.amount),
-        note: Value(t.note),
-        status: Value(t.status.name),
-        notifyPreviousNight: Value(t.notifyPreviousNight),
-        notifySameMorning: Value(t.notifySameMorning),
-        createdAt: Value(t.createdAt),
-        updatedAt: Value(t.updatedAt),
+  DbTodoCompanion _fromAppTodo(AppTodo todo) => DbTodoCompanion(
+        id: Value(todo.id),
+        title: Value(todo.title),
+        childId: Value(todo.personId),
+        documentId: Value(todo.documentId),
+        dueDate: Value(todo.dueDate),
+        category: Value(todo.category.name),
+        amount: Value(todo.amount),
+        note: Value(todo.note),
+        status: Value(todo.status.name),
+        notifyPreviousNight: Value(todo.notifyPreviousNight),
+        notifySameMorning: Value(todo.notifySameMorning),
+        createdAt: Value(todo.createdAt),
+        updatedAt: Value(todo.updatedAt),
       );
 
-  DbChecklistItemCompanion _fromChecklistItem(String todoId, ChecklistItem item) =>
-      DbChecklistItemCompanion(
+  DbChecklistItemCompanion _fromChecklistItem(
+    String todoId,
+    ChecklistItem item,
+  ) => DbChecklistItemCompanion(
         id: Value(item.id),
         todoId: Value(todoId),
         label: Value(item.label),
         isChecked: Value(item.isChecked),
       );
 
-  DocumentRecord _toDocumentRecord(DbDocumentData d) => DocumentRecord(
-        id: d.id,
-        sourceType: d.sourceType,
-        localImagePath: d.localImagePath,
-        ocrText: d.ocrText,
-        createdAt: d.createdAt,
-        updatedAt: d.updatedAt,
+  DocumentRecord _toDocumentRecord(DbDocumentData document) => DocumentRecord(
+        id: document.id,
+        sourceType: document.sourceType,
+        localImagePath: document.localImagePath,
+        ocrText: document.ocrText,
+        createdAt: document.createdAt,
+        updatedAt: document.updatedAt,
       );
 
-  DbDocumentCompanion _fromDocumentRecord(DocumentRecord d) => DbDocumentCompanion(
-        id: Value(d.id),
-        sourceType: Value(d.sourceType),
-        localImagePath: Value(d.localImagePath),
-        ocrText: Value(d.ocrText),
-        createdAt: Value(d.createdAt),
-        updatedAt: Value(d.updatedAt),
+  DbDocumentCompanion _fromDocumentRecord(DocumentRecord document) =>
+      DbDocumentCompanion(
+        id: Value(document.id),
+        sourceType: Value(document.sourceType),
+        localImagePath: Value(document.localImagePath),
+        ocrText: Value(document.ocrText),
+        createdAt: Value(document.createdAt),
+        updatedAt: Value(document.updatedAt),
       );
-
 }
