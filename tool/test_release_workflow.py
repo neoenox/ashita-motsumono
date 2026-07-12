@@ -20,7 +20,7 @@ class ReleaseWorkflowTest(unittest.TestCase):
 
         self.assertLess(build, verify)
         self.assertLess(verify, upload)
-        self.assertIn('apksigner verify --verbose --print-certs', self.workflow)
+        self.assertIn('verify --verbose --print-certs "$apk"', self.workflow)
         self.assertIn('APK_SHA256SUMS', self.workflow)
 
     def test_aab_is_verified_before_upload(self) -> None:
