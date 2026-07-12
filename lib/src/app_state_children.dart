@@ -38,7 +38,6 @@ extension ChildAppStateOperations on AppState {
     );
     _replaceChildren([...children, child]);
     await _persist();
-    notifyListeners();
     return child;
   }
 
@@ -53,7 +52,6 @@ extension ChildAppStateOperations on AppState {
       ),
     );
     await _persist();
-    notifyListeners();
   }
 
   Future<void> updateChild(PersonProfile child) async {
@@ -64,6 +62,5 @@ extension ChildAppStateOperations on AppState {
       ),
     );
     await _persist();
-    notifyListeners();
   }
 }
