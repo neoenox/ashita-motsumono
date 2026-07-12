@@ -111,7 +111,7 @@ class NotificationService {
     AppTodo todo, {
     DateTime? now,
   }) {
-    final due = todo.dueDate;
+    final due = todo.dueDate?.toLocal();
     if (due == null || todo.isDone) return const [];
 
     final referenceTime = now ?? DateTime.now();
