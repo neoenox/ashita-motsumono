@@ -1,9 +1,6 @@
 name: Apply AI image disclosure
 
 on:
-  push:
-    branches:
-      - agent/ai-image-disclosure-consent
   pull_request:
 
 permissions:
@@ -91,13 +88,13 @@ jobs:
           test_text = test_text.replace(import_marker, import_line + import_marker, 1)
 
           constructor_old = '''  _TestPurchaseProvider({
-              this.adRemoved = false,
-              this.priceLabel = '買い切り ¥190',
+            this.adRemoved = false,
+            this.priceLabel = '買い切り ¥190',
           '''
           constructor_new = '''  _TestPurchaseProvider({
-              this.adRemoved = false,
-              this.aiAccess = false,
-              this.priceLabel = '買い切り ¥190',
+            this.adRemoved = false,
+            this.aiAccess = false,
+            this.priceLabel = '買い切り ¥190',
           '''
           if constructor_old not in test_text:
               raise SystemExit('Purchase provider constructor marker not found')
@@ -115,70 +112,70 @@ jobs:
 
           group_marker = "  group('AddTodoScreen', () {\n"
           tests = '''  group('AddTodoScreen', () {
-              testWidgets('AI button opens external data disclosure', (tester) async {
-                final appState = await _createAppState();
-                final settings = await _createSettings();
-                await appState.addChild('長女');
+            testWidgets('AI button opens external data disclosure', (tester) async {
+              final appState = await _createAppState();
+              final settings = await _createSettings();
+              await appState.addChild('長女');
 
-                await tester.pumpWidget(
-                  AshitaMotsumonoApp(
-                    appState: appState,
-                    settings: settings,
-                    purchaseProvider: _TestPurchaseProvider(
-                      adRemoved: true,
-                      aiAccess: true,
-                    ),
+              await tester.pumpWidget(
+                AshitaMotsumonoApp(
+                  appState: appState,
+                  settings: settings,
+                  purchaseProvider: _TestPurchaseProvider(
+                    adRemoved: true,
+                    aiAccess: true,
                   ),
-                );
-                await tester.pumpAndSettle();
+                ),
+              );
+              await tester.pumpAndSettle();
 
-                await tester.tap(find.text('追加'));
-                await tester.pumpAndSettle();
-                await tester.tap(find.text('AIで解析（手書きも対応）'));
-                await tester.pumpAndSettle();
+              await tester.tap(find.text('追加'));
+              await tester.pumpAndSettle();
+              await tester.tap(find.text('AIで解析（手書きも対応）'));
+              await tester.pumpAndSettle();
 
-                expect(find.text('AI画像解析について'), findsOneWidget);
-                expect(find.textContaining('Cloudflare Workers'), findsOneWidget);
-                expect(find.textContaining('Google Gemini API'), findsOneWidget);
-                expect(find.textContaining('通常のOCRでは画像を外部送信しません'), findsOneWidget);
-                expect(find.text('同意して画像を選ぶ'), findsOneWidget);
+              expect(find.text('AI画像解析について'), findsOneWidget);
+              expect(find.textContaining('Cloudflare Workers'), findsOneWidget);
+              expect(find.textContaining('Google Gemini API'), findsOneWidget);
+              expect(find.textContaining('通常のOCRでは画像を外部送信しません'), findsOneWidget);
+              expect(find.text('同意して画像を選ぶ'), findsOneWidget);
 
-                await tester.tap(find.text('キャンセル'));
-                await tester.pumpAndSettle();
-                expect(find.text('AI画像解析について'), findsNothing);
-              });
+              await tester.tap(find.text('キャンセル'));
+              await tester.pumpAndSettle();
+              expect(find.text('AI画像解析について'), findsNothing);
+            });
 
-              testWidgets('AI analysis starts only after explicit consent', (tester) async {
-                var startCount = 0;
+            testWidgets('AI analysis starts only after explicit consent', (tester) async {
+              var startCount = 0;
 
-                await tester.pumpWidget(
-                  MaterialApp(
-                    home: Builder(
-                      builder: (context) => Scaffold(
-                        body: FilledButton(
-                          onPressed: () => requestAiImageAnalysisWithDisclosure(
-                            context,
-                            startAnalysis: () async => startCount++,
-                          ),
-                          child: const Text('AI解析を開始'),
+              await tester.pumpWidget(
+                MaterialApp(
+                  home: Builder(
+                    builder: (context) => Scaffold(
+                      body: FilledButton(
+                        onPressed: () => requestAiImageAnalysisWithDisclosure(
+                          context,
+                          startAnalysis: () async => startCount++,
                         ),
+                        child: const Text('AI解析を開始'),
                       ),
                     ),
                   ),
-                );
+                ),
+              );
 
-                await tester.tap(find.text('AI解析を開始'));
-                await tester.pumpAndSettle();
-                await tester.tap(find.text('キャンセル'));
-                await tester.pumpAndSettle();
-                expect(startCount, 0);
+              await tester.tap(find.text('AI解析を開始'));
+              await tester.pumpAndSettle();
+              await tester.tap(find.text('キャンセル'));
+              await tester.pumpAndSettle();
+              expect(startCount, 0);
 
-                await tester.tap(find.text('AI解析を開始'));
-                await tester.pumpAndSettle();
-                await tester.tap(find.text('同意して画像を選ぶ'));
-                await tester.pumpAndSettle();
-                expect(startCount, 1);
-              });
+              await tester.tap(find.text('AI解析を開始'));
+              await tester.pumpAndSettle();
+              await tester.tap(find.text('同意して画像を選ぶ'));
+              await tester.pumpAndSettle();
+              expect(startCount, 1);
+            });
 
           '''
           if group_marker not in test_text:
