@@ -34,14 +34,10 @@ class NotificationCoordinator {
   }
 
   Future<void> rescheduleAll(Iterable<AppTodo> todos) async {
-    for (final todo in todos) {
-      await schedule(todo);
-    }
+    await Future.wait(todos.map(schedule));
   }
 
   Future<void> cancelAll(Iterable<AppTodo> todos) async {
-    for (final todo in todos) {
-      await cancel(todo.id);
-    }
+    await Future.wait(todos.map((todo) => cancel(todo.id)));
   }
 }
