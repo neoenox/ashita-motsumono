@@ -73,7 +73,13 @@ class AshitaMotsumonoApp extends StatelessWidget {
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
           themeMode: currentSettings.themeMode,
-          home: HomeScreen(settings: settings),
+          home: ListenableBuilder(
+            listenable: Listenable.merge([
+              appState.childState,
+              appState.todoState,
+            ]),
+            builder: (_, _) => HomeScreen(settings: settings),
+          ),
         );
       },
     );
