@@ -2,7 +2,7 @@
 // AppDatabase（Drift SQLite）のCRUD操作とスキーマをテストする。
 // 関連: lib/src/repositories/app_database.dart, lib/src/models/entities.dart
 
-import 'package:drift/drift.dart' hide isNull;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ashita_motsumono/src/models/entities.dart';
@@ -128,6 +128,79 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       final ok = await AppDatabase.tryMigration(prefs);
       expect(ok, isTrue);
+    });
+
+    test('preserves legacy childId through database migration', () async {
+      SharedPreferences.setMockInitialValues({
+        'ashita_motsumono_snapshot_v1': '''
+        {
+          "version": 1,
+          "children": [],
+          "todos": [
+            {
+              "id": "todo-legacy-child",
+              "title": "体操着",
+              "childId": "child-legacy",
+              "category": "item",
+              "status": "active",
+              "items": [],
+              "notifyPreviousNight": true,
+              "notifySameMorning": true,
+              "createdAt": "2026-01-01T00:00:00.000",
+              "updatedAt": "2026-01-01T00:00:00.000"
+            }
+          ],
+          "documents": []
+        }
+        ''',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      AppSnapshot? snapshot;
+      final ok = await AppDatabase.tryMigration(
+        prefs,
+        onMigrated: (migrated) => snapshot = migrated,
+      );
+
+      expect(ok, isTrue);
+      expect(snapshot, isNotNull);
+      expect(snapshot!.todos.single.personId, 'child-legacy');
+    });
+
+    test('current personId takes precedence over legacy childId', () async {
+      SharedPreferences.setMockInitialValues({
+        'ashita_motsumono_snapshot_v1': '''
+        {
+          "version": 1,
+          "children": [],
+          "todos": [
+            {
+              "id": "todo-current-person",
+              "title": "提出物",
+              "personId": "person-current",
+              "childId": "child-legacy",
+              "category": "submission",
+              "status": "active",
+              "items": [],
+              "notifyPreviousNight": true,
+              "notifySameMorning": true,
+              "createdAt": "2026-01-01T00:00:00.000",
+              "updatedAt": "2026-01-01T00:00:00.000"
+            }
+          ],
+          "documents": []
+        }
+        ''',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      AppSnapshot? snapshot;
+      final ok = await AppDatabase.tryMigration(
+        prefs,
+        onMigrated: (migrated) => snapshot = migrated,
+      );
+
+      expect(ok, isTrue);
+      expect(snapshot, isNotNull);
+      expect(snapshot!.todos.single.personId, 'person-current');
     });
 
     test('marks migration done when no legacy data', () async {

@@ -141,11 +141,17 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @visibleForTesting
-  static Future<bool> tryMigration(SharedPreferences prefs) async {
-    final db = AppDatabase(NativeDatabase.memory());
-    await db.customStatement('PRAGMA foreign_keys = OFF');
+  static Future<bool> tryMigration(
+    SharedPreferences prefs, {
+    void Function(AppSnapshot snapshot)? onMigrated,
+  }) async {
+    final db = await createInMemory();
     try {
-      return await db._migrateFromPrefs(prefs);
+      final migrated = await db._migrateFromPrefs(prefs);
+      if (migrated && onMigrated != null) {
+        onMigrated(await db.loadSnapshot());
+      }
+      return migrated;
     } finally {
       await db.close();
     }
