@@ -15,17 +15,10 @@ jobs:
         with:
           ref: agent/ai-image-disclosure-consent
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
       - name: Apply implementation and tests
         shell: python
         run: |
           from pathlib import Path
-          import re
 
           add_path = Path('lib/src/screens/add_todo_screen.dart')
           add_text = add_path.read_text(encoding='utf-8')
@@ -66,6 +59,7 @@ jobs:
           if class_marker not in add_text:
               raise SystemExit('AddTodoScreen class marker not found')
           add_text = add_text.replace(class_marker, disclosure + class_marker, 1)
+          print('Added disclosure helper')
 
           old_button = 'onPressed: _busy ? null : () => _pickAndOcrWithAi(),'
           new_button = '''onPressed: _busy
@@ -78,6 +72,7 @@ jobs:
               raise SystemExit('AI button callback not found')
           add_text = add_text.replace(old_button, new_button, 1)
           add_path.write_text(add_text, encoding='utf-8')
+          print('Rewired AI button')
 
           test_path = Path('test/widget_test.dart')
           test_text = test_path.read_text(encoding='utf-8')
@@ -87,24 +82,25 @@ jobs:
           if import_marker not in test_text:
               raise SystemExit('Widget test import marker not found')
           test_text = test_text.replace(import_marker, import_line + import_marker, 1)
+          print('Added AddTodoScreen test import')
 
-          test_text, constructor_count = re.subn(
-              r"(  _TestPurchaseProvider\(\{\n\s+this\.adRemoved = false,\n)",
-              r"\1    this.aiAccess = false,\n",
-              test_text,
-              count=1,
+          constructor_old = "  _TestPurchaseProvider({\n    this.adRemoved = false,\n"
+          constructor_new = (
+              "  _TestPurchaseProvider({\n"
+              "    this.adRemoved = false,\n"
+              "    this.aiAccess = false,\n"
           )
-          if constructor_count != 1:
+          if constructor_old not in test_text:
               raise SystemExit('Purchase provider constructor marker not found')
+          test_text = test_text.replace(constructor_old, constructor_new, 1)
+          print('Made aiAccess configurable in test provider')
 
-          test_text, ai_count = re.subn(
-              r"(  @override\n\s+)final bool aiAccess = false;",
-              r"\1final bool aiAccess;",
-              test_text,
-              count=1,
-          )
-          if ai_count != 1:
+          ai_old = "  @override\n  final bool aiAccess = false;"
+          ai_new = "  @override\n  final bool aiAccess;"
+          if ai_old not in test_text:
               raise SystemExit('aiAccess field marker not found')
+          test_text = test_text.replace(ai_old, ai_new, 1)
+          print('Updated aiAccess field')
 
           group_marker = "  group('AddTodoScreen', () {\n"
           tests = '''  group('AddTodoScreen', () {
@@ -178,6 +174,13 @@ jobs:
               raise SystemExit('AddTodoScreen test group marker not found')
           test_text = test_text.replace(group_marker, tests, 1)
           test_path.write_text(test_text, encoding='utf-8')
+          print('Added AI disclosure widget tests')
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
 
       - name: Format Dart files
         run: dart format lib/src/screens/add_todo_screen.dart test/widget_test.dart
