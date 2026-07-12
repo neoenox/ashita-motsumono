@@ -36,13 +36,13 @@ Windows PowerShellの場合:
 
 | Secret | 説明 |
 |---|---|
-| `KEYSTORE_BASE64` | `upload-keystore.jks` を base64 エンコードした文字列 |
+| `KEYSTORE_BASE64` | `upload-keystore.jks` をbase64エンコードした文字列 |
 | `KEYSTORE_STORE_PASSWORD` | キーストアのパスワード |
 | `KEYSTORE_KEY_PASSWORD` | 鍵のパスワード |
 | `KEYSTORE_KEY_ALIAS` | 鍵のエイリアス（例: `upload`） |
 | `ADMOB_APP_ID` | 本番AdMob App ID（`ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy`） |
 | `ADMOB_BANNER_AD_UNIT_ID` | 本番バナー広告ユニットID（`ca-app-pub-xxxxxxxxxxxxxxxx/zzzzzzzzzz`） |
-| `GEMINI_PROXY_URL` | Cloudflare Workers の Gemini プロキシURL（AI解析を使う場合） |
+| `GEMINI_PROXY_URL` | Cloudflare WorkersのGeminiプロキシURL（AI解析を使う場合） |
 
 ### 任意のRepository Variables
 
@@ -61,24 +61,46 @@ git push origin v0.6.0
 
 タグpushまたは手動実行で `release-build` ジョブが走り、以下の署名済みビルド成果物を生成します。Play StoreへはAABを提出します。APKは実機での最終確認に使います。
 
-- APK: `ashita-motsumono-signed-release-apk`（署名済み）
-- AAB: `ashita-motsumono-signed-release-aab`（署名済み、Play Console提出用）
+- APK: `ashita-motsumono-signed-release-apk`
+- AAB: `ashita-motsumono-signed-release-aab`（Play Console提出用）
 
-## 4. セキュリティ警告
+releaseタスクで署名鍵を読み込めない場合、ビルドはエラーで停止します。debug署名へのフォールバックは行いません。
 
-- `upload-keystore.jks`、`key.properties` はリポジトリに含めないでください。
+## 4. AABの署名を確認する
+
+Actions artifactを展開し、JDKの`jarsigner`で確認します。
+
+```bash
+jarsigner -verify -verbose -certs app-release.aab
+```
+
+終了コードが0で、出力に`jar verified.`が含まれることを確認してください。警告だけで判断せず、終了コードと署名者証明書を記録します。
+
+APKはAndroid SDKの`apksigner`で確認できます。
+
+```bash
+apksigner verify --verbose --print-certs app-release.apk
+```
+
+## 5. セキュリティ警告
+
+- `upload-keystore.jks`、`key.properties`はリポジトリに含めないでください。
 - `.gitignore` により以下が除外されています:
   - `android/app/*.jks`
   - `android/app/*.keystore`
   - `android/key.properties`
   - `android/*.jks`
   - `android/*.keystore`
-- Secretsの値はCIログに出力されません（`::add-mask::` でマスクされます）。
+- Secretsの値はCIログに出力されません（`::add-mask::`でマスクされます）。
+- PRや通常pushの`analyze-and-test`ジョブは署名済みPlay成果物を生成しません。
 
-## 5. 提出前の確認
+## 6. 提出前の確認
 
+- 最新masterの`analyze-and-test`が成功している。
+- 対象タグまたは手動実行の`release-build`が成功している。
+- `ashita-motsumono-signed-release-aab`をダウンロードし、署名を検証した。
 - Android実機でカメラ撮影、画像選択、日本語OCR、通知許可、通知予約を確認する。
 - 課金商品ID `remove_ads`、またはRepository Variable `IAP_REMOVE_ADS_PRODUCT_ID` がPlay Console側のアプリ内アイテムと一致していることを確認する。
-- AdMobの本番App IDと広告ユニットIDがGitHub Secretsに入っていることを確認する。未設定の場合、`release-build` ジョブは失败します。
-- `ADMOB_BANNER_AD_UNIT_ID` が未設定のビルドではバナー広告を読み込みません。Play Store提出ビルドでは本番広告ユニットIDを必ず設定してください。
+- AdMobの本番App IDと広告ユニットIDがGitHub Secretsに入っていることを確認する。未設定の場合、`release-build`ジョブは失敗します。
+- `ADMOB_BANNER_AD_UNIT_ID`が未設定のビルドではバナー広告を読み込みません。Play Store提出ビルドでは本番広告ユニットIDを必ず設定してください。
 - プライバシーポリシーURLをPlay Consoleに登録する。
