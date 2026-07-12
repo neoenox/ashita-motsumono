@@ -38,27 +38,7 @@ jobs:
         run: flutter analyze --no-fatal-infos
 
       - name: Test
-        id: flutter-test
-        shell: bash
-        run: |
-          set +e
-          flutter test --machine | tee flutter-test-results.json
-          status=${PIPESTATUS[0]}
-          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
-          exit 0
-
-      - name: Upload failed test diagnostics
-        if: steps.flutter-test.outputs.exit_code != '0'
-        uses: actions/upload-artifact@v4
-        with:
-          name: flutter-test-diagnostics
-          path: flutter-test-results.json
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Fail when Flutter tests failed
-        if: steps.flutter-test.outputs.exit_code != '0'
-        run: exit 1
+        run: flutter test
 
       - name: Generate LP screenshots
         run: flutter test tool/generate_lp_screenshots_test.dart
