@@ -36,14 +36,19 @@ Secrets:
 - [ ] `KEYSTORE_KEY_ALIAS`
 - [ ] `ADMOB_APP_ID`（本番App ID。未設定の場合、Release Android workflowは失敗）
 - [ ] `ADMOB_BANNER_AD_UNIT_ID`（本番バナー広告ユニットID。未設定の場合、Release Android workflowは失敗）
+- [ ] `GEMINI_PROXY_URL`（AI画像解析用Cloudflare Workers URL。未設定の場合、Release Android workflowは失敗）
 
 Repository Variables:
 
-- [ ] `IAP_REMOVE_ADS_PRODUCT_ID`
+- [ ] `IAP_REMOVE_ADS_PRODUCT_ID`（未設定時は`remove_ads`）
 
 ## 4. リリース成果物
 
 - [ ] `Release Android` ワークフローを手動実行、または `v*` タグをpushする
+- [ ] APK artifact `ashita-motsumono-signed-release-apk` が生成される
+- [ ] APK artifact内の`apk-signature-verification.txt`と`APK_SHA256SUMS`を確認する
+- [ ] AAB artifact `ashita-motsumono-signed-release-aab` が生成される
+- [ ] AAB artifact内の`aab-signature-verification.txt`と`AAB_SHA256SUMS`を確認する
 - [ ] APK artifact を実機に入れてスモークテストする
 - [ ] AAB artifact をPlay Consoleへアップロードする
 - [ ] 内部テストトラックでインストールできることを確認する
