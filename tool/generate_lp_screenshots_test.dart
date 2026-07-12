@@ -81,6 +81,31 @@ Future<AppState> _createAppState() async {
   return appState;
 }
 
+Future<void> _loadScreenshotFonts() async {
+  final appFontLoader = FontLoader('NotoSansJP')
+    ..addFont(rootBundle.load('assets/fonts/NotoSansJP.ttf'));
+  await appFontLoader.load();
+
+  final flutterRoot = Platform.environment['FLUTTER_ROOT'];
+  if (flutterRoot == null || flutterRoot.isEmpty) {
+    throw StateError('FLUTTER_ROOTが設定されていません');
+  }
+  final iconFont = File(
+    '$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+  );
+  final iconBytes = iconFont.readAsBytesSync();
+  final iconFontLoader = FontLoader('MaterialIcons')
+    ..addFont(
+      Future<ByteData>.value(
+        iconBytes.buffer.asByteData(
+          iconBytes.offsetInBytes,
+          iconBytes.lengthInBytes,
+        ),
+      ),
+    );
+  await iconFontLoader.load();
+}
+
 void _configureViewport(WidgetTester tester) {
   tester.view.physicalSize = _viewportPhysicalSize;
   tester.view.devicePixelRatio = _devicePixelRatio;
@@ -163,9 +188,7 @@ void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
   setUpAll(() async {
-    final fontLoader = FontLoader('NotoSansJP')
-      ..addFont(rootBundle.load('assets/fonts/NotoSansJP.ttf'));
-    await fontLoader.load();
+    await _loadScreenshotFonts();
 
     final directory = Directory(_outputDirectory);
     if (directory.existsSync()) {
