@@ -1,15 +1,17 @@
 // lib/src/repositories/drift_store.dart
 // Drift（SQLite）を使った永続化ストア。Store インターフェース経由で AppState から使う。
-// 関連: app_database.dart, store.dart, models/entities.dart
+// 関連: app_database.dart, snapshot_replacer.dart, store.dart, models/entities.dart
 
 import 'app_database.dart';
+import 'snapshot_replacer.dart';
 import 'store.dart';
 import '../models/entities.dart';
 
 class DriftStore implements Store {
-  DriftStore(this._db);
+  DriftStore(this._db) : _snapshotReplacer = SnapshotReplacer(_db);
 
   final AppDatabase _db;
+  final SnapshotReplacer _snapshotReplacer;
 
   bool _lastLoadHadCorruptData = false;
   String? _corruptBackupInfo;
@@ -50,9 +52,7 @@ class DriftStore implements Store {
   }
 
   @override
-  Future<void> save(AppSnapshot snapshot) async {
-    await _db.saveSnapshot(snapshot);
-  }
+  Future<void> save(AppSnapshot snapshot) => _snapshotReplacer.replace(snapshot);
 
   @override
   String? loadCorruptBackup() => _corruptBackupInfo;
