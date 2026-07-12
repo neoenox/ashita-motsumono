@@ -55,6 +55,22 @@ void main() {
     expect(checklist, contains('広告削除の購入・復元'));
   });
 
+  test('submission checklist matches AI image data flow', () {
+    final checklist = File('docs/PLAY_CONSOLE_SUBMISSION.md').readAsStringSync();
+
+    expect(checklist, contains('通常の日本語OCRは端末上'));
+    expect(
+      checklist,
+      contains('解析対象の画像、画像形式、解析基準日およびタイムゾーン'),
+    );
+    expect(checklist, contains('Cloudflare Workers経由でGoogle Gemini API'));
+    expect(checklist, contains('外部送信の説明に同意'));
+    expect(
+      checklist,
+      isNot(contains('独自サーバーへ子ども名、Todo、OCR全文、画像を送信しない')),
+    );
+  });
+
   test('todo document points release work to the Play Console checklist', () {
     final todo = File('docs/TODO.md').readAsStringSync();
 
