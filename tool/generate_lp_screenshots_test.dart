@@ -1,6 +1,7 @@
 // tool/generate_lp_screenshots_test.dart
 // LP掲載用の実画面スクリーンショットを、実アプリWidgetとダミーデータから生成する。
 
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -25,6 +26,7 @@ const _outputDirectory = 'build/lp-screenshots';
 const _viewportPhysicalSize = Size(1080, 1920);
 const _devicePixelRatio = 3.0;
 const _captureKey = ValueKey<String>('lp-screenshot-boundary');
+const _requiredFontFamilies = <String>{'NotoSansJP', 'MaterialIcons'};
 
 class _TestPurchaseProvider extends PurchaseProvider {
   _TestPurchaseProvider();
@@ -82,28 +84,36 @@ Future<AppState> _createAppState() async {
 }
 
 Future<void> _loadScreenshotFonts() async {
-  final appFontLoader = FontLoader('NotoSansJP')
-    ..addFont(rootBundle.load('assets/fonts/NotoSansJP.ttf'));
-  await appFontLoader.load();
+  final manifestJson = await rootBundle.loadString('FontManifest.json');
+  final manifest = jsonDecode(manifestJson) as List<dynamic>;
+  final loadedFamilies = <String>{};
+  final loadFutures = <Future<void>>[];
 
-  final flutterRoot = Platform.environment['FLUTTER_ROOT'];
-  if (flutterRoot == null || flutterRoot.isEmpty) {
-    throw StateError('FLUTTER_ROOTが設定されていません');
+  for (final entry in manifest) {
+    final font = entry as Map<String, dynamic>;
+    final family = font['family'] as String;
+    if (!_requiredFontFamilies.contains(family)) {
+      continue;
+    }
+
+    final loader = FontLoader(family);
+    for (final descriptor in font['fonts'] as List<dynamic>) {
+      final asset = (descriptor as Map<String, dynamic>)['asset'] as String;
+      loader.addFont(rootBundle.load(asset));
+    }
+    loadFutures.add(loader.load());
+    loadedFamilies.add(family);
   }
-  final iconFont = File(
-    '$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
-  );
-  final iconBytes = iconFont.readAsBytesSync();
-  final iconFontLoader = FontLoader('MaterialIcons')
-    ..addFont(
-      Future<ByteData>.value(
-        iconBytes.buffer.asByteData(
-          iconBytes.offsetInBytes,
-          iconBytes.lengthInBytes,
-        ),
-      ),
+
+  await Future.wait(loadFutures);
+
+  final missingFamilies = _requiredFontFamilies.difference(loadedFamilies);
+  if (missingFamilies.isNotEmpty) {
+    throw StateError(
+      'スクリーンショット用フォントを読み込めませんでした: '
+      '${missingFamilies.join(', ')}',
     );
-  await iconFontLoader.load();
+  }
 }
 
 void _configureViewport(WidgetTester tester) {
