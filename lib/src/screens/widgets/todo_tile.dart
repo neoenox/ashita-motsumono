@@ -1,12 +1,11 @@
 // lib/src/screens/widgets/todo_tile.dart
-// Todo 1件を表示する。人物と詳細画面は必要な状態だけを監視する。
+// Todo 1件を表示する。親画面と詳細画面で必要な状態だけを監視する。
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app_state.dart';
 import '../../models/entities.dart';
-import '../../state/app_data_notifiers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/date_formatters.dart';
 import '../todo_detail_screen.dart';
@@ -19,12 +18,8 @@ class TodoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final child = context.select<ChildState, PersonProfile?>((state) {
-      if (todo.personId == null) return null;
-      return state.children
-          .where((child) => child.id == todo.personId)
-          .firstOrNull;
-    });
+    final appState = context.read<AppState>();
+    final child = appState.personById(todo.personId);
     final subtitle = [
       todo.category.label,
       formatDueDate(todo.dueDate),
@@ -37,21 +32,18 @@ class TodoTile extends StatelessWidget {
         : todo.category.color;
 
     return InkWell(
-      onTap: () {
-        final appState = context.read<AppState>();
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ListenableBuilder(
-              listenable: Listenable.merge([
-                appState.childState,
-                appState.todoState,
-                appState.documentState,
-              ]),
-              builder: (_, _) => TodoDetailScreen(todoId: todo.id),
-            ),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ListenableBuilder(
+            listenable: Listenable.merge([
+              appState.childState,
+              appState.todoState,
+              appState.documentState,
+            ]),
+            builder: (_, _) => TodoDetailScreen(todoId: todo.id),
           ),
-        );
-      },
+        ),
+      ),
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 300),
         opacity: todo.isDone ? 0.6 : 1.0,
@@ -71,8 +63,7 @@ class TodoTile extends StatelessWidget {
                 const SizedBox(width: Spacing.sm),
                 Checkbox(
                   value: todo.isDone,
-                  onChanged: (_) =>
-                      context.read<AppState>().toggleTodoDone(todo.id),
+                  onChanged: (_) => appState.toggleTodoDone(todo.id),
                 ),
                 const SizedBox(width: Spacing.xs),
                 Expanded(
