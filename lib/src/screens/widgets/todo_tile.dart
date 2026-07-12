@@ -1,5 +1,5 @@
 // lib/src/screens/widgets/todo_tile.dart
-// Todo 1件を表示する。親画面と詳細画面で必要な状態だけを監視する。
+// Todo 1件を表示する。詳細画面の状態依存は画面Scopeへ委譲する。
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +8,7 @@ import '../../app_state.dart';
 import '../../models/entities.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/date_formatters.dart';
-import '../todo_detail_screen.dart';
+import '../todo_detail_screen_scope.dart';
 
 class TodoTile extends StatelessWidget {
   const TodoTile({super.key, required this.todo, this.compact = false});
@@ -34,14 +34,7 @@ class TodoTile extends StatelessWidget {
     return InkWell(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => ListenableBuilder(
-            listenable: Listenable.merge([
-              appState.childState,
-              appState.todoState,
-              appState.documentState,
-            ]),
-            builder: (_, _) => TodoDetailScreen(todoId: todo.id),
-          ),
+          builder: (_) => TodoDetailScreenScope(todoId: todo.id),
         ),
       ),
       child: AnimatedOpacity(
