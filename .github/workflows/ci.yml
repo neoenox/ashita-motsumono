@@ -30,6 +30,43 @@ jobs:
       - name: Test
         run: flutter test
 
+      - name: Generate LP screenshots
+        run: flutter test tool/generate_lp_screenshots_test.dart
+
+      - name: Validate LP screenshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct
+
+          expected = {
+              'home-tomorrow.png': (1080, 1920),
+              'review-extraction.png': (1080, 1920),
+              'all-complete.png': (1080, 1920),
+          }
+
+          for name, dimensions in expected.items():
+              path = Path('build/lp-screenshots') / name
+              data = path.read_bytes()
+              assert data[:8] == b'\x89PNG\r\n\x1a\n', f'{name}: PNG signature mismatch'
+              width, height = struct.unpack('>II', data[16:24])
+              assert (width, height) == dimensions, (
+                  f'{name}: expected {dimensions}, got {(width, height)}'
+              )
+              assert len(data) > 10_000, f'{name}: file is unexpectedly small'
+              print(f'{name}: {width}x{height}, {len(data)} bytes')
+          PY
+
+      - name: Upload LP screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: lp-screenshots
+          path: build/lp-screenshots/*.png
+          if-no-files-found: error
+          retention-days: 7
+
   release-build:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
