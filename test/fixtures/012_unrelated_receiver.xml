@@ -1,0 +1,12 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:label="Receiver preservation">
+        <!-- preserve this comment -->
+        <receiver
+            android:name="com.example.CustomReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.CUSTOM_ACTION" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

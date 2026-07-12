@@ -6,6 +6,18 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+String _pythonExecutable() {
+  for (final command in ['python', 'python3']) {
+    try {
+      final result = Process.runSync(command, ['--version']);
+      if (result.exitCode == 0) return command;
+    } on ProcessException {
+      // Try the next conventional executable name.
+    }
+  }
+  throw StateError('Python 3 is required for Android manifest verification.');
+}
+
 void main() {
   test(
     'release manifest declares permissions needed by production features',
@@ -17,16 +29,35 @@ void main() {
       expect(manifest, contains('android.permission.CAMERA'));
       expect(manifest, contains('android.permission.POST_NOTIFICATIONS'));
       expect(manifest, contains('android.permission.INTERNET'));
+      expect(manifest, contains('android.permission.RECEIVE_BOOT_COMPLETED'));
+      expect(manifest, contains('ScheduledNotificationReceiver'));
+      expect(manifest, contains('ScheduledNotificationBootReceiver'));
       expect(manifest, contains('com.google.android.gms.ads.APPLICATION_ID'));
     },
   );
 
-  test('release configuration script preserves production permissions', () {
-    final script = File('tool/configure_android_release.sh').readAsStringSync();
+  test('structural Android manifest verifier passes', () {
+    final result = Process.runSync(
+      _pythonExecutable(),
+      ['tool/verify_android_manifest.py'],
+    );
 
-    expect(script, contains('android.permission.CAMERA'));
-    expect(script, contains('android.permission.POST_NOTIFICATIONS'));
-    expect(script, contains('android.permission.INTERNET'));
+    expect(
+      result.exitCode,
+      0,
+      reason: 'stdout:\n${result.stdout}\n\nstderr:\n${result.stderr}',
+    );
+  });
+
+  test('release configuration script preserves production permissions', () {
+    final py = File('tool/configure_android_release.py').readAsStringSync();
+    expect(py, contains('android.permission.CAMERA'));
+    expect(py, contains('android.permission.POST_NOTIFICATIONS'));
+    expect(py, contains('android.permission.INTERNET'));
+    expect(py, contains('android.permission.RECEIVE_BOOT_COMPLETED'));
+    expect(py, contains('DEFAULT_ROOT = Path(__file__).resolve().parent.parent'));
+    expect(py, contains('OCR_DEP_GROOVY'));
+    expect(py, contains('DESUGAR_DEP_GROOVY'));
   });
 
   test('release Gradle config does not fall back to test AdMob app id', () {
@@ -42,6 +73,7 @@ void main() {
       File('android/app/build.gradle.kts'),
       File('lib/src/services/ad_service.dart'),
       File('tool/configure_android_release.sh'),
+      File('tool/configure_android_release.py'),
       File('.github/workflows/release-apk.yml'),
     ];
 

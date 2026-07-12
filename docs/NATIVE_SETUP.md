@@ -14,7 +14,7 @@
 - targetSdkVersion 36
 - compileSdkVersion 36
 
-このリポジトリの `tool/configure_android_release.sh` は、Androidリリースビルド時に `minSdk 24`、`targetSdk 36`、`compileSdk 36` に揃えます。
+このリポジトリの `tool/configure_android_release.py`（または `tool/configure_android_release.sh`）は、Androidリリースビルド時に `minSdk 24`、`targetSdk 36`、`compileSdk 36` に揃えます。
 `flutter_local_notifications` は `compileSdk` 35以上を要求するため、36で統一しています。
 
 ### 2. flutter_local_notifications の desugaring
@@ -59,9 +59,25 @@ dependencies {
 
 ### 4. 権限と通知設定
 
-`AndroidManifest.xml` にカメラ権限、Android 13以降の通知権限、広告表示/アプリ内課金に必要なインターネット権限を追加します。
+`AndroidManifest.xml` にカメラ権限、Android 13以降の通知権限、広告表示/アプリ内課金に必要なインターネット権限、ブート完了受信権限を追加します。
 
-スケジュール通知を端末再起動後にも維持したい場合は、`flutter_local_notifications` の公式 README の AndroidManifest 設定も追加してください。このMVPは `AndroidScheduleMode.inexactAllowWhileIdle` を使っているため、正確なアラーム権限は追加しません。
+スケジュール通知を端末再起動後にも維持するため、`ScheduledNotificationReceiver` と `ScheduledNotificationBootReceiver` を追加します。両Receiverは `android:exported="false"` とし、BootReceiverには `BOOT_COMPLETED`、`MY_PACKAGE_REPLACED`、`QUICKBOOT_POWERON`、`com.htc.intent.action.QUICKBOOT_POWERON` を設定します。このMVPは `AndroidScheduleMode.inexactAllowWhileIdle` を使っているため、正確なアラーム権限（`SCHEDULE_EXACT_ALARM`）は追加しません。
+
+これらは `tool/configure_android_release.py` がXML構造を解析して冪等に正規化します。不足・重複・誤ったReceiver設定を修復し、無関係なActivity、Service、Provider、Receiver、Metadata、Queries、コメントは保持します。
+
+実行方法:
+
+- Windows: `python tool/configure_android_release.py`
+- Linux/macOS/CI: `bash tool/configure_android_release.sh`
+- 直接実行: `python tool/configure_android_release.py`
+
+検証:
+
+```bash
+python tool/verify_android_manifest.py
+```
+
+検証器は本番Manifest、12種類のManifest fixture、Groovy形式のGradle、リポジトリ外のカレントディレクトリからの実行、2回実行時のバイト単位の冪等性を確認します。
 
 Android 13以降の通知は実行時許可が必要です。MVPコードでは、初回説明ダイアログでユーザーが「通知を有効にする」を押した後に `flutter_local_notifications` 経由で通知許可を要求します。
 
