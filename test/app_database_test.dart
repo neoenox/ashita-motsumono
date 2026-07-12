@@ -2,7 +2,7 @@
 // AppDatabase（Drift SQLite）のCRUD操作とスキーマをテストする。
 // 関連: lib/src/repositories/app_database.dart, lib/src/models/entities.dart
 
-import 'package:drift/drift.dart' hide isNull;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ashita_motsumono/src/models/entities.dart';
