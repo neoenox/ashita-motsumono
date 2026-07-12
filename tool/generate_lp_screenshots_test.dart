@@ -71,9 +71,6 @@ Future<AppSettings> _createSettings() async {
 }
 
 Future<AppState> _createAppState() async {
-  SharedPreferences.setMockInitialValues({
-    'notification_info_shown_v1': true,
-  });
   final store = await DriftStore.createInMemory();
   final appState = AppState(
     store: store,
@@ -105,16 +102,22 @@ Future<void> _writeScreenshot(
   final boundary = tester.renderObject<RenderRepaintBoundary>(
     find.byKey(_captureKey),
   );
-  final image = await boundary.toImage(pixelRatio: _devicePixelRatio);
-  final data = await image.toByteData(format: ui.ImageByteFormat.png);
-  image.dispose();
-  if (data == null) {
-    throw StateError('PNGの生成に失敗しました: $filename');
-  }
 
-  final output = File('$_outputDirectory/$filename');
-  await output.parent.create(recursive: true);
-  await output.writeAsBytes(data.buffer.asUint8List(), flush: true);
+  await tester.runAsync(() async {
+    final image = await boundary.toImage(pixelRatio: _devicePixelRatio);
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    if (data == null) {
+      throw StateError('PNGの生成に失敗しました: $filename');
+    }
+
+    final output = File('$_outputDirectory/$filename');
+    await output.parent.create(recursive: true);
+    await output.writeAsBytes(
+      data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+      flush: true,
+    );
+  });
 }
 
 Future<void> _seedTomorrowTodos(AppState appState) async {
@@ -164,6 +167,12 @@ void main() {
       directory.deleteSync(recursive: true);
     }
     directory.createSync(recursive: true);
+  });
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({
+      'notification_info_shown_v1': true,
+    });
   });
 
   testWidgets('ホームの明日一覧を生成する', (tester) async {
