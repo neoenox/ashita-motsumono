@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <application
-        android:label="あした持つもの"
+        android:label="あしたもつもの"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
