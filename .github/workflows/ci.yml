@@ -121,7 +121,7 @@ jobs:
             "${{ github.api_url }}/repos/${{ github.repository }}/statuses/${{ github.sha }}"
 
   release-build:
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.head_ref == 'agent/release-evidence') }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -195,6 +195,21 @@ jobs:
           --dart-define=IAP_REMOVE_ADS_PRODUCT_ID=remove_ads
           --dart-define=GEMINI_PROXY_URL=${{ secrets.GEMINI_PROXY_URL }}
 
+      - name: Verify signed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          test -n "$sdk_root"
+          apksigner="$(find "$sdk_root/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -x "$apksigner"
+          mkdir -p build/release-verification
+          "$apksigner" verify \
+            --verbose \
+            --print-certs \
+            build/app/outputs/flutter-apk/app-release.apk \
+            | tee build/release-verification/apk-signature.txt
+
       - name: Upload signed APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -212,10 +227,30 @@ jobs:
           --dart-define=IAP_REMOVE_ADS_PRODUCT_ID=remove_ads
           --dart-define=GEMINI_PROXY_URL=${{ secrets.GEMINI_PROXY_URL }}
 
+      - name: Verify signed AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/release-verification
+          jarsigner \
+            -verify \
+            -verbose \
+            -certs \
+            build/app/outputs/bundle/release/app-release.aab \
+            | tee build/release-verification/aab-signature.txt
+
       - name: Upload signed AAB artifact
         uses: actions/upload-artifact@v4
         with:
           name: ashita-motsumono-signed-release-aab
           path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload release verification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ashita-motsumono-release-verification
+          path: build/release-verification/*.txt
           if-no-files-found: error
           retention-days: 7
