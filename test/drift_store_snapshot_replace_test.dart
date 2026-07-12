@@ -42,7 +42,7 @@ void main() {
     category: TodoCategory.item,
     amount: 500,
     note: 'note $id',
-    status: TodoStatus.open,
+    status: TodoStatus.active,
     items: items,
     notifyPreviousNight: true,
     notifySameMorning: false,
