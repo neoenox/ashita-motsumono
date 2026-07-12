@@ -25,6 +25,7 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import re
 
           add_path = Path('lib/src/screens/add_todo_screen.dart')
           add_text = add_path.read_text(encoding='utf-8')
@@ -87,28 +88,23 @@ jobs:
               raise SystemExit('Widget test import marker not found')
           test_text = test_text.replace(import_marker, import_line + import_marker, 1)
 
-          constructor_old = '''  _TestPurchaseProvider({
-            this.adRemoved = false,
-            this.priceLabel = '買い切り ¥190',
-          '''
-          constructor_new = '''  _TestPurchaseProvider({
-            this.adRemoved = false,
-            this.aiAccess = false,
-            this.priceLabel = '買い切り ¥190',
-          '''
-          if constructor_old not in test_text:
+          test_text, constructor_count = re.subn(
+              r"(  _TestPurchaseProvider\(\{\n\s+this\.adRemoved = false,\n)",
+              r"\1    this.aiAccess = false,\n",
+              test_text,
+              count=1,
+          )
+          if constructor_count != 1:
               raise SystemExit('Purchase provider constructor marker not found')
-          test_text = test_text.replace(constructor_old, constructor_new, 1)
 
-          ai_old = '''  @override
-            final bool aiAccess = false;
-          '''
-          ai_new = '''  @override
-            final bool aiAccess;
-          '''
-          if ai_old not in test_text:
+          test_text, ai_count = re.subn(
+              r"(  @override\n\s+)final bool aiAccess = false;",
+              r"\1final bool aiAccess;",
+              test_text,
+              count=1,
+          )
+          if ai_count != 1:
               raise SystemExit('aiAccess field marker not found')
-          test_text = test_text.replace(ai_old, ai_new, 1)
 
           group_marker = "  group('AddTodoScreen', () {\n"
           tests = '''  group('AddTodoScreen', () {
