@@ -16,6 +16,7 @@ import 'package:ashita_motsumono/src/theme/app_theme.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -161,7 +162,11 @@ Future<void> _seedTomorrowTodos(AppState appState) async {
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
-  setUpAll(() {
+  setUpAll(() async {
+    final fontLoader = FontLoader('NotoSansJP')
+      ..addFont(rootBundle.load('assets/fonts/NotoSansJP.ttf'));
+    await fontLoader.load();
+
     final directory = Directory(_outputDirectory);
     if (directory.existsSync()) {
       directory.deleteSync(recursive: true);
