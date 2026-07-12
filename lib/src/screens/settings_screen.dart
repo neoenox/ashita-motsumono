@@ -164,7 +164,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.open_in_new, size: 16),
             contentPadding: EdgeInsets.zero,
             onTap: () => _openExternalPage(
-              context,
               Uri.parse('https://lp-5t7.pages.dev/apps/ashita-motsumono/privacy'),
               'リンクを開けませんでした',
             ),
@@ -175,7 +174,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.chevron_right, size: 16),
             contentPadding: EdgeInsets.zero,
             onTap: () => _openExternalPage(
-              context,
               Uri.parse('https://lp-5t7.pages.dev/apps/ashita-motsumono/contact'),
               'お問い合わせページを開けませんでした',
             ),
@@ -197,7 +195,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _openExternalPage(
-    BuildContext context,
     Uri uri,
     String errorMessage,
   ) async {
@@ -209,7 +206,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         mode: LaunchMode.externalApplication,
       ),
     );
-    if (!opened && context.mounted) {
+    if (!opened && mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(errorMessage)));
