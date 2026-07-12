@@ -23,10 +23,14 @@ class ReviewExtractionScreen extends StatefulWidget {
     super.key,
     required this.draft,
     this.documentId,
+    this.editOnly = false,
   });
 
   final ExtractionDraft draft;
   final String? documentId;
+
+  /// true の場合はTodoを登録せず、編集した下書きをNavigatorの結果として返す。
+  final bool editOnly;
 
   @override
   State<ReviewExtractionScreen> createState() => _ReviewExtractionScreenState();
@@ -40,7 +44,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   late final TextEditingController _itemsController;
   late final TextEditingController _amountController;
   late final TextEditingController _noteController;
-  late AppState _appState;
+  AppState? _appState;
   late TodoCategory _category;
   DateTime? _dueDate;
   String? _personId;
@@ -71,10 +75,14 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
 
   @override
   void dispose() {
-    unawaited(_appState.tryDeleteDocumentOnDispose(
-      saved: _saved,
-      documentId: widget.documentId,
-    ));
+    if (!widget.editOnly && _appState != null) {
+      unawaited(
+        _appState!.tryDeleteDocumentOnDispose(
+          saved: _saved,
+          documentId: widget.documentId,
+        ),
+      );
+    }
     _titleController.dispose();
     _itemsController.dispose();
     _amountController.dispose();
@@ -86,26 +94,36 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   Widget build(BuildContext context) {
     final children = context.watch<AppState>().children;
     return Scaffold(
-      appBar: AppBar(title: const Text('読み取り結果の確認')),
+      appBar: AppBar(
+        title: Text(widget.editOnly ? '候補を編集' : '読み取り結果の確認'),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
-          Spacing.md, Spacing.md, Spacing.md, 96,
+          Spacing.md,
+          Spacing.md,
+          Spacing.md,
+          96,
         ),
         children: [
           Card(
-            color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.2),
+            color: Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withValues(alpha: 0.2),
             child: Padding(
               padding: const EdgeInsets.all(Spacing.md),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline,
+                  Icon(
+                    Icons.info_outline,
                     size: 18,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(width: Spacing.sm),
                   Expanded(
                     child: Text(
-                      'OCRは間違う前提です。登録前に内容を確認してください。',
+                      widget.editOnly
+                          ? 'この候補の内容を修正し、一覧へ反映します。'
+                          : 'OCRは間違う前提です。登録前に内容を確認してください。',
                       style: TextStyle(
                         fontSize: 13,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -116,12 +134,14 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
               ),
             ),
           ),
-          const SizedBox(height: Spacing.md),
-          ChildDropdown(
-            value: _personId,
-            children: children,
-            onChanged: (value) => setState(() => _personId = value),
-          ),
+          if (!widget.editOnly) ...[
+            const SizedBox(height: Spacing.md),
+            ChildDropdown(
+              value: _personId,
+              children: children,
+              onChanged: (value) => setState(() => _personId = value),
+            ),
+          ],
           const SizedBox(height: Spacing.md),
           TextField(
             controller: _titleController,
@@ -183,39 +203,43 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
             ),
             keyboardType: TextInputType.number,
           ),
-          const SizedBox(height: Spacing.md),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(Spacing.md),
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      '前日${_fmtTime(context.read<AppSettings>().previousNightHour, context.read<AppSettings>().previousNightMinute)}に通知'),
-                    subtitle: const Text('前日夜にリマインド'),
-                    value: _notifyPreviousNight,
-                    onChanged: (value) => setState(() => _notifyPreviousNight = value),
-                  ),
-                  const Divider(),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      '当日${_fmtTime(context.read<AppSettings>().sameMorningHour, context.read<AppSettings>().sameMorningMinute)}に通知'),
-                    subtitle: const Text('当日朝にリマインド'),
-                    value: _notifySameMorning,
-                    onChanged: (value) => setState(() => _notifySameMorning = value),
-                  ),
-                ],
+          if (!widget.editOnly) ...[
+            const SizedBox(height: Spacing.md),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(Spacing.md),
+                child: Column(
+                  children: [
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        '前日${_fmtTime(context.read<AppSettings>().previousNightHour, context.read<AppSettings>().previousNightMinute)}に通知',
+                      ),
+                      subtitle: const Text('前日夜にリマインド'),
+                      value: _notifyPreviousNight,
+                      onChanged: (value) =>
+                          setState(() => _notifyPreviousNight = value),
+                    ),
+                    const Divider(),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        '当日${_fmtTime(context.read<AppSettings>().sameMorningHour, context.read<AppSettings>().sameMorningMinute)}に通知',
+                      ),
+                      subtitle: const Text('当日朝にリマインド'),
+                      value: _notifySameMorning,
+                      onChanged: (value) =>
+                          setState(() => _notifySameMorning = value),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
+          ],
           const SizedBox(height: Spacing.md),
           TextField(
             controller: _noteController,
-            decoration: const InputDecoration(
-              labelText: 'OCR全文・メモ',
-            ),
+            decoration: const InputDecoration(labelText: 'OCR全文・メモ'),
             minLines: 6,
             maxLines: 12,
           ),
@@ -226,8 +250,8 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
           padding: const EdgeInsets.all(Spacing.md),
           child: FilledButton.icon(
             onPressed: _save,
-            icon: const Icon(Icons.check),
-            label: const Text('登録する'),
+            icon: Icon(widget.editOnly ? Icons.save_outlined : Icons.check),
+            label: Text(widget.editOnly ? '変更を反映' : '登録する'),
           ),
         ),
       ),
@@ -256,21 +280,27 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
       return;
     }
 
-    final appState = context.read<AppState>();
-    final settings = context.read<AppSettings>();
     final navigator = Navigator.of(context);
     final items = splitItems(_itemsController.text);
+    final note = _noteController.text.trim();
     final draft = ExtractionDraft(
       title: title,
       category: _category,
       dueDate: _dueDate,
       amount: parsed.amount,
       items: items,
-      note: _noteController.text.trim().isEmpty
-          ? null
-          : _noteController.text.trim(),
+      note: note.isEmpty ? null : note,
       rawText: widget.draft.rawText,
     );
+
+    if (widget.editOnly) {
+      _saved = true;
+      navigator.pop(draft);
+      return;
+    }
+
+    final appState = context.read<AppState>();
+    final settings = context.read<AppSettings>();
     await appState.addTodoFromDraft(
       draft: draft,
       personId: _personId,

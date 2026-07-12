@@ -1,18 +1,19 @@
 // lib/src/screens/review_extractions_screen.dart
-// OCR抽出結果が複数ある場合の確認画面。候補を選んでまとめて登録する。
+// OCR抽出結果が複数ある場合の確認画面。候補を編集・選択してまとめて登録する。
 // Stitch デザインに合わせてカード+チェックのレイアウトに刷新。
 // 関連: add_todo_screen.dart, review_extraction_screen.dart, app_state.dart
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
+import '../models/bulk_extraction_review_state.dart';
 import '../models/entities.dart';
 import '../services/app_settings.dart';
 import '../theme/app_theme.dart';
+import 'review_extraction_screen.dart';
 import 'widgets/child_dropdown.dart';
 
 class ReviewExtractionsScreen extends StatefulWidget {
@@ -31,18 +32,18 @@ class ReviewExtractionsScreen extends StatefulWidget {
 }
 
 class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
-  late final List<bool> _selected;
+  late final BulkExtractionReviewState _reviewState;
   late AppState _appState;
   String? _personId;
   bool _saved = false;
   bool _busy = false;
 
-  int get _selectedCount => _selected.where((selected) => selected).length;
+  int get _selectedCount => _reviewState.selectedCount;
 
   @override
   void initState() {
     super.initState();
-    _selected = List<bool>.filled(widget.drafts.length, true);
+    _reviewState = BulkExtractionReviewState(widget.drafts);
   }
 
   @override
@@ -53,10 +54,12 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
 
   @override
   void dispose() {
-    unawaited(_appState.tryDeleteDocumentOnDispose(
-      saved: _saved,
-      documentId: widget.documentId,
-    ));
+    unawaited(
+      _appState.tryDeleteDocumentOnDispose(
+        saved: _saved,
+        documentId: widget.documentId,
+      ),
+    );
     super.dispose();
   }
 
@@ -65,13 +68,15 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
     final cs = Theme.of(context).colorScheme;
     final children = context.watch<AppState>().children;
     return Scaffold(
-      appBar: AppBar(title: Text('${widget.drafts.length}件の候補を確認')),
+      appBar: AppBar(title: Text('${_reviewState.length}件の候補を確認')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
-          Spacing.md, Spacing.md, Spacing.md, 96,
+          Spacing.md,
+          Spacing.md,
+          Spacing.md,
+          96,
         ),
         children: [
-          // 人物選択
           Card(
             child: Padding(
               padding: const EdgeInsets.all(Spacing.md),
@@ -96,8 +101,6 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
             ),
           ),
           const SizedBox(height: Spacing.sm),
-
-          // Tips
           Card(
             color: cs.primaryContainer.withValues(alpha: 0.2),
             child: Padding(
@@ -109,9 +112,12 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
                   const SizedBox(width: Spacing.sm),
                   Expanded(
                     child: Text(
-                      'OCRで読み取ったプリントから、日付と持ち物を自動で抽出しました。'
-                      '漏れがないか最終チェックをお願いします。',
-                      style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+                      'OCRで読み取った候補を登録前に編集できます。'
+                      '日付と持ち物に誤りがないか最終チェックしてください。',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ],
@@ -119,16 +125,18 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
             ),
           ),
           const SizedBox(height: Spacing.md),
-
-          // 候補一覧
-          ...List.generate(widget.drafts.length, (i) {
+          ...List.generate(_reviewState.length, (index) {
             return Padding(
-              padding: EdgeInsets.only(bottom: i < widget.drafts.length - 1 ? Spacing.sm : 0),
+              padding: EdgeInsets.only(
+                bottom: index < _reviewState.length - 1 ? Spacing.sm : 0,
+              ),
               child: _DraftCard(
-                draft: widget.drafts[i],
-                selected: _selected[i],
-                onChanged: (value) =>
-                    setState(() => _selected[i] = value ?? false),
+                draft: _reviewState.draftAt(index),
+                selected: _reviewState.isSelected(index),
+                onChanged: (value) => setState(
+                  () => _reviewState.setSelected(index, value ?? false),
+                ),
+                onEdit: () => _editDraft(index),
               ),
             );
           }),
@@ -153,6 +161,19 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
     );
   }
 
+  Future<void> _editDraft(int index) async {
+    final edited = await Navigator.of(context).push<ExtractionDraft>(
+      MaterialPageRoute(
+        builder: (_) => ReviewExtractionScreen(
+          draft: _reviewState.draftAt(index),
+          editOnly: true,
+        ),
+      ),
+    );
+    if (!mounted || edited == null) return;
+    setState(() => _reviewState.updateDraft(index, edited));
+  }
+
   Future<void> _saveSelected() async {
     if (_selectedCount == 0) {
       ScaffoldMessenger.of(
@@ -164,14 +185,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
     setState(() => _busy = true);
     final navigator = Navigator.of(context);
     final settings = context.read<AppSettings>();
-    final learnedLabels = <String>[];
-    final selectedDrafts = <ExtractionDraft>[];
-
-    for (var i = 0; i < widget.drafts.length; i++) {
-      if (!_selected[i]) continue;
-      selectedDrafts.add(widget.drafts[i]);
-      learnedLabels.addAll(widget.drafts[i].items);
-    }
+    final selectedDrafts = _reviewState.selectedDrafts;
 
     try {
       await _appState.addTodosFromDrafts(
@@ -179,7 +193,9 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
         personId: _personId,
         documentId: widget.documentId,
       );
-      await settings.addLearnedItemLabels(learnedLabels);
+      await settings.addLearnedItemLabels(
+        _reviewState.selectedItemLabels,
+      );
       _saved = true;
       if (!mounted) return;
       navigator.popUntil((route) => route.isFirst);
@@ -194,11 +210,13 @@ class _DraftCard extends StatelessWidget {
     required this.draft,
     required this.selected,
     required this.onChanged,
+    required this.onEdit,
   });
 
   final ExtractionDraft draft;
   final bool selected;
   final ValueChanged<bool?> onChanged;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -215,7 +233,9 @@ class _DraftCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: selected ? cs.primary.withValues(alpha: 0.3) : cs.outlineVariant,
+          color: selected
+              ? cs.primary.withValues(alpha: 0.3)
+              : cs.outlineVariant,
           width: selected ? 1.5 : 0.5,
         ),
       ),
@@ -227,16 +247,14 @@ class _DraftCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Checkbox(
-                value: selected,
-                onChanged: onChanged,
-              ),
+              Checkbox(value: selected, onChanged: onChanged),
               const SizedBox(width: Spacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(draft.title,
+                    Text(
+                      draft.title,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: Spacing.xs),
@@ -249,6 +267,12 @@ class _DraftCard extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              IconButton(
+                key: ValueKey('edit-draft-${draft.title}'),
+                tooltip: '候補を編集',
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined, size: 20),
               ),
             ],
           ),
