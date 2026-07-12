@@ -39,14 +39,6 @@ KTS_RELEASE_ENFORCEMENT = '''
             val releaseSigning = signingConfigs.getByName("release")
             if (releaseSigning.storeFile != null) {
                 signingConfig = releaseSigning
-            } else if (
-                gradle.startParameter.taskNames.any {
-                    it.contains("Release", ignoreCase = true)
-                }
-            ) {
-                throw GradleException(
-                    "Release signing is not configured. Provide android/key.properties or KEYSTORE_* environment variables.",
-                )
             }
             // Play release signing enforcement: end
 '''
@@ -84,10 +76,6 @@ GROOVY_RELEASE_ENFORCEMENT = '''
             def releaseSigning = signingConfigs.release
             if (releaseSigning.storeFile != null) {
                 signingConfig releaseSigning
-            } else if (gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }) {
-                throw new GradleException(
-                    'Release signing is not configured. Provide android/key.properties or KEYSTORE_* environment variables.'
-                )
             }
             // Play release signing enforcement: end
 '''
@@ -116,6 +104,13 @@ def _matching_brace(text: str, open_index: int) -> int:
             else:
                 index += 1
             continue
+        if quote in ('"""', "'''"):
+            if text.startswith(quote, index):
+                quote = None
+                index += 3
+            else:
+                index += 1
+            continue
         if quote is not None:
             if escaped:
                 escaped = False
@@ -133,6 +128,10 @@ def _matching_brace(text: str, open_index: int) -> int:
             block_comment = True
             index += 2
             continue
+        if text.startswith('"""', index) or text.startswith("'''", index):
+            quote = text[index : index + 3]
+            index += 3
+            continue
         if char in ('"', "'"):
             quote = char
             index += 1
@@ -147,9 +146,17 @@ def _matching_brace(text: str, open_index: int) -> int:
     raise RuntimeError("Unbalanced Gradle braces")
 
 
-def _block(text: str, name: str, start: int = 0, end: int | None = None) -> tuple[int, int, int]:
+def _block(
+    text: str,
+    name: str,
+    start: int = 0,
+    end: int | None = None,
+) -> tuple[int, int, int]:
     limit = len(text) if end is None else end
-    match = re.search(rf"(?m)^[ \t]*{re.escape(name)}(?:\([^\n]*\))?\s*\{{", text[start:limit])
+    match = re.search(
+        rf"(?m)^[ \t]*{re.escape(name)}(?:\([^\n]*\))?\s*\{{",
+        text[start:limit],
+    )
     if match is None:
         raise RuntimeError(f"Gradle block not found: {name}")
     block_start = start + match.start()
@@ -169,13 +176,13 @@ def _remove_marker_block(text: str) -> str:
 
 def transform_kts(text: str) -> str:
     text = _remove_marker_block(text)
-    android_start, android_open, android_close = _block(text, "android")
+    _, android_open, android_close = _block(text, "android")
     android_body = text[android_open + 1 : android_close]
     if not re.search(r"(?m)^\s*signingConfigs\s*\{", android_body):
         build_start, _, _ = _block(text, "buildTypes", android_open, android_close)
         text = text[:build_start] + KTS_SIGNING_CONFIG + text[build_start:]
 
-    android_start, android_open, android_close = _block(text, "android")
+    _, android_open, android_close = _block(text, "android")
     _, build_open, build_close = _block(text, "buildTypes", android_open, android_close)
     _, release_open, release_close = _block(text, "release", build_open, build_close)
     release_body = text[release_open + 1 : release_close]
@@ -196,13 +203,13 @@ def transform_kts(text: str) -> str:
 
 def transform_groovy(text: str) -> str:
     text = _remove_marker_block(text)
-    android_start, android_open, android_close = _block(text, "android")
+    _, android_open, android_close = _block(text, "android")
     android_body = text[android_open + 1 : android_close]
     if not re.search(r"(?m)^\s*signingConfigs\s*\{", android_body):
         build_start, _, _ = _block(text, "buildTypes", android_open, android_close)
         text = text[:build_start] + GROOVY_SIGNING_CONFIG + text[build_start:]
 
-    android_start, android_open, android_close = _block(text, "android")
+    _, android_open, android_close = _block(text, "android")
     _, build_open, build_close = _block(text, "buildTypes", android_open, android_close)
     _, release_open, release_close = _block(text, "release", build_open, build_close)
     release_body = text[release_open + 1 : release_close]
