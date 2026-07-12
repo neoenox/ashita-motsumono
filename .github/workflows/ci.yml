@@ -5,6 +5,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   analyze-and-test:
     runs-on: ubuntu-latest
@@ -72,6 +76,49 @@ jobs:
           path: build/lp-screenshots/*.png
           if-no-files-found: error
           retention-days: 7
+
+  record-master-status:
+    if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+    needs: analyze-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record master validation status
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ needs.analyze-and-test.result }}
+          TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          state=failure
+          description="Flutter CI failed"
+          if [[ "$RESULT" == "success" ]]; then
+            state=success
+            description="Flutter CI passed"
+          fi
+
+          python3 - "$state" "$description" "$TARGET_URL" > status.json <<'PY'
+          import json
+          import sys
+
+          print(json.dumps({
+              "state": sys.argv[1],
+              "target_url": sys.argv[3],
+              "description": sys.argv[2],
+              "context": "flutter-ci-master",
+          }))
+          PY
+
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --data @status.json \
+            "${{ github.api_url }}/repos/${{ github.repository }}/statuses/${{ github.sha }}"
 
   release-build:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
