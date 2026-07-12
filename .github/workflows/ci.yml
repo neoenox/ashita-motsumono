@@ -24,6 +24,9 @@ jobs:
       - name: Verify Android notification manifest
         run: python3 tool/verify_android_manifest.py
 
+      - name: Test Android release signing transform
+        run: python3 -m unittest tool/test_enforce_android_release_signing.py
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 

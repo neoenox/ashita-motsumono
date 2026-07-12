@@ -57,8 +57,12 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.findByName("release")?.takeIf { it.storeFile != null }
-                ?: signingConfigs.getByName("debug")
+            // Play release signing enforcement: begin
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile != null) {
+                signingConfig = releaseSigning
+            }
+            // Play release signing enforcement: end
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
