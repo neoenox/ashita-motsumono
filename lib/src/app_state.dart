@@ -1,7 +1,6 @@
 // lib/src/app_state.dart
-// ChangeNotifier ベースのアプリ全体の状態管理。
-// 子ども・Todo・ドキュメントの CRUD、通知スケジュール、永続化を統括する。
-// 関連: models/entities.dart, repositories/store.dart, services/notification_service.dart
+// ChangeNotifier ベースのアプリ状態ファサード。
+// 状態遷移と永続化順序を統括し、生成・通知・画像削除は専用サービスへ委譲する。
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -9,8 +8,10 @@ import 'package:uuid/uuid.dart';
 
 import 'models/entities.dart';
 import 'repositories/store.dart';
-import 'services/image_file_service.dart';
+import 'services/document_image_cleaner.dart';
+import 'services/notification_coordinator.dart';
 import 'services/notification_service.dart';
+import 'services/todo_factory.dart';
 
 int _sortTodo(AppTodo a, AppTodo b) {
   final ad = a.dueDate;
@@ -18,8 +19,8 @@ int _sortTodo(AppTodo a, AppTodo b) {
   if (ad == null && bd == null) return a.createdAt.compareTo(b.createdAt);
   if (ad == null) return 1;
   if (bd == null) return -1;
-  final d = ad.compareTo(bd);
-  if (d != 0) return d;
+  final dateOrder = ad.compareTo(bd);
+  if (dateOrder != 0) return dateOrder;
   return a.createdAt.compareTo(b.createdAt);
 }
 
@@ -31,7 +32,11 @@ class AppState extends ChangeNotifier {
   final NotificationService _notifications;
   final Uuid _uuid;
 
-  // ── 状態 ──────────────────────────────────────────────
+  late final TodoFactory _todoFactory = TodoFactory(_uuid);
+  late final NotificationCoordinator _notificationCoordinator =
+      NotificationCoordinator(_notifications);
+  final DocumentImageCleaner _documentImageCleaner =
+      const DocumentImageCleaner();
 
   bool _loaded = false;
   bool get loaded => _loaded;
@@ -45,8 +50,6 @@ class AppState extends ChangeNotifier {
   List<AppTodo> get todos => List.unmodifiable(_todos);
   List<DocumentRecord> get documents => List.unmodifiable(_documents);
 
-  // ── 初期化 ──────────────────────────────────────────────
-
   Future<void> load() async {
     final snapshot = await _store.load();
     _children = snapshot.children;
@@ -57,15 +60,13 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> requestNotificationPermissions() {
-    return _notifications.requestPermissions();
+    return _notificationCoordinator.requestPermissions();
   }
 
   String? loadCorruptBackup() => _store.loadCorruptBackup();
 
-  // ── クエリ ──────────────────────────────────────────────
-
   List<AppTodo> todosForDate(DateTime date) {
-    final d = DateTime(date.year, date.month, date.day);
+    final targetDate = DateTime(date.year, date.month, date.day);
     return _todos
         .where(
           (todo) =>
@@ -76,7 +77,7 @@ class AppState extends ChangeNotifier {
                     todo.dueDate!.month,
                     todo.dueDate!.day,
                   ) ==
-                  d,
+                  targetDate,
         )
         .toList()
       ..sort(_sortTodo);
@@ -111,36 +112,32 @@ class AppState extends ChangeNotifier {
 
   PersonProfile? personById(String? id) {
     if (id == null) return null;
-    return _children.where((c) => c.id == id).firstOrNull;
+    return _children.where((child) => child.id == id).firstOrNull;
   }
 
   DocumentRecord? documentById(String? id) {
     if (id == null) return null;
-    return _documents.where((d) => d.id == id).firstOrNull;
+    return _documents.where((document) => document.id == id).firstOrNull;
   }
 
-  // 人物に割り当てる色のパレット（視覚的に離れた色）
   static const _personColors = <Color>[
-    Color(0xFFE53935), // 赤
-    Color(0xFF1E88E5), // 青
-    Color(0xFF43A047), // 緑
-    Color(0xFFFB8C00), // 橙
-    Color(0xFF8E24AA), // 紫
-    Color(0xFF00ACC1), // シアン
-    Color(0xFFD81B60), // ピンク
-    Color(0xFF3949AB), // インジゴ
-    Color(0xFF6D4C41), // 茶
-    Color(0xFF546E7A), // 青灰
+    Color(0xFFE53935),
+    Color(0xFF1E88E5),
+    Color(0xFF43A047),
+    Color(0xFFFB8C00),
+    Color(0xFF8E24AA),
+    Color(0xFF00ACC1),
+    Color(0xFFD81B60),
+    Color(0xFF3949AB),
+    Color(0xFF6D4C41),
+    Color(0xFF546E7A),
   ];
 
-  // ── 人物 CRUD ──────────────────────────────────────────
-
   int _assignPersonColor() {
-    final usedColors = _children.map((c) => c.colorValue).toSet();
+    final usedColors = _children.map((child) => child.colorValue).toSet();
     for (final color in _personColors) {
       if (!usedColors.contains(color.toARGB32())) return color.toARGB32();
     }
-    // 全色使用中 → パレットをローテーション
     return _personColors[_children.length % _personColors.length].toARGB32();
   }
 
@@ -180,12 +177,12 @@ class AppState extends ChangeNotifier {
 
   Future<void> updateChild(PersonProfile child) async {
     final updated = child.copyWith(updatedAt: DateTime.now());
-    _children = _children.map((e) => e.id == updated.id ? updated : e).toList();
+    _children = _children
+        .map((existing) => existing.id == updated.id ? updated : existing)
+        .toList();
     await _persist();
     notifyListeners();
   }
-
-  // ── ドキュメント CRUD ──────────────────────────────────
 
   Future<DocumentRecord> addDocument({
     required String sourceType,
@@ -211,17 +208,17 @@ class AppState extends ChangeNotifier {
     final used = _todos.any((todo) => todo.documentId == id);
     if (used) return false;
 
-    final deleted = _documents.where((document) => document.id == id).toList();
+    final deleted = _documents
+        .where((document) => document.id == id)
+        .toList();
     if (deleted.isEmpty) return false;
 
     _documents = _documents.where((document) => document.id != id).toList();
     await _persist();
-    await _deleteDocumentImages(deleted);
+    await _documentImageCleaner.deleteAll(deleted);
     notifyListeners();
     return true;
   }
-
-  // ── Todo CRUD ──────────────────────────────────────────
 
   Future<AppTodo> addTodoFromDraft({
     required ExtractionDraft draft,
@@ -230,29 +227,16 @@ class AppState extends ChangeNotifier {
     bool notifyPreviousNight = true,
     bool notifySameMorning = true,
   }) async {
-    final now = DateTime.now();
-    final todo = AppTodo(
-      id: _uuid.v4(),
-      title: draft.title.trim().isEmpty ? 'プリントを確認' : draft.title.trim(),
+    final todo = _todoFactory.fromDraft(
+      draft: draft,
       personId: personId,
       documentId: documentId,
-      dueDate: draft.dueDate,
-      category: draft.category,
-      amount: draft.amount,
-      note: draft.note,
-      status: TodoStatus.active,
-      items: draft.items
-          .where((e) => e.trim().isNotEmpty)
-          .map((label) => ChecklistItem(id: _uuid.v4(), label: label.trim()))
-          .toList(),
       notifyPreviousNight: notifyPreviousNight,
       notifySameMorning: notifySameMorning,
-      createdAt: now,
-      updatedAt: now,
     );
     _todos = [..._todos, todo];
     await _persist();
-    await _safeSchedule(todo);
+    await _notificationCoordinator.schedule(todo);
     notifyListeners();
     return todo;
   }
@@ -266,16 +250,18 @@ class AppState extends ChangeNotifier {
     AppTodo updated, {
     bool rescheduleNotification = true,
   }) async {
-    _todos = _todos.map((e) => e.id == updated.id ? updated : e).toList();
+    _todos = _todos
+        .map((existing) => existing.id == updated.id ? updated : existing)
+        .toList();
     await _persist();
     if (rescheduleNotification) {
-      await _safeSchedule(updated);
+      await _notificationCoordinator.schedule(updated);
     }
     notifyListeners();
   }
 
   Future<void> toggleTodoDone(String id) async {
-    final todo = _todos.where((e) => e.id == id).firstOrNull;
+    final todo = _todos.where((existing) => existing.id == id).firstOrNull;
     if (todo == null) return;
     final updated = todo.copyWith(
       status: todo.status == TodoStatus.done
@@ -283,18 +269,20 @@ class AppState extends ChangeNotifier {
           : TodoStatus.done,
       updatedAt: DateTime.now(),
     );
-    _todos = _todos.map((e) => e.id == id ? updated : e).toList();
+    _todos = _todos
+        .map((existing) => existing.id == id ? updated : existing)
+        .toList();
     await _persist();
     if (updated.isDone) {
-      await _safeCancel(updated.id);
+      await _notificationCoordinator.cancel(updated.id);
     } else {
-      await _safeSchedule(updated);
+      await _notificationCoordinator.schedule(updated);
     }
     notifyListeners();
   }
 
   Future<void> toggleItem(String todoId, String itemId) async {
-    final todo = _todos.where((e) => e.id == todoId).firstOrNull;
+    final todo = _todos.where((existing) => existing.id == todoId).firstOrNull;
     if (todo == null) return;
     final items = todo.items
         .map(
@@ -313,15 +301,11 @@ class AppState extends ChangeNotifier {
     _todos = _todos.where((todo) => todo.id != id).toList();
     final orphanDocuments = _cleanupOrphanDocuments();
     await _persist();
-    await _safeCancel(id);
-    await _deleteDocumentImages(orphanDocuments);
+    await _notificationCoordinator.cancel(id);
+    await _documentImageCleaner.deleteAll(orphanDocuments);
     notifyListeners();
   }
 
-  /// 複数の ExtractionDraft を一括追加する。
-  ///
-  /// メモリ上の更新と DB 保存を1回にまとめ、N+1 問題を回避する。
-  /// 通知は各 Todo に対して個別に予約する。
   Future<List<AppTodo>> addTodosFromDrafts({
     required List<ExtractionDraft> drafts,
     String? personId,
@@ -329,48 +313,23 @@ class AppState extends ChangeNotifier {
     bool notifyPreviousNight = true,
     bool notifySameMorning = true,
   }) async {
-    final now = DateTime.now();
-    final todos = <AppTodo>[];
-    for (final draft in drafts) {
-      final todo = AppTodo(
-        id: _uuid.v4(),
-        title: draft.title.trim().isEmpty ? 'プリントを確認' : draft.title.trim(),
-        personId: personId,
-        documentId: documentId,
-        dueDate: draft.dueDate,
-        category: draft.category,
-        amount: draft.amount,
-        note: draft.note,
-        status: TodoStatus.active,
-        items: draft.items
-            .where((e) => e.trim().isNotEmpty)
-            .map((label) => ChecklistItem(id: _uuid.v4(), label: label.trim()))
-            .toList(),
-        notifyPreviousNight: notifyPreviousNight,
-        notifySameMorning: notifySameMorning,
-        createdAt: now,
-        updatedAt: now,
-      );
-      todos.add(todo);
-    }
+    final todos = _todoFactory.fromDrafts(
+      drafts: drafts,
+      personId: personId,
+      documentId: documentId,
+      notifyPreviousNight: notifyPreviousNight,
+      notifySameMorning: notifySameMorning,
+    );
     _todos = [..._todos, ...todos];
     await _persist();
-    for (final todo in todos) {
-      await _safeSchedule(todo);
-    }
+    await _notificationCoordinator.rescheduleAll(todos);
     notifyListeners();
     return todos;
   }
 
-  // ── 通知 ──────────────────────────────────────────────
-
-  Future<void> rescheduleAllNotifications() async {
-    for (final todo in _todos) {
-      await _safeSchedule(todo);
-    }
+  Future<void> rescheduleAllNotifications() {
+    return _notificationCoordinator.rescheduleAll(_todos);
   }
-
-  // ── 全データクリア ──────────────────────────────────────
 
   Future<void> clearAllData() async {
     final documentsToDelete = List<DocumentRecord>.from(_documents);
@@ -379,38 +338,25 @@ class AppState extends ChangeNotifier {
     _todos = [];
     _documents = [];
     await _store.clear();
-    for (final todo in todosToCancel) {
-      await _safeCancel(todo.id);
-    }
-    await _deleteDocumentImages(documentsToDelete);
+    await _notificationCoordinator.cancelAll(todosToCancel);
+    await _documentImageCleaner.deleteAll(documentsToDelete);
     notifyListeners();
   }
 
-  // ── 内部ヘルパー ──────────────────────────────────────
-
   List<DocumentRecord> _cleanupOrphanDocuments() {
-    final usedDocIds = _todos
-        .map((t) => t.documentId)
+    final usedDocumentIds = _todos
+        .map((todo) => todo.documentId)
         .whereType<String>()
         .toSet();
     final orphanDocuments = _documents
-        .where((d) => !usedDocIds.contains(d.id))
+        .where((document) => !usedDocumentIds.contains(document.id))
         .toList();
-    _documents = _documents.where((d) => usedDocIds.contains(d.id)).toList();
+    _documents = _documents
+        .where((document) => usedDocumentIds.contains(document.id))
+        .toList();
     return orphanDocuments;
   }
 
-  Future<void> _deleteDocumentImages(List<DocumentRecord> documents) async {
-    await Future.wait(
-      documents.where((d) => d.localImagePath != null && d.localImagePath!.isNotEmpty).map(
-        (d) => ImageFileService.deleteIfExists(d.localImagePath!).catchError((_) {
-          if (kDebugMode) debugPrint('AppState error: failed to delete document image');
-        }),
-      ),
-    );
-  }
-
-  /// 未保存状態で画面破棄時にドキュメントを削除する。
   Future<void> tryDeleteDocumentOnDispose({
     required bool saved,
     required String? documentId,
@@ -421,30 +367,18 @@ class AppState extends ChangeNotifier {
       if (kDebugMode) {
         debugPrint('Document cleanup: ${deleted ? "deleted" : "still in use"}');
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Failed to clean up document: $e');
+    } on Object catch (error) {
+      if (kDebugMode) debugPrint('Failed to clean up document: $error');
     }
   }
 
   Future<void> _persist() {
     return _store.save(
-      AppSnapshot(children: _children, todos: _todos, documents: _documents),
+      AppSnapshot(
+        children: _children,
+        todos: _todos,
+        documents: _documents,
+      ),
     );
-  }
-
-  Future<void> _safeSchedule(AppTodo todo) async {
-    try {
-      await _notifications.scheduleTodo(todo);
-    } on Object catch (e, s) {
-      if (kDebugMode) debugPrint('AppState: failed to schedule notification: $e\n$s');
-    }
-  }
-
-  Future<void> _safeCancel(String todoId) async {
-    try {
-      await _notifications.cancelTodo(todoId);
-    } on Object catch (e, s) {
-      if (kDebugMode) debugPrint('AppState: failed to cancel notification: $e\n$s');
-    }
   }
 }
