@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/app_state.dart';
 import 'src/repositories/drift_store.dart';
-import 'src/screens/home_screen.dart';
+import 'src/screens/home_screen_scope.dart';
 import 'src/services/ad_service.dart';
 import 'src/services/app_settings.dart';
 import 'src/services/crash_reporter.dart';
@@ -73,13 +73,7 @@ class AshitaMotsumonoApp extends StatelessWidget {
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
           themeMode: currentSettings.themeMode,
-          home: ListenableBuilder(
-            listenable: Listenable.merge([
-              appState.childState,
-              appState.todoState,
-            ]),
-            builder: (_, _) => HomeScreen(settings: settings),
-          ),
+          home: HomeScreenScope(settings: settings),
         );
       },
     );
