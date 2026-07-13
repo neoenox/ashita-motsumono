@@ -83,15 +83,15 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-  runtime-contract:
-    name: Windows PowerShell 5.1 runtime contract
+  alarm-time-contract:
+    name: Alarm expected-time contract
     needs: parse-windows-powershell51
     runs-on: windows-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Verify conservative Alarm expected-time matching
+      - name: Verify match, mismatch, and unparseable evidence
         shell: powershell
         run: |
           $root = Join-Path $env:RUNNER_TEMP 'alarm-time-contract'
@@ -139,15 +139,28 @@ jobs:
             throw "unparseable alarm must be INCONCLUSIVE; got $($unknown.result)"
           }
 
-      - name: Verify Status, missing git, and UTF-8 without BOM
+  status-contract:
+    name: Status and UTF-8 contract
+    needs: parse-windows-powershell51
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify Status output and UTF-8 without BOM
         shell: powershell
         run: |
           $root = Join-Path $env:RUNNER_TEMP 'status-contract'
-          . .\tool\release_validation_control.ps1 `
+          $status = & .\tool\release_validation_control.ps1 `
             -Action Status `
-            -EvidenceRoot $root | Out-Null
-
+            -EvidenceRoot $root
+          if ($status.nextAction -ne 'Doctor') {
+            throw "initial nextAction must be Doctor; got $($status.nextAction)"
+          }
           $statusPath = Join-Path $root 'release-validation-status.json'
+          if (-not (Test-Path $statusPath)) {
+            throw 'release-validation-status.json missing'
+          }
           $bytes = [IO.File]::ReadAllBytes($statusPath)
           if (
             $bytes.Length -ge 3 -and
@@ -157,7 +170,10 @@ jobs:
           ) {
             throw 'UTF-8 BOM must not be present'
           }
-          $status = Read-JsonFile $statusPath
+          $json = [IO.File]::ReadAllText(
+            $statusPath,
+            [Text.UTF8Encoding]::new($false, $true)
+          ) | ConvertFrom-Json
           foreach ($property in @(
               'doctorPassed',
               'apkInstalled',
@@ -166,24 +182,46 @@ jobs:
               'nextCommand',
               'manualAction'
             )) {
-            if (-not $status.PSObject.Properties[$property]) {
+            if (-not $json.PSObject.Properties[$property]) {
               throw "missing Status property: $property"
             }
           }
 
+  missing-git-contract:
+    name: Missing git Status contract
+    needs: parse-windows-powershell51
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify missing git reports UNKNOWN
+        shell: powershell
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'missing-git-contract'
           $oldPath = $env:PATH
           try {
             $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
-            $withoutGit = Show-Status
-            if ($withoutGit.git.gate -ne 'UNKNOWN') {
-              throw 'missing git must produce UNKNOWN, not a crash'
+            $status = & .\tool\release_validation_control.ps1 `
+              -Action Status `
+              -EvidenceRoot $root
+            if ($status.git.gate -ne 'UNKNOWN') {
+              throw "missing git must produce UNKNOWN; got $($status.git.gate)"
             }
           }
           finally {
             $env:PATH = $oldPath
           }
 
-      - name: Verify ArchiveSession is non-destructive and guarded
+  archive-contract:
+    name: ArchiveSession contract
+    needs: parse-windows-powershell51
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify non-destructive guarded archive
         shell: powershell
         run: |
           $root = Join-Path $env:RUNNER_TEMP 'archive-contract'
@@ -232,7 +270,15 @@ jobs:
             throw 'fresh evidence root was not recreated'
           }
 
-      - name: Verify control-plane safety tokens
+  safety-contract:
+    name: Control-plane safety contract
+    needs: parse-windows-powershell51
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify required and prohibited tokens
         shell: powershell
         run: |
           $control = Get-Content tool/release_validation_control.ps1 -Raw
