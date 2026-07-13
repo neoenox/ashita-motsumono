@@ -96,6 +96,38 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.8'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Test Issue 60 Dart contract
+        id: dart_contract
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          flutter test \
+            test/issue60_emulator_evidence_contract_test.dart \
+            --reporter expanded 2>&1 | tee issue60-contract-test.txt
+          status=${PIPESTATUS[0]}
+          echo "exit_code=$status" >> issue60-contract-test.txt
+          exit "$status"
+
+      - name: Upload Issue 60 contract report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue60-contract-test-report
+          path: issue60-contract-test.txt
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Verify fixed target, alarm causality, and session order
         shell: pwsh
         run: |
@@ -166,3 +198,8 @@ jobs:
               throw 'Release session execution order is incorrect.'
             }
           }
+
+      - name: Enforce Dart contract result
+        if: steps.dart_contract.outcome == 'failure'
+        shell: bash
+        run: exit 1
