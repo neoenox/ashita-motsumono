@@ -80,3 +80,5 @@ jobs:
             tool/release_validation_session.ps1
           git commit -m 'fix: tolerate missing git refs in release status'
           git push origin HEAD:agent/release-validation-hardening
+
+# Triggered after workflow registration.
