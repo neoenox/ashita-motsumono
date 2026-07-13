@@ -15,8 +15,9 @@ extension DocumentAppStateOperations on AppState {
       createdAt: now,
       updatedAt: now,
     );
-    _replaceDocuments([...documents, record]);
-    await _persist();
+    final nextDocuments = [...documents, record];
+    await _persistSnapshot(nextDocuments: nextDocuments);
+    _replaceDocuments(nextDocuments);
     return record;
   }
 
@@ -28,25 +29,36 @@ extension DocumentAppStateOperations on AppState {
         .toList();
     if (deleted.isEmpty) return false;
 
-    _replaceDocuments(
-      documents.where((document) => document.id != id),
+    final nextDocuments = documents
+        .where((document) => document.id != id)
+        .toList();
+    final cleanupPaths = _documentImageCleaner.pathsFor(deleted).toList();
+    await _persistSnapshot(
+      nextDocuments: nextDocuments,
+      cleanupPaths: cleanupPaths,
     );
-    await _persist();
-    await _documentImageCleaner.deleteAll(deleted);
+    _replaceDocuments(nextDocuments);
+    await _retryPendingFileCleanup();
     return true;
   }
 
-  List<DocumentRecord> _cleanupOrphanDocuments() {
-    final usedDocumentIds = todos
+  List<DocumentRecord> _orphanDocumentsAfter(Iterable<AppTodo> nextTodos) {
+    final usedDocumentIds = nextTodos
         .map((todo) => todo.documentId)
         .whereType<String>()
         .toSet();
-    final orphanDocuments = documents
+    return documents
         .where((document) => !usedDocumentIds.contains(document.id))
         .toList();
-    _replaceDocuments(
-      documents.where((document) => usedDocumentIds.contains(document.id)),
-    );
-    return orphanDocuments;
+  }
+
+  List<DocumentRecord> _documentsReferencedBy(Iterable<AppTodo> nextTodos) {
+    final usedDocumentIds = nextTodos
+        .map((todo) => todo.documentId)
+        .whereType<String>()
+        .toSet();
+    return documents
+        .where((document) => usedDocumentIds.contains(document.id))
+        .toList();
   }
 }
