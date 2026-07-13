@@ -16,10 +16,10 @@ void main() {
       'ashita_schema_migration_',
     );
     final file = File('${tempDir.path}${Platform.pathSeparator}migration.db');
-    AppDatabase? database;
+    AppDatabase? databaseToClose;
 
     addTearDown(() async {
-      await database?.close();
+      await databaseToClose?.close();
       if (await tempDir.exists()) {
         await tempDir.delete(recursive: true);
       }
@@ -75,8 +75,9 @@ void main() {
     await legacy.customStatement('PRAGMA user_version = 1');
     await legacy.close();
 
-    database = AppDatabase(NativeDatabase(file), databaseFile: file);
-    final snapshot = await database.loadSnapshot();
+    final upgraded = AppDatabase(NativeDatabase(file), databaseFile: file);
+    databaseToClose = upgraded;
+    final snapshot = await upgraded.loadSnapshot();
 
     expect(snapshot.todos, hasLength(1));
     expect(snapshot.todos.single.id, 'legacy-todo');
@@ -84,7 +85,7 @@ void main() {
     expect(snapshot.todos.single.documentId, isNull);
     expect(snapshot.todos.single.items, isEmpty);
 
-    final auxiliaryTables = await database
+    final auxiliaryTables = await upgraded
         .customSelect(
           "SELECT name FROM sqlite_master WHERE type = 'table' "
           "AND name IN ('notification_id_map', "
@@ -98,7 +99,7 @@ void main() {
       'pending_file_cleanup',
     });
 
-    final validationTriggers = await database
+    final validationTriggers = await upgraded
         .customSelect(
           "SELECT name FROM sqlite_master WHERE type = 'trigger' "
           "AND name LIKE 'validate_%'",
