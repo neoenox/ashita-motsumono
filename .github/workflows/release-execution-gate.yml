@@ -5,6 +5,8 @@ on:
     paths:
       - 'tool/release_execution_gate.py'
       - 'tool/test_release_execution_gate.py'
+      - 'tool/release_execution_orchestrator.py'
+      - 'tool/test_release_execution_orchestrator.py'
       - 'docs/RELEASE_EXECUTION_PLAN.md'
       - 'docs/PLAY_CONSOLE_SUBMISSION.md'
       - 'docs/ANDROID_RELEASE.md'
@@ -15,6 +17,8 @@ on:
     paths:
       - 'tool/release_execution_gate.py'
       - 'tool/test_release_execution_gate.py'
+      - 'tool/release_execution_orchestrator.py'
+      - 'tool/test_release_execution_orchestrator.py'
       - 'docs/RELEASE_EXECUTION_PLAN.md'
       - 'docs/PLAY_CONSOLE_SUBMISSION.md'
       - 'docs/ANDROID_RELEASE.md'
@@ -36,42 +40,78 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Compile release gate
+      - name: Compile release gates
         run: |
           python -m py_compile \
             tool/release_execution_gate.py \
-            tool/test_release_execution_gate.py
+            tool/test_release_execution_gate.py \
+            tool/release_execution_orchestrator.py \
+            tool/test_release_execution_orchestrator.py
 
-      - name: Test release gate
+      - name: Test evidence validators
         run: python tool/test_release_execution_gate.py
+
+      - name: Test ordered orchestration
+        run: python tool/test_release_execution_orchestrator.py
 
       - name: Verify fixed release identity and gate order
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          tool = Path('tool/release_execution_gate.py').read_text(encoding='utf-8')
-          runbook = Path('docs/RELEASE_EXECUTION_PLAN.md').read_text(encoding='utf-8')
+          validator = Path('tool/release_execution_gate.py').read_text(
+              encoding='utf-8'
+          )
+          orchestrator = Path(
+              'tool/release_execution_orchestrator.py'
+          ).read_text(encoding='utf-8')
+          runbook = Path('docs/RELEASE_EXECUTION_PLAN.md').read_text(
+              encoding='utf-8'
+          )
 
-          required = (
+          validator_required = (
               'kaenozu/ashita-motsumono',
               'com.ashita_motsumono',
               'ELIGIBLE_FOR_CLOSE_REVIEW',
-              'READY_FOR_SUBMISSION',
-              'issueOrder": [60, 98, 59, 94]',
               'mergeFreezeRequiredUntilIssue60Aggregation',
           )
-          for token in required:
-              if token not in tool:
-                  raise SystemExit(f'missing release-gate token: {token}')
+          for token in validator_required:
+              if token not in validator:
+                  raise SystemExit(f'missing validator token: {token}')
 
-          order = [
+          orchestrator_required = (
+              'READY_FOR_SUBMISSION',
+              'playSigning',
+              'formalRelease',
+              'playSubmission',
+              'internalTest',
+              '"issueOrder": [60, 98, 59, 94]',
+          )
+          for token in orchestrator_required:
+              if token not in orchestrator:
+                  raise SystemExit(f'missing orchestrator token: {token}')
+
+          gate_order = [
+              orchestrator.index('"playSigning"'),
+              orchestrator.index('"formalRelease"'),
+              orchestrator.index('"playSubmission"'),
+              orchestrator.index('"internalTest"'),
+          ]
+          if gate_order != sorted(gate_order):
+              raise SystemExit(
+                  'gate order is not signing -> release -> submission -> test'
+              )
+
+          issue_order = [
               'Issue #60',
               'Issue #98',
               'Issue #59',
               'Issue #94',
           ]
-          positions = [runbook.index(token) for token in order]
+          positions = [runbook.index(token) for token in issue_order]
           if positions != sorted(positions):
               raise SystemExit('release issue order is not 60 -> 98 -> 59 -> 94')
+
+          if 'release_execution_orchestrator.py evaluate' not in runbook:
+              raise SystemExit('runbook does not use the ordered orchestrator')
           PY
