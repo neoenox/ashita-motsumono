@@ -77,7 +77,7 @@ void main() {
     expect(coreText, contains('AddedLines'));
     expect(
       casesText,
-      contains("\\$r.Result -eq 'PASS' -and [int]\\$r.AddedLineCount -gt 0"),
+      contains(r"$r.Result -eq 'PASS' -and [int]$r.AddedLineCount -gt 0"),
     );
     expect(casesText, contains('AlarmRegistrationEvidence'));
   });
@@ -118,11 +118,11 @@ void main() {
 
     expect(
       text,
-      contains("if(-not \\$notificationComplete -or -not \\$installResult"),
+      contains(r'if(-not $notificationComplete -or -not $installResult'),
     );
     expect(
       text,
-      contains("\\$i.Verdict -eq 'PASS' -and \\$i.InstallBroadcastVerified"),
+      contains(r"$i.Verdict -eq 'PASS' -and $i.InstallBroadcastVerified"),
     );
     expect(text, contains(r'$sourceConsistent'));
     expect(text, contains(r'$currentSourceMatches'));
@@ -149,7 +149,7 @@ void main() {
       "'Evaluate'",
       'normal case must PASS before reboot',
       'reboot case must PASS before install-r',
-      "git fetch origin",
+      "'fetch', 'origin'",
       'Permission',
       'GRANTED',
       'host UTC offset must be +09:00',
@@ -162,12 +162,15 @@ void main() {
     final startSession = text.indexOf("'StartSession'");
     final planCase = text.indexOf("'PlanCase'");
     final aggregate = text.indexOf("'Aggregate'");
-    expect(
-      <int>[doctor, buildInstall, startSession, planCase, aggregate],
-      orderedEquals(
-        <int>[doctor, buildInstall, startSession, planCase, aggregate]..sort(),
-      ),
-    );
+    final positions = <int>[
+      doctor,
+      buildInstall,
+      startSession,
+      planCase,
+      aggregate,
+    ];
+    expect(positions, everyElement(greaterThanOrEqualTo(0)));
+    expect(positions, orderedEquals(<int>[...positions]..sort()));
   });
 
   test('PowerShell tools exclude prohibited ADB and data-reset operations', () {
@@ -272,19 +275,17 @@ if ($failed) { exit 1 }
       expect(issueText, contains(token), reason: token);
     }
 
-    final doctor = sessionText.indexOf('## 3. GO/NO-GO診断');
-    final install = sessionText.indexOf('## 4. APKビルドと初期インストール');
-    final start = sessionText.indexOf('## 5. Release session開始');
-    final normal = sessionText.indexOf('## 6. Normalケース');
-    final reboot = sessionText.indexOf('## 7. Rebootケース');
-    final update = sessionText.indexOf('## 8. install-rケース');
-    final aggregate = sessionText.indexOf('## 9. Issue #60集約');
-    expect(
-      <int>[doctor, install, start, normal, reboot, update, aggregate],
-      orderedEquals(
-        <int>[doctor, install, start, normal, reboot, update, aggregate]..sort(),
-      ),
-    );
+    final positions = <int>[
+      sessionText.indexOf('## 3. GO/NO-GO診断'),
+      sessionText.indexOf('## 4. APKビルドと初期インストール'),
+      sessionText.indexOf('## 5. Release session開始'),
+      sessionText.indexOf('## 6. Normalケース'),
+      sessionText.indexOf('## 7. Rebootケース'),
+      sessionText.indexOf('## 8. install-rケース'),
+      sessionText.indexOf('## 9. Issue #60集約'),
+    ];
+    expect(positions, everyElement(greaterThanOrEqualTo(0)));
+    expect(positions, orderedEquals(<int>[...positions]..sort()));
 
     expect(releaseText, contains('Documents\\ashita-release-evidence'));
     expect(releaseText, contains('release_validation_session.ps1'));
