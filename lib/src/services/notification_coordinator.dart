@@ -102,8 +102,10 @@ class NotificationCoordinator {
           } else {
             await executeScheduledTodo(todo);
           }
+          break;
         case NotificationSyncOperation.cancel:
           await executeCanceledTodo(task.todoId);
+          break;
       }
     }
   }
