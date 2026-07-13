@@ -144,8 +144,14 @@ jobs:
     needs: parse-windows-powershell51
     runs-on: windows-latest
     steps:
-      - name: Check out repository
+      - name: Check out repository with master ref
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure origin/master exists
+        shell: powershell
+        run: git fetch origin master:refs/remotes/origin/master
 
       - name: Verify Status output and UTF-8 without BOM
         shell: powershell
