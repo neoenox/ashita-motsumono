@@ -30,6 +30,9 @@ class BootstrapApp extends StatefulWidget {
 }
 
 class _BootstrapAppState extends State<BootstrapApp> {
+  final GlobalKey<NavigatorState> _bootstrapNavigatorKey =
+      GlobalKey<NavigatorState>();
+
   _BootstrapPhase _phase = _BootstrapPhase.loading;
   AppSettings? _settings;
   DriftStore? _store;
@@ -81,10 +84,7 @@ class _BootstrapAppState extends State<BootstrapApp> {
       }
     } on Object catch (error, stackTrace) {
       createdState?.dispose();
-      _appState = null;
-      _store = null;
-      _settings = null;
-      _purchaseProvider = null;
+      _clearDependencies();
       _fatalError = error;
       if (kDebugMode) {
         debugPrint('Application bootstrap failed: $error\n$stackTrace');
@@ -128,14 +128,13 @@ class _BootstrapAppState extends State<BootstrapApp> {
     }
   }
 
-  Future<void> _resetLocalDatabase() async {
+  Future<void> _confirmAndResetLocalDatabase() async {
     if (_working) return;
-    final store = _store;
-    final appState = _appState;
-    if (store == null || appState == null) return;
+    final dialogContext = _bootstrapNavigatorKey.currentContext;
+    if (dialogContext == null) return;
 
     final confirmed = await showDialog<bool>(
-      context: context,
+      context: dialogContext,
       builder: (context) => AlertDialog(
         title: const Text('端末内データを初期化しますか？'),
         content: const Text(
@@ -154,10 +153,21 @@ class _BootstrapAppState extends State<BootstrapApp> {
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (confirmed == true) {
+      await _resetLocalDatabase();
+    }
+  }
+
+  Future<void> _resetLocalDatabase() async {
+    if (_working) return;
+    final store = _store;
+    final appState = _appState;
+    if (store == null || appState == null) return;
 
     _working = true;
-    setState(() => _phase = _BootstrapPhase.loading);
+    if (mounted) {
+      setState(() => _phase = _BootstrapPhase.loading);
+    }
     try {
       await store.resetAfterLoadFailure();
       await appState.load();
@@ -175,6 +185,13 @@ class _BootstrapAppState extends State<BootstrapApp> {
     }
   }
 
+  Future<void> _restartBootstrap() async {
+    final previousState = _appState;
+    _clearDependencies();
+    previousState?.dispose();
+    await _initializeFresh();
+  }
+
   void _markReady() {
     final appState = _appState;
     if (appState == null || !mounted) return;
@@ -185,6 +202,13 @@ class _BootstrapAppState extends State<BootstrapApp> {
     });
     unawaited(appState.rescheduleAllNotifications());
     unawaited(AdService.initialize());
+  }
+
+  void _clearDependencies() {
+    _appState = null;
+    _store = null;
+    _settings = null;
+    _purchaseProvider = null;
   }
 
   @override
@@ -204,6 +228,7 @@ class _BootstrapAppState extends State<BootstrapApp> {
     }
 
     return MaterialApp(
+      navigatorKey: _bootstrapNavigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'あしたもつもの',
       home: switch (_phase) {
@@ -212,18 +237,11 @@ class _BootstrapAppState extends State<BootstrapApp> {
             backupInfo:
                 _loadFailure?.backupInfo ?? _store?.loadCorruptBackup(),
             onRetry: _retryLoad,
-            onReset: _resetLocalDatabase,
+            onReset: _confirmAndResetLocalDatabase,
           ),
         _BootstrapPhase.fatalFailure => _BootstrapFailureScreen(
             error: _fatalError,
-            onRetry: () async {
-              _appState?.dispose();
-              _appState = null;
-              _store = null;
-              _settings = null;
-              _purchaseProvider = null;
-              await _initializeFresh();
-            },
+            onRetry: _restartBootstrap,
           ),
         _BootstrapPhase.ready => const SizedBox.shrink(),
       },
