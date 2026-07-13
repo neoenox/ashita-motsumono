@@ -72,9 +72,53 @@ class DriftStore implements Store {
     }
   }
 
+  void _validateSnapshot(AppSnapshot snapshot) {
+    final childIds = <String>{};
+    for (final child in snapshot.children) {
+      if (child.id.trim().isEmpty || !childIds.add(child.id)) {
+        throw StateError('Snapshot contains an empty or duplicate child ID.');
+      }
+    }
+
+    final documentIds = <String>{};
+    for (final document in snapshot.documents) {
+      if (document.id.trim().isEmpty || !documentIds.add(document.id)) {
+        throw StateError('Snapshot contains an empty or duplicate document ID.');
+      }
+    }
+
+    final todoIds = <String>{};
+    final checklistItemIds = <String>{};
+    for (final todo in snapshot.todos) {
+      if (todo.id.trim().isEmpty || !todoIds.add(todo.id)) {
+        throw StateError('Snapshot contains an empty or duplicate todo ID.');
+      }
+      final personId = todo.personId;
+      if (personId != null && !childIds.contains(personId)) {
+        throw StateError(
+          'Todo ${todo.id} references missing child $personId.',
+        );
+      }
+      final documentId = todo.documentId;
+      if (documentId != null && !documentIds.contains(documentId)) {
+        throw StateError(
+          'Todo ${todo.id} references missing document $documentId.',
+        );
+      }
+      for (final item in todo.items) {
+        if (item.id.trim().isEmpty || !checklistItemIds.add(item.id)) {
+          throw StateError(
+            'Snapshot contains an empty or duplicate checklist item ID.',
+          );
+        }
+      }
+    }
+  }
+
   @override
   Future<void> save(AppSnapshot snapshot) {
     _ensureWritable();
+    _validateSnapshot(snapshot);
     return _db.saveSnapshot(snapshot);
   }
 
@@ -85,6 +129,7 @@ class DriftStore implements Store {
     Iterable<String> cleanupPaths = const [],
   }) {
     _ensureWritable();
+    _validateSnapshot(snapshot);
     return _db.saveSnapshotWithSideEffects(
       snapshot,
       notificationOperations: notificationOperations,
