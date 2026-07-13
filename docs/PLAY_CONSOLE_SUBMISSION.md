@@ -2,6 +2,16 @@
 
 Google Play へ初回提出する直前に使う作業順です。ストア掲載文の本文は `docs/STORE_LISTING_JA.md`、署名とAAB生成手順は `docs/ANDROID_RELEASE.md` を参照してください。
 
+## 0. 統合Release gate
+
+通知実測、Play Console署名、正式Release Run、内部テストを別々に完了扱いにせず、`docs/RELEASE_EXECUTION_PLAN.md`の順序で実施します。
+
+```text
+Issue #60 → Issue #98 → Issue #59 → Issue #94
+```
+
+最終提出前に`tool/release_execution_gate.py evaluate`を実行し、`release-readiness.json`が`READY_FOR_SUBMISSION`であることを確認します。CI成功、ローカルAPK起動、静的Manifest確認だけではこの判定を代用できません。
+
 ## 1. ローカル検証
 
 - [x] `dart format` を実行する
@@ -26,6 +36,7 @@ Google Play へ初回提出する直前に使う作業順です。ストア掲�
 - [ ] アプリ内商品を作成する
 - [ ] 商品IDを GitHub Repository Variable `IAP_REMOVE_ADS_PRODUCT_ID` と一致させる
 - [ ] 未設定で進める場合、商品IDを `remove_ads` にする
+- [ ] `play-console-evidence.json`へ確認済みの事実だけを記録する
 
 ## 3. GitHub に登録する値
 
@@ -47,6 +58,7 @@ Repository Variables:
 ## 4. リリース成果物
 
 - [ ] `Release Android` ワークフローを手動実行、または `v*` タグをpushする
+- [ ] 正式Runのcommit SHAが`release-session.json`のSource SHAと一致する
 - [ ] 復元したキーストア証明書が`ANDROID_UPLOAD_CERT_SHA256`と一致する
 - [ ] APK artifact `ashita-motsumono-signed-release-apk` が生成される
 - [ ] APK artifact内の`upload-keystore-certificate.json`と`apk-certificate.json`が`matches: true`
@@ -54,11 +66,13 @@ Repository Variables:
 - [ ] AAB artifact `ashita-motsumono-signed-release-aab` が生成される
 - [ ] AAB artifact内の`upload-keystore-certificate.json`と`aab-certificate.json`が`matches: true`
 - [ ] AAB artifact内の`aab-signature-verification.txt`、`aab-signer-certificate.txt`、`AAB_SHA256SUMS`を確認する
+- [ ] `release-manifest.json`を統合Release gateへ入力する
 - [ ] APK artifact を実機に入れてスモークテストする
 - [ ] AAB artifact をPlay Consoleへアップロードする
 - [ ] 内部テストトラックでインストールできることを確認する
 - [ ] 本番広告ユニットIDを入れた内部テスト版で、広告が読み込まれることを確認する
 - [ ] 設定画面のサポーター価格がPlay Consoleの価格で表示されることを確認する
+- [ ] `internal-test-evidence.json`へ内部テスト結果を記録する
 
 ## 5. ストア掲載
 
@@ -93,9 +107,12 @@ Play Consoleへ登録する回答は、`docs/privacy_policy.md`および実装�
 
 ## 7. 提出直前の判断
 
+- [ ] Issue #60の統合結果が`ELIGIBLE_FOR_CLOSE_REVIEW`
 - [ ] Play Console、キーストア、APK、AABのアップロード証明書SHA-256がすべて一致する
+- [ ] `release-session.json`、`release-manifest.json`、内部テストのSource SHAが一致する
 - [ ] クラッシュやOCR失敗時に、ユーザーが手入力へ戻れることを実機で確認する
 - [ ] 通知が許可されていない場合でも、Todo登録自体は継続できることを確認する
 - [ ] 広告読み込みに失敗しても主要機能が使えることを確認する
 - [ ] 買い切り購入済み状態で広告が非表示になることを確認する
 - [ ] 復元ボタンで購入済み状態に戻せることを確認する
+- [ ] `release-readiness.json`が`READY_FOR_SUBMISSION`
