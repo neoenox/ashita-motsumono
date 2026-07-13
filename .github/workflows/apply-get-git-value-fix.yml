@@ -1,0 +1,82 @@
+name: Apply git status compatibility fix
+
+on:
+  push:
+    branches:
+      - agent/release-validation-hardening
+    paths:
+      - '.github/workflows/apply-get-git-value-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/release-validation-hardening
+          fetch-depth: 0
+
+      - name: Patch PowerShell git reads
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          old = '''  Push-Location $RepoRoot
+  try {
+    $value = & git @Arguments 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      return ''
+    }
+    ($value | Out-String).Trim()
+  }
+  finally {
+    Pop-Location
+  }
+'''
+          new = '''  Push-Location $RepoRoot
+  try {
+    try {
+      $value = & git @Arguments 2>$null
+    }
+    catch {
+      return ''
+    }
+    if ($LASTEXITCODE -ne 0) {
+      return ''
+    }
+    ($value | Out-String).Trim()
+  }
+  finally {
+    Pop-Location
+  }
+'''
+          for name in (
+              'tool/release_validation_control.ps1',
+              'tool/release_validation_session.ps1',
+          ):
+              path = Path(name)
+              text = path.read_text(encoding='utf-8')
+              if old not in text:
+                  raise SystemExit(f'Get-GitValue anchor missing: {name}')
+              path.write_text(
+                  text.replace(old, new, 1),
+                  encoding='utf-8',
+                  newline='\n',
+              )
+          PY
+
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            tool/release_validation_control.ps1 \
+            tool/release_validation_session.ps1
+          git commit -m 'fix: tolerate missing git refs in release status'
+          git push origin HEAD:agent/release-validation-hardening
