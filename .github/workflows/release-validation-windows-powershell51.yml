@@ -26,49 +26,70 @@ permissions:
   contents: read
 
 jobs:
-  windows-powershell51:
-    name: Windows PowerShell 5.1 runtime contract
+  parse-windows-powershell51:
+    name: Parse ${{ matrix.file }} on Windows PowerShell 5.1
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        file:
+          - tool/issue60_emulator_evidence.ps1
+          - tool/issue60_emulator_evidence_core.ps1
+          - tool/issue60_emulator_evidence_cases.ps1
+          - tool/release_validation_session.ps1
+          - tool/release_validation_control.ps1
+          - tool/issue60_alarm_time_evidence.ps1
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Verify Windows PowerShell 5.1 and parse tools
+      - name: Parse file
         shell: powershell
         run: |
           if ($PSVersionTable.PSVersion.Major -ne 5) {
             throw "Windows PowerShell 5.1 required; got $($PSVersionTable.PSVersion)"
           }
-          $files = @(
-            Get-ChildItem tool/issue60_emulator_evidence*.ps1
-            Get-Item tool/release_validation_session.ps1
-            Get-Item tool/release_validation_control.ps1
-            Get-Item tool/issue60_alarm_time_evidence.ps1
-          )
-          $failed = $false
-          foreach ($file in $files) {
-            $tokens = $null
-            $errors = $null
-            [System.Management.Automation.Language.Parser]::ParseFile(
-              $file.FullName,
-              [ref]$tokens,
-              [ref]$errors
-            ) | Out-Null
-            if ($errors.Count -gt 0) {
-              $failed = $true
-              foreach ($parseError in $errors) {
-                Write-Error (
-                  "{0}:{1}:{2}: {3}" -f (
-                    $file.Name,
-                    $parseError.Extent.StartLineNumber,
-                    $parseError.Extent.StartColumnNumber,
-                    $parseError.Message
-                  )
-                )
-              }
+          $file = Get-Item '${{ matrix.file }}'
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            $file.FullName,
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          $report = [System.Collections.Generic.List[string]]::new()
+          if ($errors.Count -eq 0) {
+            $report.Add("PASS: $($file.FullName)")
+          }
+          else {
+            $report.Add("FAIL: $($file.FullName)")
+            foreach ($parseError in $errors) {
+              $report.Add(
+                "Line $($parseError.Extent.StartLineNumber), column $($parseError.Extent.StartColumnNumber): $($parseError.Message)"
+              )
+              $report.Add("Token: $($parseError.Extent.Text)")
             }
           }
-          if ($failed) { exit 1 }
+          $report -join [Environment]::NewLine |
+            Tee-Object -FilePath parser-report.txt
+          if ($errors.Count -gt 0) { exit 1 }
+
+      - name: Upload parser report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows51-parser-${{ strategy.job-index }}
+          path: parser-report.txt
+          if-no-files-found: error
+          retention-days: 3
+
+  runtime-contract:
+    name: Windows PowerShell 5.1 runtime contract
+    needs: parse-windows-powershell51
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
 
       - name: Verify conservative Alarm expected-time matching
         shell: powershell
