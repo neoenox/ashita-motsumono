@@ -3,7 +3,23 @@ function Stamp {
 }
 
 function Json($Value, $Path) {
-  $Value | ConvertTo-Json -Depth 12 | Out-File $Path -Encoding utf8
+  $fullPath = if ([IO.Path]::IsPathRooted($Path)) {
+    [IO.Path]::GetFullPath($Path)
+  }
+  else {
+    [IO.Path]::GetFullPath((Join-Path (Get-Location).Path $Path))
+  }
+  $directory = [IO.Path]::GetDirectoryName($fullPath)
+  if ($directory) {
+    [IO.Directory]::CreateDirectory($directory) | Out-Null
+  }
+  $json = ($Value | ConvertTo-Json -Depth 12) +
+    [Environment]::NewLine
+  [IO.File]::WriteAllText(
+    $fullPath,
+    $json,
+    [Text.UTF8Encoding]::new($false, $true)
+  )
 }
 
 function Adb([string[]]$Args, [string]$Out, [switch]$AllowFailure) {

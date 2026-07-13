@@ -1,7 +1,7 @@
 function PlanPath{Join-Path $CaseDirectory 'case-plan.json'}
-function Plan{if(-not (Test-Path (PlanPath))){throw 'PlanCase required'};Get-Content -Raw (PlanPath)|ConvertFrom-Json}
+function Plan{if(-not (Test-Path (PlanPath))){throw 'PlanCase required'};Get-Content -Raw -Encoding utf8 (PlanPath)|ConvertFrom-Json}
 function MetadataPath{Join-Path $CaseDirectory 'case-metadata.json'}
-function Metadata{if(-not (Test-Path (MetadataPath))){throw 'BeginCase required'};Get-Content -Raw (MetadataPath)|ConvertFrom-Json}
+function Metadata{if(-not (Test-Path (MetadataPath))){throw 'BeginCase required'};Get-Content -Raw -Encoding utf8 (MetadataPath)|ConvertFrom-Json}
 function AssertPlan{
   $p=Plan;if([string]$p.CaseType -ne $CaseType){throw 'CaseType mismatch'}
   if($TodoTitle -and [string]$p.TodoTitle -ne $TodoTitle){throw 'TodoTitle mismatch'}
@@ -13,11 +13,11 @@ function AssertCase{
   if($ExpectedTime -and (ParseTime $ExpectedTime 'ExpectedTime') -ne (ParseTime ([string]$m.ExpectedTime) 'metadata.ExpectedTime')){throw 'ExpectedTime mismatch'};$m
 }
 function LatestSummary{
-  $f=Get-ChildItem $CaseDirectory -Filter snapshot-summary.json -Recurse -File|Sort-Object LastWriteTime;if(-not $f){return $null};Get-Content -Raw $f[-1].FullName|ConvertFrom-Json
+  $f=Get-ChildItem $CaseDirectory -Filter snapshot-summary.json -Recurse -File|Sort-Object LastWriteTime;if(-not $f){return $null};Get-Content -Raw -Encoding utf8 $f[-1].FullName|ConvertFrom-Json
 }
 function AlarmEvidence{
   $p=Join-Path $CaseDirectory 'alarm-registration.json';if(-not (Test-Path $p)){return $false}
-  $r=Get-Content -Raw $p|ConvertFrom-Json;[bool]($r.Result -eq 'PASS' -and [int]$r.AddedLineCount -gt 0 -and $r.RelevantLineCountIncreased -eq $true -and [int]$r.AfterRelevantLineCount -gt [int]$r.BeforeRelevantLineCount)
+  $r=Get-Content -Raw -Encoding utf8 $p|ConvertFrom-Json;[bool]($r.Result -eq 'PASS' -and [int]$r.AddedLineCount -gt 0 -and $r.RelevantLineCountIncreased -eq $true -and [int]$r.AfterRelevantLineCount -gt [int]$r.BeforeRelevantLineCount)
 }
 function WaitCase{
   $m=AssertCase;RequirePreflight -RequireApp|Out-Null;$expected=ParseTime ([string]$m.ExpectedTime) 'ExpectedTime';$deadline=$expected.AddMinutes($FailureWaitMinutes)
@@ -34,13 +34,13 @@ function NotificationEvidenceComplete($Actual,$PermissionValue,$AlarmValue,$Titl
 }
 function FinalizeCase{
   $m=AssertCase;if($Verdict -notin @('PASS','FAIL','BLOCKED','INCONCLUSIVE')){throw 'invalid Verdict'}
-  $expected=ParseTime ([string]$m.ExpectedTime) 'ExpectedTime';$waitPath=Join-Path $CaseDirectory 'wait-result.json';$wait=if(Test-Path $waitPath){Get-Content -Raw $waitPath|ConvertFrom-Json}else{$null};$actual=$ActualArrivalTime
+  $expected=ParseTime ([string]$m.ExpectedTime) 'ExpectedTime';$waitPath=Join-Path $CaseDirectory 'wait-result.json';$wait=if(Test-Path $waitPath){Get-Content -Raw -Encoding utf8 $waitPath|ConvertFrom-Json}else{$null};$actual=$ActualArrivalTime
   if(-not $actual -and $wait -and $wait.Result -eq 'NOTIFICATION_OBSERVED'){$actual=[string]$wait.ObservedAtDevice};if($actual){ParseTime $actual 'ActualArrivalTime'|Out-Null}
   $s=LatestSummary;$alarm=AlarmEvidence;$git=GitState;$perm=if($s){[string]$s.Permission}else{Permission};$title=[bool]($s -and $s.TitleEvidence);$visible=[bool]($s -and $s.TitleInUi) -or $ManualScreenshotVerified;$front=[bool]($s -and $s.AppForeground);$summaryFile=(Get-ChildItem $CaseDirectory -Filter snapshot-summary.json -Recurse -File|Sort-Object LastWriteTime|Select-Object -Last 1);$dir=if($summaryFile){$summaryFile.Directory.FullName}else{''};$screen=[bool]($dir -and (Test-Path (Join-Path $dir 'screen.png')) -and (Get-Item (Join-Path $dir 'screen.png')).Length -gt 0);$dump=[bool]($dir -and (Test-Path (Join-Path $dir 'notification.txt')) -and (Get-Item (Join-Path $dir 'notification.txt')).Length -gt 0);$notificationComplete=NotificationEvidenceComplete $actual $perm $alarm $title $visible $front $screen $dump $git.Gate
-  $installResult=$null;if($CaseType -eq 'install-r'){$installPath=Join-Path $CaseDirectory 'install-result.json';if(Test-Path $installPath){$installResult=Get-Content -Raw $installPath|ConvertFrom-Json}}
+  $installResult=$null;if($CaseType -eq 'install-r'){$installPath=Join-Path $CaseDirectory 'install-result.json';if(Test-Path $installPath){$installResult=Get-Content -Raw -Encoding utf8 $installPath|ConvertFrom-Json}}
   if($Verdict -eq 'PASS'){
     if(-not $notificationComplete){throw 'PASS evidence incomplete'}
-    if($CaseType -eq 'reboot'){$reboot=Get-Content -Raw (Join-Path $CaseDirectory 'reboot-result.json')|ConvertFrom-Json;if($reboot.Result -ne 'PASS' -or -not $reboot.BootIdChanged){throw 'reboot evidence incomplete'}}
+    if($CaseType -eq 'reboot'){$reboot=Get-Content -Raw -Encoding utf8 (Join-Path $CaseDirectory 'reboot-result.json')|ConvertFrom-Json;if($reboot.Result -ne 'PASS' -or -not $reboot.BootIdChanged){throw 'reboot evidence incomplete'}}
     if($CaseType -eq 'install-r'){
       if(-not $installResult -or $installResult.Result -ne 'PASS'){throw 'install evidence incomplete'}
       if(-not $InstallBroadcastVerified -or $InstallBroadcastUnverified){throw 'install-r PASS requires verified MY_PACKAGE_REPLACED evidence'}
@@ -58,7 +58,7 @@ function FinalizeCase{
   Json $r (Join-Path $CaseDirectory 'case-result.json')
   @("## Issue #60 Emulator実測: $CaseName",'',"- 判定: **$Verdict**","- Todo: ``$($r.TodoTitle)``","- Source SHA: ``$($r.SourceSha)``","- 予定時刻: ``$($r.ExpectedTime)``","- 到着時刻: ``$($r.ActualArrivalTime)``",'','### 確認済みの事実',"- $reason",'','### 未確認事項',$(if($Verdict -eq 'INCONCLUSIVE'){'- 因果関係または証跡の一部。'}else{'- なし。'}),'','### 推測・仮説','- なし。','','### 反証','- 静的確認、ビルド、起動成功だけではPASSとしていない。','','### 判定根拠',"- $reason",'','### 備考',"- $Notes") -join "`n"|Out-File (Join-Path $CaseDirectory 'issue-comment.md') -Encoding utf8
 }
-function Result([string]$Name,[string]$Type){$p=Join-Path (Join-Path $OutputRoot $Name) 'case-result.json';if(-not (Test-Path $p)){throw "missing $p"};$r=Get-Content -Raw $p|ConvertFrom-Json;if($r.CaseType -ne $Type){throw 'case type mismatch'};$r}
+function Result([string]$Name,[string]$Type){$p=Join-Path (Join-Path $OutputRoot $Name) 'case-result.json';if(-not (Test-Path $p)){throw "missing $p"};$r=Get-Content -Raw -Encoding utf8 $p|ConvertFrom-Json;if($r.CaseType -ne $Type){throw 'case type mismatch'};$r}
 function Aggregate{
   if(-not $NormalCaseName -or -not $RebootCaseName -or -not $InstallCaseName){throw 'three case names required'};$n=Result $NormalCaseName 'normal';$r=Result $RebootCaseName 'reboot';$i=Result $InstallCaseName 'install-r';$sources=@($n.SourceSha,$r.SourceSha,$i.SourceSha)|Where-Object{$_}|Select-Object -Unique;$sourceConsistent=$sources.Count -eq 1;$git=GitState;$currentSourceMatches=$sourceConsistent -and $git.Gate -eq 'PASS' -and $git.Head -eq $sources[0];$installEligible=$i.Verdict -eq 'PASS' -and $i.InstallBroadcastVerified -or ($i.Verdict -eq 'INCONCLUSIVE' -and $i.InstallBroadcastUnverified);$ok=$sourceConsistent -and $currentSourceMatches -and $n.Verdict -eq 'PASS' -and $r.Verdict -eq 'PASS' -and $installEligible;$rec=if($ok){'ELIGIBLE_FOR_CLOSE_REVIEW'}else{'KEEP_OPEN'}
   Json ([ordered]@{Recommendation=$rec;SourceConsistency=$sourceConsistent;CurrentSourceMatches=$currentSourceMatches;CurrentGit=$git;Normal=$n;Reboot=$r;Install=$i;GeneratedAt=(Get-Date -Format o)}) (Join-Path $CaseDirectory 'issue60-summary.json')

@@ -67,22 +67,47 @@ $ReadinessMarkdownPath = Join-Path $EvidenceRoot 'release-readiness.md'
 
 New-Item -ItemType Directory -Force $EvidenceRoot | Out-Null
 
+function Get-FullPath {
+  param([Parameter(Mandatory)][string]$Path)
+  if ([IO.Path]::IsPathRooted($Path)) {
+    return [IO.Path]::GetFullPath($Path)
+  }
+  [IO.Path]::GetFullPath((Join-Path (Get-Location).Path $Path))
+}
+
+function New-Utf8NoBomEncoding {
+  [Text.UTF8Encoding]::new($false, $true)
+}
+
 function Write-JsonFile {
   param(
     [Parameter(Mandatory)]$Value,
     [Parameter(Mandatory)][string]$Path
   )
-  $Value |
-    ConvertTo-Json -Depth 16 |
-    Out-File -FilePath $Path -Encoding utf8
+  $fullPath = Get-FullPath $Path
+  $directory = [IO.Path]::GetDirectoryName($fullPath)
+  if ($directory) {
+    [IO.Directory]::CreateDirectory($directory) | Out-Null
+  }
+  $json = ($Value | ConvertTo-Json -Depth 16) +
+    [Environment]::NewLine
+  [IO.File]::WriteAllText(
+    $fullPath,
+    $json,
+    (New-Utf8NoBomEncoding)
+  )
 }
 
 function Read-JsonFile {
   param([Parameter(Mandatory)][string]$Path)
-  if (-not (Test-Path $Path)) {
-    throw "missing file: $Path"
+  $fullPath = Get-FullPath $Path
+  if (-not (Test-Path $fullPath)) {
+    throw "missing file: $fullPath"
   }
-  Get-Content -Raw $Path | ConvertFrom-Json
+  [IO.File]::ReadAllText(
+    $fullPath,
+    (New-Utf8NoBomEncoding)
+  ) | ConvertFrom-Json
 }
 
 function Require-Command {
@@ -151,6 +176,9 @@ function Invoke-Orchestrator {
 
 function Get-GitValue {
   param([Parameter(Mandatory)][string[]]$Arguments)
+  if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    return ''
+  }
   Push-Location $RepoRoot
   try {
     $value = & git @Arguments 2>$null
@@ -504,11 +532,15 @@ function Plan-Case {
   }
 
   $expected = if ($ExpectedTime) {
-    $parsed = [DateTimeOffset]::Parse(
-      $ExpectedTime,
-      [Globalization.CultureInfo]::InvariantCulture,
-      [Globalization.DateTimeStyles]::RoundtripKind
-    )
+    $parsed = [DateTimeOffset]::MinValue
+    if (-not [DateTimeOffset]::TryParse(
+        $ExpectedTime,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::RoundtripKind,
+        [ref]$parsed
+      )) {
+      throw 'ExpectedTime must be ISO 8601'
+    }
     Round-UpToMinute $parsed
   }
   else {
