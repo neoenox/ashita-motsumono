@@ -1,0 +1,50 @@
+name: PR Test Diagnostics
+
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/pr-test-diagnostics.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  flutter-test-diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run Flutter tests with report
+        id: tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter test --reporter expanded 2>&1 | tee flutter-test-report.txt
+
+      - name: Upload Flutter test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-test-report
+          path: flutter-test-report.txt
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Enforce Flutter test result
+        if: steps.tests.outcome == 'failure'
+        run: exit 1
