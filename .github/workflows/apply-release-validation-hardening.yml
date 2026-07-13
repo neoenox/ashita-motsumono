@@ -1,0 +1,1050 @@
+name: Apply release validation hardening
+
+on:
+  push:
+    branches:
+      - agent/release-validation-hardening
+    paths:
+      - '.github/workflows/apply-release-validation-hardening.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply hardening changes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              if old not in text:
+                  raise SystemExit(f'anchor not found in {path}: {old[:120]!r}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8', newline='\n')
+
+          session = 'tool/release_validation_session.ps1'
+          replace_once(
+              session,
+              "    'Doctor',\n",
+              "    'ArchiveSession',\n    'Doctor',\n",
+          )
+          replace_once(
+              session,
+              "  [switch]$InstallBroadcastUnverified,\n  [switch]$ReportOnly\n",
+              "  [switch]$InstallBroadcastUnverified,\n  [switch]$ForceArchiveActive,\n  [switch]$ReportOnly\n",
+          )
+          replace_once(
+              session,
+              "$ScriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path\n",
+              "$SessionToolPath = $MyInvocation.MyCommand.Path\n$ScriptDirectory = Split-Path -Parent $SessionToolPath\n",
+          )
+          replace_once(
+              session,
+              "function Default-LeadMinutes {\n",
+              r'''function Resolve-ExpectedTime {
+  param(
+    [string]$Value,
+    [Parameter(Mandatory)][int]$Lead
+  )
+  $resolved = if ($Value) {
+    $parsed = [DateTimeOffset]::MinValue
+    if (-not [DateTimeOffset]::TryParse(
+        $Value,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::RoundtripKind,
+        [ref]$parsed
+      )) {
+      throw 'ExpectedTime must be ISO 8601'
+    }
+    $parsed
+  }
+  else {
+    if ($Lead -lt 5) {
+      throw 'LeadMinutes must be at least 5'
+    }
+    [DateTimeOffset]::Now.AddMinutes($Lead)
+  }
+  $rounded = Round-UpToMinute $resolved
+  if ($rounded -le [DateTimeOffset]::Now.AddMinutes(4)) {
+    throw 'ExpectedTime must be at least 4 minutes in the future'
+  }
+  $rounded
+}
+
+function Default-LeadMinutes {
+''',
+          )
+          replace_once(
+              session,
+              r'''  $expected = if ($ExpectedTime) {
+    $parsed = [DateTimeOffset]::MinValue
+    if (-not [DateTimeOffset]::TryParse(
+        $ExpectedTime,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::RoundtripKind,
+        [ref]$parsed
+      )) {
+      throw 'ExpectedTime must be ISO 8601'
+    }
+    Round-UpToMinute $parsed
+  }
+  else {
+    Round-UpToMinute ([DateTimeOffset]::Now.AddMinutes($lead))
+  }
+  if ($expected -le [DateTimeOffset]::Now.AddMinutes(4)) {
+    throw 'ExpectedTime must be at least 4 minutes in the future'
+  }
+''',
+              r'''  $expected = Resolve-ExpectedTime `
+    -Value $ExpectedTime `
+    -Lead $lead
+''',
+          )
+
+          old_status = r'''function Show-Status {
+  $git = Get-GitGate
+  $state = Get-State
+  $report = if (Test-Path $ReadinessJsonPath) {
+    Read-JsonFile $ReadinessJsonPath
+  }
+  else {
+    $null
+  }
+  $next = if (-not $state.sessionStarted) {
+    'BuildInstall, grant notification permission, then StartSession'
+  }
+  elseif (-not $state.cases.normal) {
+    'PlanCase -CaseType normal'
+  }
+  elseif ($state.cases.normal.verdict -ne 'PASS') {
+    'complete or repeat the normal case'
+  }
+  elseif (-not $state.cases.reboot) {
+    'PlanCase -CaseType reboot'
+  }
+  elseif ($state.cases.reboot.verdict -ne 'PASS') {
+    'complete the reboot case'
+  }
+  elseif (-not $state.cases.'install-r') {
+    'PlanCase -CaseType install-r'
+  }
+  elseif ($state.cases.'install-r'.status -ne 'FINALIZED') {
+    'complete the install-r case'
+  }
+  else {
+    'Aggregate'
+  }
+  [pscustomobject][ordered]@{
+    git = $git
+    state = $state
+    readiness = $report
+    nextCommand = $next
+  }
+}
+'''
+          new_status = r'''function Get-OptionalProperty {
+  param(
+    $Object,
+    [Parameter(Mandatory)][string]$Name,
+    $Default = $null
+  )
+  if ($null -eq $Object) {
+    return $Default
+  }
+  $property = $Object.PSObject.Properties[$Name]
+  if ($property) {
+    return $property.Value
+  }
+  $Default
+}
+
+function Read-OptionalJson {
+  param([Parameter(Mandatory)][string]$Path)
+  if (-not (Test-Path $Path)) {
+    return $null
+  }
+  try {
+    Read-JsonFile $Path
+  }
+  catch {
+    [pscustomobject][ordered]@{
+      readError = $_.Exception.Message
+      path = (Get-FullPath $Path)
+    }
+  }
+}
+
+function Get-CaseDiagnostic {
+  param(
+    [Parameter(Mandatory)]$State,
+    [Parameter(Mandatory)][string]$Type
+  )
+  $property = $State.cases.PSObject.Properties[$Type]
+  if (-not $property -or -not $property.Value) {
+    return [pscustomobject][ordered]@{
+      caseType = $Type
+      planned = $false
+      status = 'NOT_STARTED'
+      verdict = ''
+      caseName = ''
+      alarmRegistration = $null
+      wait = $null
+      result = $null
+      evidenceFiles = @()
+    }
+  }
+  $case = $property.Value
+  $caseName = [string](Get-OptionalProperty $case 'caseName' '')
+  $directory = if ($caseName) {
+    Join-Path $EvidenceRoot $caseName
+  }
+  else {
+    ''
+  }
+  $registrationPath = if ($directory) {
+    Join-Path $directory 'alarm-registration.json'
+  }
+  else {
+    ''
+  }
+  $waitPath = if ($directory) {
+    Join-Path $directory 'wait-result.json'
+  }
+  else {
+    ''
+  }
+  $resultPath = if ($directory) {
+    Join-Path $directory 'case-result.json'
+  }
+  else {
+    ''
+  }
+  $registration = if ($registrationPath) {
+    Read-OptionalJson $registrationPath
+  }
+  else {
+    $null
+  }
+  $wait = if ($waitPath) {
+    Read-OptionalJson $waitPath
+  }
+  else {
+    $null
+  }
+  $result = if ($resultPath) {
+    Read-OptionalJson $resultPath
+  }
+  else {
+    $null
+  }
+  $evidenceFiles = @(
+    $registrationPath,
+    $waitPath,
+    $resultPath
+  ) | Where-Object { $_ -and (Test-Path $_) }
+  [pscustomobject][ordered]@{
+    caseType = $Type
+    planned = $true
+    status = [string](Get-OptionalProperty $case 'status' 'UNKNOWN')
+    verdict = [string](Get-OptionalProperty $case 'verdict' '')
+    caseName = $caseName
+    todoTitle = [string](Get-OptionalProperty $case 'todoTitle' '')
+    expectedTime = [string](Get-OptionalProperty $case 'expectedTime' '')
+    alarmRegistration = $registration
+    alarmExpectedTimeMatch = [string](
+      Get-OptionalProperty $registration 'ExpectedTimeMatch' ''
+    )
+    wait = $wait
+    result = $result
+    evidenceFiles = @($evidenceFiles)
+  }
+}
+
+function Archive-ReleaseSession {
+  $root = Get-FullPath $EvidenceRoot
+  $items = @(
+    Get-ChildItem -LiteralPath $root -Force -ErrorAction SilentlyContinue
+  )
+  if ($items.Count -eq 0) {
+    return [pscustomobject][ordered]@{
+      result = 'NO_EVIDENCE'
+      source = $root
+      destination = ''
+      forced = $ForceArchiveActive.IsPresent
+    }
+  }
+
+  $state = Read-OptionalJson $StatePath
+  $session = Read-OptionalJson $SessionPath
+  $summaryPath = Join-Path (
+    Join-Path $root 'ISSUE60_SUMMARY'
+  ) 'issue60-summary.json'
+  $active = (
+    $null -ne $session -and
+    -not (Test-Path $summaryPath)
+  )
+  if ($active -and -not $ForceArchiveActive) {
+    throw (
+      'active release session cannot be archived without ' +
+      '-ForceArchiveActive'
+    )
+  }
+
+  $parent = [IO.Path]::GetDirectoryName($root)
+  $leaf = [IO.Path]::GetFileName($root.TrimEnd(
+    [IO.Path]::DirectorySeparatorChar,
+    [IO.Path]::AltDirectorySeparatorChar
+  ))
+  $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+  $destination = Join-Path $parent "$leaf-archive-$stamp"
+  $suffix = 1
+  while (Test-Path $destination) {
+    $destination = Join-Path $parent "$leaf-archive-$stamp-$suffix"
+    $suffix++
+  }
+
+  $sourceSha = [string](Get-OptionalProperty $session 'sourceSha' '')
+  Move-Item -LiteralPath $root -Destination $destination
+  New-Item -ItemType Directory -Force $root | Out-Null
+  $manifest = [pscustomobject][ordered]@{
+    result = 'ARCHIVED'
+    source = $root
+    destination = $destination
+    archivedAt = Get-Date -Format o
+    sourceSha = $sourceSha
+    sessionWasActive = [bool]$active
+    forced = $ForceArchiveActive.IsPresent
+    previousState = $state
+  }
+  Write-JsonFile $manifest (Join-Path $destination 'archive-manifest.json')
+  Write-JsonFile $manifest (Join-Path $root 'archive-last-result.json')
+  $manifest
+}
+
+function Show-Status {
+  $git = Get-GitGate
+  $state = Get-State
+  $doctor = Read-OptionalJson (
+    Join-Path $EvidenceRoot 'release-validation-doctor.json'
+  )
+  $install = Read-OptionalJson (
+    Join-Path (Join-Path $EvidenceRoot 'SETUP_INSTALL') 'install-result.json'
+  )
+  $appPreflight = Read-OptionalJson (
+    Join-Path (Join-Path $EvidenceRoot 'SETUP_APP') 'preflight-result.json'
+  )
+  $session = Read-OptionalJson $SessionPath
+  $report = Read-OptionalJson $ReadinessJsonPath
+  $normal = Get-CaseDiagnostic $state 'normal'
+  $reboot = Get-CaseDiagnostic $state 'reboot'
+  $installCase = Get-CaseDiagnostic $state 'install-r'
+
+  $doctorPassed = (
+    [string](Get-OptionalProperty $doctor 'result' '') -eq 'PASS'
+  )
+  $apkInstalled = (
+    [string](Get-OptionalProperty $install 'Result' '') -eq 'PASS'
+  )
+  $permission = [string](
+    Get-OptionalProperty $appPreflight 'Permission' 'UNKNOWN'
+  )
+  $nextAction = ''
+  $nextCommand = ''
+  $manualAction = ''
+
+  if (-not $doctorPassed) {
+    $nextAction = 'Doctor'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action Doctor -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif (-not $apkInstalled) {
+    $nextAction = 'BuildInstall'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action BuildInstall -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif (-not $state.sessionStarted) {
+    $nextAction = 'StartSession'
+    $manualAction = 'Open the app once, grant notification permission, return Home.'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action StartSession -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif (-not $normal.planned) {
+    $nextAction = 'PlanCase'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action PlanCase -CaseType normal -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif ($normal.status -eq 'PLANNED') {
+    $nextAction = 'BeginCase'
+    $manualAction = "Create Todo $($normal.todoTitle), save, go Home, do not reopen."
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action BeginCase -CaseType normal -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif ($normal.status -eq 'BEGUN') {
+    if (
+      [string](Get-OptionalProperty $normal.alarmRegistration 'Result' '') -eq 'PASS'
+    ) {
+      $nextAction = 'WaitCase'
+      $nextCommand = ".\tool\release_validation_session.ps1 -Action WaitCase -CaseType normal -EvidenceRoot `"$EvidenceRoot`""
+    }
+    else {
+      $nextAction = 'FinalizeCase'
+      $nextCommand = ".\tool\release_validation_session.ps1 -Action FinalizeCase -CaseType normal -Verdict INCONCLUSIVE -Notes `"Alarm registration or expected-time evidence incomplete`" -EvidenceRoot `"$EvidenceRoot`""
+    }
+  }
+  elseif ($normal.status -eq 'WAITED') {
+    $nextAction = 'FinalizeCase'
+    $manualAction = 'Review notification title, screenshot, notification dump, and wait result.'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action FinalizeCase -CaseType normal -Verdict PASS -Notes `"Notification verified`" -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif ($normal.verdict -ne 'PASS') {
+    $nextAction = 'PlanCase'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action PlanCase -CaseType normal -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif (-not $reboot.planned) {
+    $nextAction = 'PlanCase'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action PlanCase -CaseType reboot -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif ($reboot.status -eq 'PLANNED') {
+    $nextAction = 'BeginCase'
+    $manualAction = "Create Todo $($reboot.todoTitle), save, go Home, do not reopen."
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action BeginCase -CaseType reboot -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif ($reboot.status -eq 'BEGUN') {
+    $nextAction = 'MutateCase'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action MutateCase -CaseType reboot -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif ($reboot.status -eq 'MUTATED') {
+    $nextAction = 'WaitCase'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action WaitCase -CaseType reboot -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif ($reboot.status -eq 'WAITED') {
+    $nextAction = 'FinalizeCase'
+    $manualAction = 'Review reboot notification evidence before selecting a verdict.'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action FinalizeCase -CaseType reboot -Verdict PASS -Notes `"Reboot notification verified`" -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif ($reboot.verdict -ne 'PASS') {
+    $nextAction = 'PlanCase'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action PlanCase -CaseType reboot -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif (-not $installCase.planned) {
+    $nextAction = 'PlanCase'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action PlanCase -CaseType install-r -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif ($installCase.status -eq 'PLANNED') {
+    $nextAction = 'BeginCase'
+    $manualAction = "Create Todo $($installCase.todoTitle), save, go Home, do not reopen."
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action BeginCase -CaseType install-r -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif ($installCase.status -eq 'BEGUN') {
+    $nextAction = 'MutateCase'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action MutateCase -CaseType install-r -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif ($installCase.status -eq 'MUTATED') {
+    $nextAction = 'WaitCase'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action WaitCase -CaseType install-r -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif ($installCase.status -eq 'WAITED') {
+    $nextAction = 'FinalizeCase'
+    $manualAction = 'Review install-r notification and MY_PACKAGE_REPLACED evidence.'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action FinalizeCase -CaseType install-r -Verdict INCONCLUSIVE -InstallBroadcastUnverified -Notes `"install-r notification verified; broadcast causality unverified`" -EvidenceRoot `"$EvidenceRoot`""
+  }
+  elseif ($installCase.status -ne 'FINALIZED') {
+    $nextAction = 'CompleteInstallCase'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action Status -EvidenceRoot `"$EvidenceRoot`""
+  }
+  else {
+    $nextAction = 'Aggregate'
+    $nextCommand = ".\tool\release_validation_session.ps1 -Action Aggregate -EvidenceRoot `"$EvidenceRoot`""
+  }
+
+  [pscustomobject][ordered]@{
+    git = $git
+    doctorPassed = $doctorPassed
+    apkInstalled = $apkInstalled
+    notificationPermission = $permission
+    sessionStarted = [bool]$state.sessionStarted
+    sessionSourceSha = [string](Get-OptionalProperty $session 'sourceSha' '')
+    cases = [pscustomobject][ordered]@{
+      normal = $normal
+      reboot = $reboot
+      'install-r' = $installCase
+    }
+    readiness = $report
+    nextAction = $nextAction
+    nextCommand = $nextCommand
+    manualAction = $manualAction
+    evidenceFiles = @(
+      $StatePath,
+      $SessionPath,
+      $ReadinessJsonPath,
+      $ReadinessMarkdownPath
+    ) | Where-Object { Test-Path $_ }
+  }
+}
+'''
+          replace_once(session, old_status, new_status)
+          replace_once(
+              session,
+              "switch ($Action) {\n  'Doctor' {\n",
+              "switch ($Action) {\n  'ArchiveSession' {\n    Archive-ReleaseSession\n  }\n  'Doctor' {\n",
+          )
+
+          core = 'tool/issue60_emulator_evidence_core.ps1'
+          insert_anchor = 'function AlarmRegistration(\n'
+          timing_helpers = r'''function Convert-AlarmTimeCandidate {
+  param(
+    [Parameter(Mandatory)][string]$Value,
+    [Parameter(Mandatory)][TimeSpan]$DefaultOffset,
+    [Parameter(Mandatory)][string]$SourceLine
+  )
+  $candidate = $null
+  if ($Value -match '^\d{13}$') {
+    $epoch = [DateTimeOffset]::new(
+      1970, 1, 1, 0, 0, 0, [TimeSpan]::Zero
+    )
+    $candidate = $epoch.AddMilliseconds([double]$Value)
+  }
+  elseif ($Value -match '^\d{10}$') {
+    $epoch = [DateTimeOffset]::new(
+      1970, 1, 1, 0, 0, 0, [TimeSpan]::Zero
+    )
+    $candidate = $epoch.AddSeconds([double]$Value)
+  }
+  else {
+    $normalized = $Value.Trim().Replace('/', '-')
+    if ($normalized -notmatch '(Z|[+-]\d{2}:?\d{2})$') {
+      $sign = if ($DefaultOffset -lt [TimeSpan]::Zero) { '-' } else { '+' }
+      $absolute = $DefaultOffset.Duration()
+      $offsetText = '{0}{1:00}:{2:00}' -f (
+        $sign,
+        $absolute.Hours,
+        $absolute.Minutes
+      )
+      $normalized = "$normalized$offsetText"
+    }
+    $parsed = [DateTimeOffset]::MinValue
+    if ([DateTimeOffset]::TryParse(
+        $normalized,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::RoundtripKind,
+        [ref]$parsed
+      )) {
+      $candidate = $parsed
+    }
+  }
+  if ($null -eq $candidate) {
+    return $null
+  }
+  $unixEpoch = [DateTimeOffset]::new(
+    1970, 1, 1, 0, 0, 0, [TimeSpan]::Zero
+  )
+  [pscustomobject][ordered]@{
+    EpochMilliseconds = [long](
+      ($candidate.ToUniversalTime() - $unixEpoch).TotalMilliseconds
+    )
+    Iso = $candidate.ToString('o')
+    SourceLine = $SourceLine.Trim()
+  }
+}
+
+function Get-AlarmTimeCandidates([string]$Path) {
+  if (-not (Test-Path $Path)) {
+    return @()
+  }
+  $expected = ParseTime $ExpectedTime 'ExpectedTime'
+  $lines = @(Get-Content -Encoding utf8 $Path)
+  $indices = [System.Collections.Generic.List[int]]::new()
+  for ($index = 0; $index -lt $lines.Count; $index++) {
+    $line = [string]$lines[$index]
+    if (
+      $line -match [regex]::Escape($PackageName) -or
+      $line -match 'ScheduledNotificationReceiver' -or
+      $line -match 'flutterlocalnotifications'
+    ) {
+      $indices.Add($index)
+    }
+  }
+  $seen = @{}
+  $results = [System.Collections.Generic.List[object]]::new()
+  foreach ($index in $indices) {
+    $start = [Math]::Max(0, $index - 20)
+    $end = [Math]::Min($lines.Count - 1, $index + 20)
+    for ($lineIndex = $start; $lineIndex -le $end; $lineIndex++) {
+      $sourceLine = [string]$lines[$lineIndex]
+      $values = [System.Collections.Generic.List[string]]::new()
+      foreach ($match in [regex]::Matches(
+          $sourceLine,
+          '(?i)\b(?:origWhen|when)\s*=\s*(\d{10,13})\b'
+        )) {
+        $values.Add([string]$match.Groups[1].Value)
+      }
+      foreach ($match in [regex]::Matches(
+          $sourceLine,
+          '(?<!\d)(20\d{2}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)'
+        )) {
+        $values.Add([string]$match.Groups[1].Value)
+      }
+      foreach ($value in $values) {
+        $candidate = Convert-AlarmTimeCandidate `
+          -Value $value `
+          -DefaultOffset $expected.Offset `
+          -SourceLine $sourceLine
+        if ($null -eq $candidate) {
+          continue
+        }
+        $key = [string]$candidate.EpochMilliseconds
+        if (-not $seen.ContainsKey($key)) {
+          $seen[$key] = $true
+          $results.Add($candidate)
+        }
+      }
+    }
+  }
+  @($results | Sort-Object EpochMilliseconds)
+}
+
+function Get-AddedAlarmTimeCandidates {
+  param(
+    [Parameter(Mandatory)][object[]]$Before,
+    [Parameter(Mandatory)][object[]]$After
+  )
+  $beforeKeys = @{}
+  foreach ($candidate in $Before) {
+    $beforeKeys[[string]$candidate.EpochMilliseconds] = $true
+  }
+  @(
+    $After | Where-Object {
+      -not $beforeKeys.ContainsKey([string]$_.EpochMilliseconds)
+    }
+  )
+}
+
+function AlarmRegistration(
+'''
+          replace_once(core, insert_anchor, timing_helpers)
+          replace_once(
+              core,
+              r'''  $registered = $added.Count -gt 0
+  $result = [pscustomobject][ordered]@{
+    Result = if ($registered) { 'PASS' } else { 'INCONCLUSIVE' }
+    ExpectedTime = $ExpectedTime
+    BeforeRelevantLineCount = $before.Count
+    AfterRelevantLineCount = $after.Count
+    AddedLineCount = $added.Count
+    AddedLines = @($added)
+    BeforeSnapshot = $BeforeDirectory
+    AfterSnapshot = $AfterDirectory
+    RecordedAt = Get-Date -Format o
+  }
+''',
+              r'''  $registered = $added.Count -gt 0
+  $beforeTimes = @(
+    Get-AlarmTimeCandidates (Join-Path $BeforeDirectory 'alarm.txt')
+  )
+  $afterTimes = @(
+    Get-AlarmTimeCandidates (Join-Path $AfterDirectory 'alarm.txt')
+  )
+  $addedTimes = @(
+    Get-AddedAlarmTimeCandidates -Before $beforeTimes -After $afterTimes
+  )
+  $expected = ParseTime $ExpectedTime 'ExpectedTime'
+  $unixEpoch = [DateTimeOffset]::new(
+    1970, 1, 1, 0, 0, 0, [TimeSpan]::Zero
+  )
+  $expectedEpoch = [long](
+    ($expected.ToUniversalTime() - $unixEpoch).TotalMilliseconds
+  )
+  $toleranceMinutes = 5
+  $matchingTimes = @(
+    $addedTimes | Where-Object {
+      [Math]::Abs(
+        [double]$_.EpochMilliseconds - [double]$expectedEpoch
+      ) -le ($toleranceMinutes * 60 * 1000)
+    }
+  )
+  $timeMatch = if (-not $registered) {
+    'NOT_EVALUATED'
+  }
+  elseif ($addedTimes.Count -eq 0) {
+    'INCONCLUSIVE'
+  }
+  elseif ($matchingTimes.Count -gt 0) {
+    'PASS'
+  }
+  else {
+    'MISMATCH'
+  }
+  $overall = if ($registered -and $timeMatch -eq 'PASS') {
+    'PASS'
+  }
+  else {
+    'INCONCLUSIVE'
+  }
+  $result = [pscustomobject][ordered]@{
+    Result = $overall
+    RegistrationDetected = [bool]$registered
+    ExpectedTime = $ExpectedTime
+    ExpectedTimeMatch = $timeMatch
+    ExpectedTimeToleranceMinutes = $toleranceMinutes
+    BeforeRelevantLineCount = $before.Count
+    AfterRelevantLineCount = $after.Count
+    AddedLineCount = $added.Count
+    AddedLines = @($added)
+    BeforeTimeCandidates = @($beforeTimes)
+    AfterTimeCandidates = @($afterTimes)
+    AddedTimeCandidates = @($addedTimes)
+    MatchingTimeCandidates = @($matchingTimes)
+    BeforeSnapshot = $BeforeDirectory
+    AfterSnapshot = $AfterDirectory
+    RecordedAt = Get-Date -Format o
+  }
+''',
+          )
+
+          cases = 'tool/issue60_emulator_evidence_cases.ps1'
+          replace_once(
+              cases,
+              r'''[bool]($r.Result -eq 'PASS' -and [int]$r.AddedLineCount -gt 0 -and $r.RelevantLineCountIncreased -eq $true -and [int]$r.AfterRelevantLineCount -gt [int]$r.BeforeRelevantLineCount)''',
+              r'''[bool]($r.Result -eq 'PASS' -and [int]$r.AddedLineCount -gt 0 -and $r.RelevantLineCountIncreased -eq $true -and [int]$r.AfterRelevantLineCount -gt [int]$r.BeforeRelevantLineCount -and [string]$r.ExpectedTimeMatch -eq 'PASS')''',
+          )
+          replace_once(
+              cases,
+              r'''AlarmRegistrationEvidence=$alarm;TitleEvidence=$title;''',
+              r'''AlarmRegistrationEvidence=$alarm;AlarmExpectedTimeMatch=$(if($m.AlarmRegistration){[string]$m.AlarmRegistration.ExpectedTimeMatch}else{''});TitleEvidence=$title;''',
+          )
+
+          test = 'test/issue60_emulator_evidence_contract_test.dart'
+          replace_once(
+              test,
+              "  final manifest = File('android/app/src/main/AndroidManifest.xml');\n",
+              "  final manifest = File('android/app/src/main/AndroidManifest.xml');\n  final evidenceWorkflow = File('.github/workflows/issue60-evidence-tool.yml');\n",
+          )
+          replace_once(
+              test,
+              "      'function AlarmRegistration',\n",
+              "      'function AlarmRegistration',\n      'function Get-AlarmTimeCandidates',\n      'ExpectedTimeMatch',\n      'ExpectedTimeToleranceMinutes',\n      'AddedTimeCandidates',\n",
+          )
+          replace_once(
+              test,
+              "      contains(r\"$r.Result -eq 'PASS' -and [int]$r.AddedLineCount -gt 0\"),\n",
+              "      contains(r\"$r.Result -eq 'PASS' -and [int]$r.AddedLineCount -gt 0\"),\n",
+          )
+          replace_once(
+              test,
+              "    expect(casesText, contains('AlarmRegistrationEvidence'));\n",
+              "    expect(casesText, contains(r\"$r.ExpectedTimeMatch -eq 'PASS'\"));\n    expect(casesText, contains('AlarmRegistrationEvidence'));\n",
+          )
+          replace_once(
+              test,
+              "      \"'Doctor'\",\n",
+              "      \"'ArchiveSession'\",\n      \"'Doctor'\",\n",
+          )
+          replace_once(
+              test,
+              "      'host UTC offset must be +09:00',\n",
+              "      'host UTC offset must be +09:00',\n      'archive-manifest.json',\n      'ForceArchiveActive',\n      'notificationPermission',\n      'nextAction',\n      'manualAction',\n      'Resolve-ExpectedTime',\n",
+          )
+          replace_once(
+              test,
+              "  test('PowerShell excludes destructive or ambiguous ADB operations', () {\n",
+              r'''  test('Windows PowerShell 5.1 CI covers runtime compatibility', () {
+    final text = evidenceWorkflow.readAsStringSync();
+    for (final token in <String>[
+      'windows-latest',
+      'shell: powershell',
+      'Windows PowerShell 5.1',
+      'ExpectedTimeMatch',
+      'archive-manifest.json',
+      'UTF-8 BOM',
+    ]) {
+      expect(text, contains(token), reason: token);
+    }
+  });
+
+  test('PowerShell excludes destructive or ambiguous ADB operations', () {
+''',
+          )
+          replace_once(
+              test,
+              "       'AddedLineCount > 0',\n",
+              "       'AddedLineCount > 0',\n       'ExpectedTimeMatch',\n",
+          ) if False else None
+          # Insert runbook assertions using stable nearby anchors.
+          replace_once(
+              test,
+              "    expect(releaseText, contains('Todo作成前後のAlarm登録差分'));\n",
+              "    expect(releaseText, contains('Todo作成前後のAlarm登録差分'));\n    expect(sessionText, contains('ArchiveSession'));\n    expect(sessionText, contains('ExpectedTimeMatch'));\n    expect(sessionText, contains('Windows PowerShell 5.1'));\n",
+          )
+
+          workflow = '.github/workflows/issue60-evidence-tool.yml'
+          windows_job = r'''  windows-powershell51:
+    name: Windows PowerShell 5.1 compatibility
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Parse tools with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          if ($PSVersionTable.PSVersion.Major -ne 5) {
+            throw "Windows PowerShell 5.1 required; got $($PSVersionTable.PSVersion)"
+          }
+          $failed = $false
+          $files = @(
+            Get-ChildItem tool/issue60_emulator_evidence*.ps1
+            Get-Item tool/release_validation_session.ps1
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $file.FullName,
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $failed = $true
+              foreach ($parseError in $errors) {
+                Write-Error (
+                  "{0}:{1}:{2}: {3}" -f (
+                    $file.Name,
+                    $parseError.Extent.StartLineNumber,
+                    $parseError.Extent.StartColumnNumber,
+                    $parseError.Message
+                  )
+                )
+              }
+            }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Verify Status, UTF-8 BOM, missing git, and ISO validation
+        shell: powershell
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'release-status-smoke'
+          . .\tool\release_validation_session.ps1 `
+            -Action Status `
+            -EvidenceRoot $root | Out-Null
+
+          $jsonPath = Join-Path $root 'encoding-smoke.json'
+          Write-JsonFile ([ordered]@{ text = '日本語'; value = 1 }) $jsonPath
+          $bytes = [IO.File]::ReadAllBytes($jsonPath)
+          if (
+            $bytes.Length -ge 3 -and
+            $bytes[0] -eq 0xEF -and
+            $bytes[1] -eq 0xBB -and
+            $bytes[2] -eq 0xBF
+          ) {
+            throw 'UTF-8 BOM must not be present'
+          }
+          $roundTrip = Read-JsonFile $jsonPath
+          if ($roundTrip.text -ne '日本語') {
+            throw 'UTF-8 round trip failed'
+          }
+
+          $invalidRejected = $false
+          try {
+            Resolve-ExpectedTime -Value 'not-an-iso-time' -Lead 12 | Out-Null
+          }
+          catch {
+            if ($_.Exception.Message -match 'ExpectedTime must be ISO 8601') {
+              $invalidRejected = $true
+            }
+          }
+          if (-not $invalidRejected) {
+            throw 'invalid ExpectedTime was not rejected clearly'
+          }
+
+          $oldPath = $env:PATH
+          try {
+            $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+            $status = Show-Status
+            if ($status.git.gate -ne 'UNKNOWN') {
+              throw 'Status should report UNKNOWN when git is unavailable'
+            }
+          }
+          finally {
+            $env:PATH = $oldPath
+          }
+
+      - name: Verify Alarm expected-time matching
+        shell: powershell
+        run: |
+          $PackageName = 'com.ashita_motsumono'
+          $ExpectedTime = '2026-07-13T18:30:00+09:00'
+          . .\tool\issue60_emulator_evidence_core.ps1
+          $root = Join-Path $env:RUNNER_TEMP 'alarm-time-smoke'
+          $before = Join-Path $root 'before'
+          $after = Join-Path $root 'after'
+          New-Item -ItemType Directory -Force $before, $after | Out-Null
+          @'
+          Pending alarm batches:
+          '@ | Set-Content (Join-Path $before 'alarm.txt') -Encoding utf8
+          @'
+          RTC_WAKEUP #0: Alarm{abc type 0 when=2026-07-13 18:30:00+09:00}
+            tag=*walarm*:com.ashita_motsumono
+            operation=PendingIntent{ScheduledNotificationReceiver flutterlocalnotifications}
+          '@ | Set-Content (Join-Path $after 'alarm.txt') -Encoding utf8
+          $result = AlarmRegistration `
+            $before `
+            $after `
+            (Join-Path $root 'alarm-registration.json')
+          if ($result.Result -ne 'PASS') {
+            throw "expected registration PASS, got $($result.Result)"
+          }
+          if ($result.ExpectedTimeMatch -ne 'PASS') {
+            throw "expected time match PASS, got $($result.ExpectedTimeMatch)"
+          }
+          $ExpectedTime = '2026-07-13T19:30:00+09:00'
+          $mismatch = AlarmRegistration `
+            $before `
+            $after `
+            (Join-Path $root 'alarm-registration-mismatch.json')
+          if ($mismatch.Result -ne 'INCONCLUSIVE') {
+            throw 'mismatched alarm time must not PASS'
+          }
+          if ($mismatch.ExpectedTimeMatch -ne 'MISMATCH') {
+            throw 'mismatched alarm time was not identified'
+          }
+
+      - name: Verify ArchiveSession safety
+        shell: powershell
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'archive-session-smoke'
+          New-Item -ItemType Directory -Force $root | Out-Null
+          [IO.File]::WriteAllText(
+            (Join-Path $root 'release-session.json'),
+            '{"sourceSha":"abc123"}',
+            [Text.UTF8Encoding]::new($false)
+          )
+          [IO.File]::WriteAllText(
+            (Join-Path $root 'release-validation-state.json'),
+            '{"sessionStarted":true,"sourceSha":"abc123","cases":{"normal":null,"reboot":null,"install-r":null}}',
+            [Text.UTF8Encoding]::new($false)
+          )
+          $blocked = $false
+          try {
+            & .\tool\release_validation_session.ps1 `
+              -Action ArchiveSession `
+              -EvidenceRoot $root | Out-Null
+          }
+          catch {
+            if ($_.Exception.Message -match 'active release session') {
+              $blocked = $true
+            }
+          }
+          if (-not $blocked) {
+            throw 'active session archive must require ForceArchiveActive'
+          }
+          $archive = & .\tool\release_validation_session.ps1 `
+            -Action ArchiveSession `
+            -ForceArchiveActive `
+            -EvidenceRoot $root
+          if ($archive.result -ne 'ARCHIVED') {
+            throw 'forced archive did not complete'
+          }
+          if (-not (Test-Path (Join-Path $archive.destination 'archive-manifest.json'))) {
+            throw 'archive-manifest.json missing'
+          }
+
+'''
+          replace_once(workflow, '  contract:\n', windows_job + '  contract:\n')
+          replace_once(
+              workflow,
+              "             'AddedLineCount',\n",
+              "             'AddedLineCount',\n             'ExpectedTimeMatch',\n             'AddedTimeCandidates',\n             \"'ArchiveSession'\",\n             'archive-manifest.json',\n             'ForceArchiveActive',\n             'notificationPermission',\n",
+          )
+
+          runbook = 'docs/RELEASE_VALIDATION_SESSION.md'
+          replace_once(
+              runbook,
+              '既存の別Release sessionが`$evidence`に残っている場合は、内容を保存して別フォルダーへ移動してから開始します。異なるSource SHAのsessionを上書きしません。\n',
+              r'''既存の証跡が残っている場合は、削除や手動移動ではなく`ArchiveSession`を使用します。
+
+```powershell
+& $sessionTool `
+  -Action ArchiveSession `
+  -EvidenceRoot $evidence
+```
+
+進行中のRelease sessionは誤操作防止のため拒否されます。明示的に中断して退避する場合だけ`-ForceArchiveActive`を付けます。退避先に`archive-manifest.json`を作成し、元の証跡は削除しません。異なるSource SHAのsessionを上書きしません。
+''',
+          )
+          replace_once(
+              runbook,
+              '`alarm-registration.json`の`Result`が`PASS`でなければ待機しません。設定または証跡が不十分なため`INCONCLUSIVE`として扱います。\n',
+              '`alarm-registration.json`は、関連Alarm件数の増加に加えて`ExpectedTimeMatch=PASS`を要求します。追加Alarmの発火時刻を解析できない場合、または予定時刻との差が5分を超える場合は待機せず`INCONCLUSIVE`として扱います。\n',
+          )
+          replace_once(
+              runbook,
+              '状態ファイルから、現在のSource SHA、各ケース、既存readiness、次に必要なコマンドを表示します。\n',
+              r'''状態ファイルから次を表示します。
+
+- `doctorPassed`
+- `apkInstalled`
+- `notificationPermission`
+- Release sessionのSource SHA
+- 各ケースのstatus・verdict・Alarm予定時刻照合・Wait結果
+- 参照すべき証跡ファイル
+- `nextAction`
+- コピー可能な`nextCommand`
+- 必要な`manualAction`
+
+Windows PowerShell 5.1互換CIでは、4つのPowerShellファイルのparser、Status実行、git未導入時の防御、ISO 8601入力エラー、UTF-8 BOMなしJSON、Alarm予定時刻照合、ArchiveSession安全条件を検証します。
+''',
+          )
+
+          issue_doc = 'docs/ISSUE60_ANDROID_EMULATOR_VALIDATION.md'
+          replace_once(
+              issue_doc,
+              'Alarm登録差分',
+              'Alarm登録差分とExpectedTimeMatch',
+          )
+
+          checklist = 'docs/notification-release-checklist.md'
+          replace_once(
+              checklist,
+              '- Todo作成前後のAlarm登録差分を保存する。\n',
+              '- Todo作成前後のAlarm登録差分を保存し、追加Alarmの発火時刻が予定時刻±5分以内であることを`ExpectedTimeMatch=PASS`として確認する。解析不能または不一致は`INCONCLUSIVE`とする。\n',
+          )
+
+          release_plan = 'docs/RELEASE_EXECUTION_PLAN.md'
+          replace_once(
+              release_plan,
+              'Documents\\ashita-release-evidence',
+              'Documents\\ashita-release-evidence',
+          )
+          text = Path(release_plan).read_text(encoding='utf-8')
+          archive_note = '\n- 既存証跡は`release_validation_session.ps1 -Action ArchiveSession`で非破壊退避し、進行中sessionの退避には`-ForceArchiveActive`を要求する。\n'
+          if 'ArchiveSession' not in text:
+              marker = '## 実行原則\n'
+              if marker in text:
+                  text = text.replace(marker, marker + archive_note, 1)
+              else:
+                  text += archive_note
+              Path(release_plan).write_text(text, encoding='utf-8', newline='\n')
+          PY
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            .github/workflows/issue60-evidence-tool.yml \
+            tool/release_validation_session.ps1 \
+            tool/issue60_emulator_evidence_core.ps1 \
+            tool/issue60_emulator_evidence_cases.ps1 \
+            test/issue60_emulator_evidence_contract_test.dart \
+            docs/RELEASE_VALIDATION_SESSION.md \
+            docs/ISSUE60_ANDROID_EMULATOR_VALIDATION.md \
+            docs/notification-release-checklist.md \
+            docs/RELEASE_EXECUTION_PLAN.md
+          git commit -m 'test: harden release validation runtime'
+          git push origin HEAD:agent/release-validation-hardening
