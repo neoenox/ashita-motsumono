@@ -34,10 +34,13 @@ int _sortTodo(AppTodo a, AppTodo b) {
 }
 
 class AppState extends ChangeNotifier {
-  AppState({required Store store, required NotificationService notifications, Uuid? uuid})
-      : _store = store,
-        _notifications = notifications,
-        _uuid = uuid ?? const Uuid() {
+  AppState({
+    required Store store,
+    required NotificationService notifications,
+    Uuid? uuid,
+  }) : _store = store,
+       _notifications = notifications,
+       _uuid = uuid ?? const Uuid() {
     // 既存のcontext.watch<AppState>()は人物選択UIとの互換用に限定する。
     childState.addListener(notifyListeners);
   }
@@ -57,6 +60,8 @@ class AppState extends ChangeNotifier {
       const DocumentImageCleaner();
 
   bool _loaded = false;
+  Future<void>? _closeFuture;
+
   bool get loaded => _loaded;
   bool get lastLoadHadCorruptData => _store.lastLoadHadCorruptData;
 
@@ -193,13 +198,18 @@ class AppState extends ChangeNotifier {
     await _retryPendingFileCleanup();
   }
 
+  /// DBを一度だけ閉じる。再初期化前はこのFutureを待ってclose/open競合を防ぐ。
+  Future<void> close() {
+    return _closeFuture ??= _store.close();
+  }
+
   @override
   void dispose() {
     childState.removeListener(notifyListeners);
     childState.dispose();
     todoState.dispose();
     documentState.dispose();
-    unawaited(_store.close());
+    unawaited(close());
     super.dispose();
   }
 }
