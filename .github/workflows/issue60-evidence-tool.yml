@@ -37,6 +37,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Parse PowerShell
+        id: parse
+        continue-on-error: true
         shell: pwsh
         run: |
           $tokens = $null
@@ -47,10 +49,35 @@ jobs:
             [ref]$errors
           ) | Out-Null
 
+          $report = if ($errors.Count -eq 0) {
+            "PASS: ${{ matrix.file }}"
+          } else {
+            @(
+              "FAIL: ${{ matrix.file }}",
+              ($errors | ForEach-Object {
+                "Line $($_.Extent.StartLineNumber), column $($_.Extent.StartColumnNumber): $($_.Message)"
+              })
+            ) -join [Environment]::NewLine
+          }
+          $report | Tee-Object -FilePath parser-report.txt
+
           if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error $_.ToString() }
             exit 1
           }
+
+      - name: Upload parser report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parser-report-${{ strategy.job-index }}
+          path: parser-report.txt
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Enforce parser result
+        if: steps.parse.outcome == 'failure'
+        shell: bash
+        run: exit 1
 
   contract:
     name: Evidence contract
