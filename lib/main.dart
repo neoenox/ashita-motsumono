@@ -1,5 +1,6 @@
 // lib/main.dart
-// アプリのエントリポイント。初期化失敗をUIで復旧できるBootstrapAppを起動する。
+// 公開名称「あしたもつもの」のエントリポイント。
+// 初期化失敗をUIで復旧できるBootstrapAppを起動する。
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
