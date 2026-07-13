@@ -128,7 +128,7 @@ class NotificationService {
     if (due == null || todo.isDone) return const [];
 
     final ids = notificationIdPair ?? _fallbackNotificationIds(todo.id);
-    final referenceTime = now ?? tz.TZDateTime.now(tz.local);
+    final referenceTime = now ?? DateTime.now();
     final requests = <NotificationScheduleRequest>[];
 
     if (todo.notifyPreviousNight) {
@@ -136,8 +136,8 @@ class NotificationService {
           settings?.previousNightHour ?? AppSettings.defaultPreviousNightHour;
       final m = settings?.previousNightMinute ??
           AppSettings.defaultPreviousNightMinute;
-      final when = tz.TZDateTime(
-        tz.local,
+      // ここでは「端末の壁時計時刻」を表す。実際のTZ変換は登録直前に行う。
+      final when = DateTime(
         due.year,
         due.month,
         due.day - 1,
@@ -160,8 +160,7 @@ class NotificationService {
       final h = settings?.sameMorningHour ?? AppSettings.defaultSameMorningHour;
       final m =
           settings?.sameMorningMinute ?? AppSettings.defaultSameMorningMinute;
-      final when = tz.TZDateTime(
-        tz.local,
+      final when = DateTime(
         due.year,
         due.month,
         due.day,
@@ -203,7 +202,19 @@ class NotificationService {
     String title,
     String body,
   ) async {
-    final scheduled = tz.TZDateTime.from(when, tz.local);
+    // TZDateTime.from は同じ「瞬間」へ変換するため、壁時計の時刻がずれる場合がある。
+    // 年月日時分から端末TZ上の予定時刻を構築し、設定した時刻を維持する。
+    final scheduled = tz.TZDateTime(
+      tz.local,
+      when.year,
+      when.month,
+      when.day,
+      when.hour,
+      when.minute,
+      when.second,
+      when.millisecond,
+      when.microsecond,
+    );
     if (!scheduled.isAfter(tz.TZDateTime.now(tz.local))) return;
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -245,7 +256,10 @@ class NotificationService {
         sameMorning: _legacyNotificationId(todoId, 2),
       );
 
-  int _legacyNotificationId(String id, int salt) =>
-      (id.codeUnits.fold<int>(0, (hash, code) => hash * 31 + code) ^ salt) &
-      0x7FFFFFFF;
+  int _legacyNotificationId(String id, int salt) {
+    final value =
+        (id.codeUnits.fold<int>(0, (hash, code) => hash * 31 + code) ^ salt) &
+        0x7FFFFFFF;
+    return value == 0 ? salt : value;
+  }
 }
