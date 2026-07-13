@@ -7,7 +7,12 @@ on:
       - 'tool/test_release_execution_gate.py'
       - 'tool/release_execution_orchestrator.py'
       - 'tool/test_release_execution_orchestrator.py'
+      - 'tool/release_validation_session.ps1'
+      - 'tool/issue60_emulator_evidence*.ps1'
+      - 'test/issue60_emulator_evidence_contract_test.dart'
       - 'docs/RELEASE_EXECUTION_PLAN.md'
+      - 'docs/RELEASE_VALIDATION_SESSION.md'
+      - 'docs/ISSUE60_ANDROID_EMULATOR_VALIDATION.md'
       - 'docs/PLAY_CONSOLE_SUBMISSION.md'
       - 'docs/ANDROID_RELEASE.md'
       - '.github/workflows/release-execution-gate.yml'
@@ -19,7 +24,12 @@ on:
       - 'tool/test_release_execution_gate.py'
       - 'tool/release_execution_orchestrator.py'
       - 'tool/test_release_execution_orchestrator.py'
+      - 'tool/release_validation_session.ps1'
+      - 'tool/issue60_emulator_evidence*.ps1'
+      - 'test/issue60_emulator_evidence_contract_test.dart'
       - 'docs/RELEASE_EXECUTION_PLAN.md'
+      - 'docs/RELEASE_VALIDATION_SESSION.md'
+      - 'docs/ISSUE60_ANDROID_EMULATOR_VALIDATION.md'
       - 'docs/PLAY_CONSOLE_SUBMISSION.md'
       - 'docs/ANDROID_RELEASE.md'
       - '.github/workflows/release-execution-gate.yml'
@@ -48,13 +58,63 @@ jobs:
             tool/release_execution_orchestrator.py \
             tool/test_release_execution_orchestrator.py
 
+      - name: Parse unified PowerShell session driver
+        shell: pwsh
+        run: |
+          $files = @(
+            Get-ChildItem tool/issue60_emulator_evidence*.ps1
+            Get-Item tool/release_validation_session.ps1
+          )
+          $failed = $false
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $file.FullName,
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            foreach ($parseError in $errors) {
+              $message = "{0}:{1}:{2}: {3}" -f @(
+                $file.Name,
+                $parseError.Extent.StartLineNumber,
+                $parseError.Extent.StartColumnNumber,
+                $parseError.Message
+              )
+              Write-Error $message
+              $failed = $true
+            }
+          }
+          if ($failed) {
+            exit 1
+          }
+
+      - name: Smoke unified session status
+        shell: pwsh
+        run: |
+          $evidence = Join-Path $env:RUNNER_TEMP 'release-validation-smoke'
+          ./tool/release_validation_session.ps1 `
+            -Action Status `
+            -EvidenceRoot $evidence |
+            ConvertTo-Json -Depth 12 |
+            Tee-Object -FilePath release-validation-status.json
+
+          $status = Get-Content release-validation-status.json -Raw |
+            ConvertFrom-Json
+          if (-not $status.state) {
+            throw 'Status smoke test did not return state.'
+          }
+          if ($status.state.evidenceRoot -ne $evidence) {
+            throw 'Status smoke test used an unexpected evidence root.'
+          }
+
       - name: Test evidence validators
         run: python tool/test_release_execution_gate.py
 
       - name: Test ordered orchestration
         run: python tool/test_release_execution_orchestrator.py
 
-      - name: Verify fixed release identity and gate order
+      - name: Verify fixed identity, evidence root, and gate order
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -65,9 +125,15 @@ jobs:
           orchestrator = Path(
               'tool/release_execution_orchestrator.py'
           ).read_text(encoding='utf-8')
+          session_driver = Path(
+              'tool/release_validation_session.ps1'
+          ).read_text(encoding='utf-8')
           runbook = Path('docs/RELEASE_EXECUTION_PLAN.md').read_text(
               encoding='utf-8'
           )
+          session_runbook = Path(
+              'docs/RELEASE_VALIDATION_SESSION.md'
+          ).read_text(encoding='utf-8')
 
           validator_required = (
               'kaenozu/ashita-motsumono',
@@ -90,6 +156,23 @@ jobs:
           for token in orchestrator_required:
               if token not in orchestrator:
                   raise SystemExit(f'missing orchestrator token: {token}')
+
+          session_required = (
+              'ashita-release-evidence',
+              'release-validation-state.json',
+              'release-session.json',
+              'release_execution_orchestrator.py',
+              "'Doctor'",
+              "'BuildInstall'",
+              "'StartSession'",
+              "'PlanCase'",
+              "'Aggregate'",
+              'normal case must PASS before reboot',
+              'reboot case must PASS before install-r',
+          )
+          for token in session_required:
+              if token not in session_driver:
+                  raise SystemExit(f'missing session-driver token: {token}')
 
           marker = '"gateOrder": ['
           if marker not in orchestrator:
@@ -118,5 +201,22 @@ jobs:
               raise SystemExit('release issue order is not 60 -> 98 -> 59 -> 94')
 
           if 'release_execution_orchestrator.py evaluate' not in runbook:
-              raise SystemExit('runbook does not use the ordered orchestrator')
+              raise SystemExit('runbook does not expose the ordered orchestrator')
+          if 'Documents\\ashita-release-evidence' not in runbook:
+              raise SystemExit('runbook does not use the unified evidence root')
+          if 'Todo作成前後のAlarm登録差分' not in runbook:
+              raise SystemExit('runbook does not require alarm registration delta')
+
+          sections = (
+              '## 3. GO/NO-GO診断',
+              '## 4. APKビルドと初期インストール',
+              '## 5. Release session開始',
+              '## 6. Normalケース',
+              '## 7. Rebootケース',
+              '## 8. install-rケース',
+              '## 9. Issue #60集約',
+          )
+          positions = [session_runbook.index(section) for section in sections]
+          if positions != sorted(positions):
+              raise SystemExit('local validation session order is incorrect')
           PY

@@ -4,8 +4,11 @@ on:
   pull_request:
     paths:
       - 'tool/issue60_emulator_evidence*.ps1'
+      - 'tool/release_validation_session.ps1'
       - 'test/issue60_emulator_evidence_contract_test.dart'
       - 'docs/ISSUE60_ANDROID_EMULATOR_VALIDATION.md'
+      - 'docs/RELEASE_VALIDATION_SESSION.md'
+      - 'docs/RELEASE_EXECUTION_PLAN.md'
       - 'docs/notification-release-checklist.md'
       - '.github/workflows/issue60-evidence-tool.yml'
   push:
@@ -13,8 +16,11 @@ on:
       - master
     paths:
       - 'tool/issue60_emulator_evidence*.ps1'
+      - 'tool/release_validation_session.ps1'
       - 'test/issue60_emulator_evidence_contract_test.dart'
       - 'docs/ISSUE60_ANDROID_EMULATOR_VALIDATION.md'
+      - 'docs/RELEASE_VALIDATION_SESSION.md'
+      - 'docs/RELEASE_EXECUTION_PLAN.md'
       - 'docs/notification-release-checklist.md'
       - '.github/workflows/issue60-evidence-tool.yml'
 
@@ -32,6 +38,7 @@ jobs:
           - tool/issue60_emulator_evidence.ps1
           - tool/issue60_emulator_evidence_core.ps1
           - tool/issue60_emulator_evidence_cases.ps1
+          - tool/release_validation_session.ps1
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -89,11 +96,44 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Verify fixed target and prohibited operations
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Test Issue 60 Dart contract
+        id: dart_contract
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          flutter test \
+            test/issue60_emulator_evidence_contract_test.dart \
+            --reporter expanded 2>&1 | tee issue60-contract-test.txt
+          status=${PIPESTATUS[0]}
+          echo "exit_code=$status" >> issue60-contract-test.txt
+          exit "$status"
+
+      - name: Upload Issue 60 contract report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue60-contract-test-report
+          path: issue60-contract-test.txt
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Verify fixed target, alarm causality, and session order
         shell: pwsh
         run: |
-          $files = Get-ChildItem tool/issue60_emulator_evidence*.ps1
-          $text = ($files | Get-Content -Raw) -join "`n"
+          $evidenceFiles = Get-ChildItem tool/issue60_emulator_evidence*.ps1
+          $evidenceText = ($evidenceFiles | Get-Content -Raw) -join "`n"
+          $sessionText = Get-Content tool/release_validation_session.ps1 -Raw
+          $allText = "$evidenceText`n$sessionText"
 
           $required = @(
             "'emulator-5554'",
@@ -101,22 +141,66 @@ jobs:
             'POST_NOTIFICATION',
             'origin/master',
             'wait-heartbeats.jsonl',
-            'ELIGIBLE_FOR_CLOSE_REVIEW'
+            'ELIGIBLE_FOR_CLOSE_REVIEW',
+            "'PlanCase'",
+            'case-plan.json',
+            'alarm-registration.json',
+            'AddedLineCount',
+            'RelevantLineCountIncreased',
+            'AfterRelevantLineCount -gt [int]$r.BeforeRelevantLineCount',
+            'ashita-release-evidence',
+            'release-validation-state.json',
+            'release_execution_orchestrator.py',
+            'normal case must PASS before reboot',
+            'reboot case must PASS before install-r'
           )
           foreach ($token in $required) {
-            if (-not $text.Contains($token)) {
+            if (-not $allText.Contains($token)) {
               throw "Missing required token: $token"
             }
           }
 
-          $prohibited = @('force-stop', 'pm clear', 'adb -d', 'adb uninstall')
+          $prohibited = @(
+            'force-stop',
+            'pm clear',
+            'adb -d',
+            'adb uninstall',
+            'wipe-data'
+          )
           foreach ($token in $prohibited) {
-            if ($text.ToLowerInvariant().Contains($token)) {
+            if ($allText.ToLowerInvariant().Contains($token)) {
               throw "Prohibited operation found: $token"
             }
           }
 
-          $directAdbCount = ([regex]::Matches($text, '& adb ')).Count
+          $directAdbCount = ([regex]::Matches($allText, '& adb ')).Count
           if ($directAdbCount -ne 2) {
             throw "Expected exactly two centralized direct ADB calls; found $directAdbCount"
           }
+
+          $runbook = Get-Content docs/RELEASE_VALIDATION_SESSION.md -Raw
+          $orderedSections = @(
+            '## 3. GO/NO-GO診断',
+            '## 4. APKビルドと初期インストール',
+            '## 5. Release session開始',
+            '## 6. Normalケース',
+            '## 7. Rebootケース',
+            '## 8. install-rケース',
+            '## 9. Issue #60集約'
+          )
+          $positions = @($orderedSections | ForEach-Object {
+            $runbook.IndexOf($_)
+          })
+          if ($positions -contains -1) {
+            throw 'Release session runbook is missing an ordered section.'
+          }
+          for ($index = 1; $index -lt $positions.Count; $index++) {
+            if ($positions[$index] -le $positions[$index - 1]) {
+              throw 'Release session execution order is incorrect.'
+            }
+          }
+
+      - name: Enforce Dart contract result
+        if: steps.dart_contract.outcome == 'failure'
+        shell: bash
+        run: exit 1
