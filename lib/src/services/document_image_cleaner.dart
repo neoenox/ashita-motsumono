@@ -7,13 +7,29 @@ import 'image_file_service.dart';
 class DocumentImageCleaner {
   const DocumentImageCleaner();
 
-  Future<void> deleteAll(Iterable<DocumentRecord> documents) async {
+  Iterable<String> pathsFor(Iterable<DocumentRecord> documents) sync* {
+    for (final document in documents) {
+      final path = document.localImagePath;
+      if (path != null && path.isNotEmpty) {
+        yield path;
+      }
+    }
+  }
+
+  Future<void> deletePath(String path) {
+    return ImageFileService.deleteIfExists(path);
+  }
+
+  Future<void> deletePaths(Iterable<String> paths) async {
     await Future.wait(
-      documents
-          .map((document) => document.localImagePath)
-          .whereType<String>()
+      paths
           .where((path) => path.isNotEmpty)
+          .toSet()
           .map(ImageFileService.deleteIfExists),
     );
+  }
+
+  Future<void> deleteAll(Iterable<DocumentRecord> documents) {
+    return deletePaths(pathsFor(documents));
   }
 }
