@@ -1,62 +1,97 @@
 # 通知リリース確認チェックリスト
 
-対象：Android Emulator。物理端末、アプリデータ削除、アンインストール、強制停止は使用しない。
+対象：Android Emulator `emulator-5554`。詳細手順は`docs/ISSUE60_ANDROID_EMULATOR_VALIDATION.md`、補助スクリプトは`tool/issue60_emulator_evidence.ps1`を使用する。
 
-## 共通条件
+## 共通ゲート
 
-- [ ] 対象serialを記録する（例：`emulator-5554`）
-- [ ] すべてのADBコマンドに `-s <serial>` を付ける
-- [ ] `adb -s <serial> shell getprop ro.kernel.qemu` が `1`
-- [ ] AVD名、Androidバージョン、APIレベル、端末モデルを記録する
-- [ ] エミュレーターのタイムゾーンが `Asia/Tokyo`
-- [ ] 通知権限が許可済み
-- [ ] 期限が未来のTodoを作成し、前日・当日の通知が未来時刻に予約されている
-- [ ] アプリをホームへ移し、通知確認中は再度開かない
+- [ ] 最新`origin/master`から専用worktreeを作成した
+- [ ] `HEAD == origin/master`
+- [ ] 追跡対象ファイルにローカル変更がない
+- [ ] すべてのADB操作が`-s emulator-5554`経由
+- [ ] `ro.kernel.qemu=1`
+- [ ] AVD名、Androidバージョン、APIレベル、端末モデルを記録した
+- [ ] Emulatorのタイムゾーンが`Asia/Tokyo`
+- [ ] `sys.boot_completed=1`
+- [ ] Application IDが`com.ashita_motsumono`
+- [ ] 通知権限が`GRANTED`
+- [ ] 各ケースで別の未来Todoを作成した
+- [ ] TodoタイトルはASCIIの`NORMAL_HHMM`、`REBOOT_HHMM`、`UPDATE_HHMM`
+- [ ] 通知待機中にアプリを再度開いていない
+
+## 必須証跡
+
+各ケースで次を保存する。
+
+- [ ] Todoタイトルと通知設定
+- [ ] Source SHA
+- [ ] 予定時刻と実到着時刻
+- [ ] 保存直後の`dumpsys alarm`
+- [ ] `dumpsys notification --noredact`
+- [ ] 通知領域スクリーンショット
+- [ ] UI Automator階層またはnotification dump上のTodoタイトル
+- [ ] foreground Activity
+- [ ] logcat
+- [ ] 禁止操作を使用していないこと
 
 ## 1. 通常通知
 
-- [ ] 前日通知または当日通知が、アプリを開かずに通知領域へ表示される
-- [ ] 到着時刻、通知タイトル、本文を記録する
-- [ ] `inexactAllowWhileIdle`による数分程度の遅延は許容する
+- [ ] 当日通知または前日通知の未来Alarmが保存直後に存在する
+- [ ] アプリを開かず通知領域へ表示された
+- [ ] タイトル、本文、到着時刻を記録した
 
 判定：
 
-- PASS：通知が表示された
-- FAIL：十分な待機後も表示されず、権限・時刻・エミュレーター稼働条件に問題がない
-- BLOCKED：PCスリープ、エミュレーター停止、権限無効などで条件が崩れた
-- INCONCLUSIVE：通知履歴やログが不足して発火を判定できない
+- **PASS**：権限、未来Alarm、通知タイトル、通知領域画面、Notification dump、非前面状態が揃う
+- **FAIL**：予定時刻+20分まで条件を維持したが通知タイトルがない
+- **BLOCKED**：ADB切断、PCスリープ、Emulator停止、権限無効、時刻変更などで条件が崩れた
+- **INCONCLUSIVE**：Alarm、時刻、画面、待機継続性などの証跡が不足する
 
-## 2. アプリ再起動後の再予約
+通常通知がPASSしなければ再起動後検証へ進まない。
 
-- [ ] 未来期限のTodoを保存した状態でアプリを通常終了する
-- [ ] アプリを再起動する
-- [ ] 起動後、既存Todoの通知が重複せず再予約されている
-- [ ] 完了Todoと期限なしTodoは予約されていない
-- [ ] アプリをホームへ移し、対象通知が届くことを確認する
+## 2. Android Emulator再起動後
 
-## 3. Android Emulator再起動後
+- [ ] 別の未来Todoを作成した
+- [ ] 再起動前のboot ID、Alarm、時刻を保存した
+- [ ] `adb -s emulator-5554 reboot`を実行した
+- [ ] `sys.boot_completed=1`まで待った
+- [ ] 再起動後のboot IDが変化した
+- [ ] 再起動後にアプリを開いていない
+- [ ] 再起動後の未来Alarmを確認した
+- [ ] 保存済みTodoの通知が表示された
 
-- [ ] `adb -s <serial> reboot` を実行する
-- [ ] `sys.boot_completed=1` まで待つ
-- [ ] 再起動後にアプリを開かない
-- [ ] 保存済みTodoの対象通知が通知領域へ表示される
+通常通知がPASS済みで、再起動後だけ復元されないことを十分な証跡で示せた場合のみFAILとする。
 
-## 4. APK上書き後
+## 3. APK上書き後
 
-- [ ] 同一applicationIdのAPKを準備する
-- [ ] `adb -s <serial> install -r <apk>` を実行する
-- [ ] 上書き後にアプリを開かない
-- [ ] アプリデータとTodoが保持されている
-- [ ] 保存済みTodoの対象通知が通知領域へ表示される
+- [ ] 別の未来Todoを作成した
+- [ ] 同一application IDのAPK SHA-256を記録した
+- [ ] `adb -s emulator-5554 install -r <apk>`が`Success`
+- [ ] 更新前後の`lastUpdateTime`を記録した
+- [ ] 上書き後にアプリを開いていない
+- [ ] 上書き後の未来Alarmを確認した
+- [ ] 保存済みTodoの通知が表示された
 
-同一APKの再インストールでは更新broadcastの証跡が判別できない場合がある。その場合はコードやversionを変更せず、INCONCLUSIVEとして記録する。
+同一APKで`MY_PACKAGE_REPLACED`受信を一意に識別できない場合、broadcast検証は**INCONCLUSIVE**とする。通知到着だけからReceiver作動を断定しない。
+
+## 4. Issue #60報告
+
+- [ ] 各ケースで`case-result.json`と`issue-comment.md`を生成した
+- [ ] 3ケースを`Aggregate`し、`issue60-summary.md`を生成した
+- [ ] 確認済み、未確認、推測、反証、検証範囲、判定根拠を分離した
+- [ ] NormalがPASS
+- [ ] RebootがPASS
+- [ ] install-rがPASS、またはbroadcast識別不能の理由付きINCONCLUSIVE
+- [ ] Issue本文との整合を再確認した
 
 ## 禁止事項
 
-- bare `adb` または `adb -d`
-- 物理端末の使用
-- `force-stop`
-- `pm clear`
+- serial指定なしのADB
+- `adb -d`
+- 物理端末
+- アプリの強制停止
+- アプリデータ削除
 - アンインストール
-- 検証のためのコード・version変更
-- 別worktree「今日の準備」への変更
+- Emulatorデータ消去
+- 通知待機中のアプリ再オープン
+- 検証目的のコード・version変更
+- `ScheduledNotificationBootReceiver`の`android:exported="true"`化
