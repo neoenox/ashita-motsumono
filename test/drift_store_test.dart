@@ -70,6 +70,58 @@ void main() {
     expect(loaded.documents.single.ocrText, '明日までに水筒と帽子を持参');
   });
 
+  test('does not rewrite unchanged snapshot rows', () async {
+    final database = await AppDatabase.createInMemory();
+    final store = DriftStore(database);
+    addTearDown(store.close);
+    final now = DateTime(2026, 7, 7);
+    final child = PersonProfile(
+      id: 'child-unchanged',
+      name: '長女',
+      colorValue: 0xFF2F7D6E,
+      createdAt: now,
+      updatedAt: now,
+    );
+    final snapshot = AppSnapshot(
+      children: [child],
+      todos: const [],
+      documents: const [],
+    );
+
+    await store.save(snapshot);
+    await database.customStatement(
+      'CREATE TABLE update_audit (count INTEGER NOT NULL)',
+    );
+    await database.customStatement('INSERT INTO update_audit VALUES (0)');
+    await database.customStatement('''
+      CREATE TRIGGER count_child_update
+      AFTER UPDATE ON db_child
+      BEGIN
+        UPDATE update_audit SET count = count + 1;
+      END
+    ''');
+
+    await store.save(snapshot);
+    final unchangedCount = await database
+        .customSelect('SELECT count FROM update_audit')
+        .map((row) => row.read<int>('count'))
+        .getSingle();
+    expect(unchangedCount, 0);
+
+    await store.save(
+      AppSnapshot(
+        children: [child.copyWith(name: '更新後')],
+        todos: const [],
+        documents: const [],
+      ),
+    );
+    final changedCount = await database
+        .customSelect('SELECT count FROM update_audit')
+        .map((row) => row.read<int>('count'))
+        .getSingle();
+    expect(changedCount, 1);
+  });
+
   test('persists unique notification IDs and side effect queues', () async {
     final store = await DriftStore.createInMemory();
     addTearDown(store.close);
@@ -107,6 +159,38 @@ void main() {
     expect(await store.findNotificationIds('todo-a'), isNull);
     expect(await store.loadPendingNotificationSync(), isEmpty);
     expect(await store.loadPendingFileCleanup(), isEmpty);
+  });
+
+  test('notification ID allocation skips occupied seed in memory', () async {
+    const maxNotificationId = 0x7FFFFFFF;
+    int seed(String todoId, int kind) {
+      var hash = 0;
+      for (final codeUnit in todoId.codeUnits) {
+        hash = (hash * 31 + codeUnit) & maxNotificationId;
+      }
+      final candidate = (hash ^ kind) & maxNotificationId;
+      return candidate == 0 ? kind : candidate;
+    }
+
+    final database = await AppDatabase.createInMemory();
+    final store = DriftStore(database);
+    addTearDown(store.close);
+    const todoId = 'todo-with-seed-collision';
+    final occupiedSeed = seed(todoId, 1);
+    await database.customStatement(
+      'INSERT INTO notification_id_map '
+      '(todo_id, kind, notification_id) VALUES (?, ?, ?)',
+      ['other-todo', 1, occupiedSeed],
+    );
+
+    final allocated = await store.getOrCreateNotificationIds(todoId);
+
+    expect(allocated.previousNight, isNot(occupiedSeed));
+    expect(allocated.previousNight, occupiedSeed == maxNotificationId ? 1 : occupiedSeed + 1);
+    expect(
+      {occupiedSeed, allocated.previousNight, allocated.sameMorning},
+      hasLength(3),
+    );
   });
 
   test('rejects snapshots with missing referenced records', () async {
