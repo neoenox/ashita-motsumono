@@ -36,31 +36,38 @@ extension ChildAppStateOperations on AppState {
       createdAt: now,
       updatedAt: now,
     );
-    _replaceChildren([...children, child]);
-    await _persist();
+    final nextChildren = [...children, child];
+    await _persistSnapshot(nextChildren: nextChildren);
+    _replaceChildren(nextChildren);
     return child;
   }
 
   Future<void> deleteChild(String id) async {
-    _replaceChildren(children.where((child) => child.id != id));
+    final nextChildren = children.where((child) => child.id != id).toList();
     final now = DateTime.now();
-    _replaceTodos(
-      todos.map(
-        (todo) => todo.personId == id
-            ? todo.copyWith(clearPersonId: true, updatedAt: now)
-            : todo,
-      ),
+    final nextTodos = todos
+        .map(
+          (todo) => todo.personId == id
+              ? todo.copyWith(clearPersonId: true, updatedAt: now)
+              : todo,
+        )
+        .toList();
+    await _persistSnapshot(
+      nextChildren: nextChildren,
+      nextTodos: nextTodos,
     );
-    await _persist();
+    _replaceChildren(nextChildren);
+    _replaceTodos(nextTodos);
   }
 
   Future<void> updateChild(PersonProfile child) async {
     final updated = child.copyWith(updatedAt: DateTime.now());
-    _replaceChildren(
-      children.map(
-        (existing) => existing.id == updated.id ? updated : existing,
-      ),
-    );
-    await _persist();
+    final nextChildren = children
+        .map(
+          (existing) => existing.id == updated.id ? updated : existing,
+        )
+        .toList();
+    await _persistSnapshot(nextChildren: nextChildren);
+    _replaceChildren(nextChildren);
   }
 }
