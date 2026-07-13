@@ -1,0 +1,52 @@
+name: Diagnose Flutter Tests
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/diagnose-flutter-tests.yml'
+      - 'test/**'
+      - 'tool/**'
+      - 'docs/**'
+
+permissions:
+  contents: read
+
+jobs:
+  full-test-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run full Flutter tests
+        id: tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          flutter test --reporter expanded 2>&1 | tee flutter-test-report.txt
+          status=${PIPESTATUS[0]}
+          echo "exit_code=$status" >> flutter-test-report.txt
+          exit "$status"
+
+      - name: Upload full test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-test-report
+          path: flutter-test-report.txt
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Enforce test result
+        if: steps.tests.outcome == 'failure'
+        run: exit 1
