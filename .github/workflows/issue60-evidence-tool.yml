@@ -1,0 +1,122 @@
+name: Issue 60 Evidence Tool CI
+
+on:
+  pull_request:
+    paths:
+      - 'tool/issue60_emulator_evidence*.ps1'
+      - 'test/issue60_emulator_evidence_contract_test.dart'
+      - 'docs/ISSUE60_ANDROID_EMULATOR_VALIDATION.md'
+      - 'docs/notification-release-checklist.md'
+      - '.github/workflows/issue60-evidence-tool.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'tool/issue60_emulator_evidence*.ps1'
+      - 'test/issue60_emulator_evidence_contract_test.dart'
+      - 'docs/ISSUE60_ANDROID_EMULATOR_VALIDATION.md'
+      - 'docs/notification-release-checklist.md'
+      - '.github/workflows/issue60-evidence-tool.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  parse-powershell:
+    name: Parse ${{ matrix.file }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        file:
+          - tool/issue60_emulator_evidence.ps1
+          - tool/issue60_emulator_evidence_core.ps1
+          - tool/issue60_emulator_evidence_cases.ps1
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Parse PowerShell
+        id: parse
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path '${{ matrix.file }}').Path,
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+
+          $reportLines = [System.Collections.Generic.List[string]]::new()
+          if ($errors.Count -eq 0) {
+            $reportLines.Add("PASS: ${{ matrix.file }}")
+          } else {
+            $reportLines.Add("FAIL: ${{ matrix.file }}")
+            foreach ($parseError in $errors) {
+              $reportLines.Add(
+                "Line $($parseError.Extent.StartLineNumber), column $($parseError.Extent.StartColumnNumber): $($parseError.Message)"
+              )
+              $reportLines.Add("Token: $($parseError.Extent.Text)")
+            }
+          }
+          $reportLines -join [Environment]::NewLine |
+            Tee-Object -FilePath parser-report.txt
+
+          if ($errors.Count -gt 0) {
+            exit 1
+          }
+
+      - name: Upload parser report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parser-report-${{ strategy.job-index }}
+          path: parser-report.txt
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Enforce parser result
+        if: steps.parse.outcome == 'failure'
+        shell: bash
+        run: exit 1
+
+  contract:
+    name: Evidence contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify fixed target and prohibited operations
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem tool/issue60_emulator_evidence*.ps1
+          $text = ($files | Get-Content -Raw) -join "`n"
+
+          $required = @(
+            "'emulator-5554'",
+            "'com.ashita_motsumono'",
+            'POST_NOTIFICATION',
+            'origin/master',
+            'wait-heartbeats.jsonl',
+            'ELIGIBLE_FOR_CLOSE_REVIEW'
+          )
+          foreach ($token in $required) {
+            if (-not $text.Contains($token)) {
+              throw "Missing required token: $token"
+            }
+          }
+
+          $prohibited = @('force-stop', 'pm clear', 'adb -d', 'adb uninstall')
+          foreach ($token in $prohibited) {
+            if ($text.ToLowerInvariant().Contains($token)) {
+              throw "Prohibited operation found: $token"
+            }
+          }
+
+          $directAdbCount = ([regex]::Matches($text, '& adb ')).Count
+          if ($directAdbCount -ne 2) {
+            throw "Expected exactly two centralized direct ADB calls; found $directAdbCount"
+          }
