@@ -91,16 +91,21 @@ jobs:
               if token not in orchestrator:
                   raise SystemExit(f'missing orchestrator token: {token}')
 
-          gate_order = [
-              orchestrator.index('"playSigning"'),
-              orchestrator.index('"formalRelease"'),
-              orchestrator.index('"playSubmission"'),
-              orchestrator.index('"internalTest"'),
+          marker = '"gateOrder": ['
+          if marker not in orchestrator:
+              raise SystemExit('explicit gateOrder declaration is missing')
+          gate_block = orchestrator.split(marker, 1)[1].split('],', 1)[0]
+          declared = [
+              '"releaseSession"',
+              '"issue60"',
+              '"playSigning"',
+              '"formalRelease"',
+              '"playSubmission"',
+              '"internalTest"',
           ]
-          if gate_order != sorted(gate_order):
-              raise SystemExit(
-                  'gate order is not signing -> release -> submission -> test'
-              )
+          positions = [gate_block.index(token) for token in declared]
+          if positions != sorted(positions):
+              raise SystemExit('explicit gateOrder declaration is incorrect')
 
           issue_order = [
               'Issue #60',
