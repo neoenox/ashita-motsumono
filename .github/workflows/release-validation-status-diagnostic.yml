@@ -1,0 +1,78 @@
+name: Release Validation Status Diagnostic
+
+on:
+  pull_request:
+    paths:
+      - 'tool/release_validation_control.ps1'
+      - '.github/workflows/release-validation-status-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  status-diagnostic:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Capture Status diagnostic
+        id: diagnostic
+        continue-on-error: true
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'status-diagnostic'
+          $report = [System.Collections.Generic.List[string]]::new()
+          try {
+            $report.Add("PSVersion=$($PSVersionTable.PSVersion)")
+            $report.Add("Root=$root")
+            $status = & .\tool\release_validation_control.ps1 `
+              -Action Status `
+              -EvidenceRoot $root
+            $report.Add('Invocation=PASS')
+            $report.Add('StatusObject:')
+            $report.Add(($status | ConvertTo-Json -Depth 20))
+            $statusPath = Join-Path $root 'release-validation-status.json'
+            $report.Add("StatusPath=$statusPath")
+            $report.Add("StatusExists=$(Test-Path $statusPath)")
+            if (Test-Path $statusPath) {
+              $bytes = [IO.File]::ReadAllBytes($statusPath)
+              $prefix = @($bytes | Select-Object -First 8) -join ','
+              $report.Add("BytePrefix=$prefix")
+              $report.Add('StatusFile:')
+              $report.Add([IO.File]::ReadAllText(
+                $statusPath,
+                [Text.UTF8Encoding]::new($false, $true)
+              ))
+            }
+          }
+          catch {
+            $report.Add('Invocation=FAIL')
+            $report.Add("ExceptionType=$($_.Exception.GetType().FullName)")
+            $report.Add("Message=$($_.Exception.Message)")
+            $report.Add("ScriptStackTrace=$($_.ScriptStackTrace)")
+            $report.Add("PositionMessage=$($_.InvocationInfo.PositionMessage)")
+            $report.Add("ErrorRecord=$($_ | Out-String)")
+            $report -join [Environment]::NewLine |
+              Set-Content status-diagnostic.txt -Encoding utf8
+            throw
+          }
+          finally {
+            $report -join [Environment]::NewLine |
+              Set-Content status-diagnostic.txt -Encoding utf8
+          }
+
+      - name: Upload Status diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-validation-status-diagnostic
+          path: status-diagnostic.txt
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Enforce diagnostic result
+        if: steps.diagnostic.outcome == 'failure'
+        shell: powershell
+        run: exit 1
