@@ -75,18 +75,37 @@ jobs:
               [ref]$errors
             ) | Out-Null
             foreach ($parseError in $errors) {
-              Write-Error (
-                "{0}:{1}:{2}: {3}" -f \
-                  $file.Name, \
-                  $parseError.Extent.StartLineNumber, \
-                  $parseError.Extent.StartColumnNumber, \
-                  $parseError.Message
+              $message = "{0}:{1}:{2}: {3}" -f @(
+                $file.Name,
+                $parseError.Extent.StartLineNumber,
+                $parseError.Extent.StartColumnNumber,
+                $parseError.Message
               )
+              Write-Error $message
               $failed = $true
             }
           }
           if ($failed) {
             exit 1
+          }
+
+      - name: Smoke unified session status
+        shell: pwsh
+        run: |
+          $evidence = Join-Path $env:RUNNER_TEMP 'release-validation-smoke'
+          ./tool/release_validation_session.ps1 `
+            -Action Status `
+            -EvidenceRoot $evidence |
+            ConvertTo-Json -Depth 12 |
+            Tee-Object -FilePath release-validation-status.json
+
+          $status = Get-Content release-validation-status.json -Raw |
+            ConvertFrom-Json
+          if (-not $status.state) {
+            throw 'Status smoke test did not return state.'
+          }
+          if ($status.state.evidenceRoot -ne $evidence) {
+            throw 'Status smoke test used an unexpected evidence root.'
           }
 
       - name: Test evidence validators
