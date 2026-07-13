@@ -14,6 +14,7 @@
 - [ ] Play Console に `docs/STORE_LISTING_JA.md` の掲載文、データセーフティ回答、審査メモを転記して確認する。
 - [ ] Play Console にプライバシーポリシー公開URL、連絡先メールアドレス、カテゴリ、スクリーンショット、アプリアイコンを登録する。
 - [ ] 提出直前に `docs/PLAY_CONSOLE_SUBMISSION.md` の未完了項目を上から順に確認する。
+- [ ] PR #104 merge後は追加のCI機能開発を原則停止し、Play Console設定と正式Release証跡確認へ進む。
 
 ## 今回対応済み
 
