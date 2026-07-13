@@ -71,16 +71,22 @@
 - [ ] 上書き後の未来Alarmを確認した
 - [ ] 保存済みTodoの通知が表示された
 
-同一APKで`MY_PACKAGE_REPLACED`受信を一意に識別できない場合、broadcast検証は**INCONCLUSIVE**とする。通知到着だけからReceiver作動を断定しない。
+判定：
+
+- **PASS**：通知証跡がすべて揃い、`MY_PACKAGE_REPLACED`受信を一意に確認してFinalizeへ`-InstallBroadcastVerified`を指定した
+- **INCONCLUSIVE**：通知到着とinstall成功は確認できたが、同一APKのためbroadcast受信を一意に識別できず、Finalizeへ`-InstallBroadcastUnverified`を指定した
+- 通知未到着、Alarm不足、画面不足などを`InstallBroadcastUnverified`だけでClose候補にしてはいけない
 
 ## 4. Issue #60報告
 
 - [ ] 各ケースで`case-result.json`と`issue-comment.md`を生成した
 - [ ] 3ケースを`Aggregate`し、`issue60-summary.md`を生成した
 - [ ] 確認済み、未確認、推測、反証、検証範囲、判定根拠を分離した
+- [ ] 3ケースのSource SHAが同一
+- [ ] 3ケースのSource SHAが集約時点の最新`origin/master`と一致
 - [ ] NormalがPASS
 - [ ] RebootがPASS
-- [ ] install-rがPASS、またはbroadcast識別不能の理由付きINCONCLUSIVE
+- [ ] install-rがbroadcast確認付きPASS、または通知証跡完備・broadcast識別不能の理由付きINCONCLUSIVE
 - [ ] Issue本文との整合を再確認した
 
 ## 禁止事項
