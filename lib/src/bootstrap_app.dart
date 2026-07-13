@@ -188,7 +188,10 @@ class _BootstrapAppState extends State<BootstrapApp> {
   Future<void> _restartBootstrap() async {
     final previousState = _appState;
     _clearDependencies();
-    previousState?.dispose();
+    if (previousState != null) {
+      await previousState.close();
+      previousState.dispose();
+    }
     await _initializeFresh();
   }
 
