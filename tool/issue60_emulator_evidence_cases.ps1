@@ -17,7 +17,7 @@ function LatestSummary{
 }
 function AlarmEvidence{
   $p=Join-Path $CaseDirectory 'alarm-registration.json';if(-not (Test-Path $p)){return $false}
-  $r=Get-Content -Raw $p|ConvertFrom-Json;[bool]($r.Result -eq 'PASS' -and $r.RelevantLineCountIncreased -eq $true -and [int]$r.AfterRelevantLineCount -gt [int]$r.BeforeRelevantLineCount -and [int]$r.AddedLineCount -gt 0)
+  $r=Get-Content -Raw $p|ConvertFrom-Json;[bool]($r.Result -eq 'PASS' -and [int]$r.AddedLineCount -gt 0 -and $r.RelevantLineCountIncreased -eq $true -and [int]$r.AfterRelevantLineCount -gt [int]$r.BeforeRelevantLineCount)
 }
 function WaitCase{
   $m=AssertCase;RequirePreflight -RequireApp|Out-Null;$expected=ParseTime ([string]$m.ExpectedTime) 'ExpectedTime';$deadline=$expected.AddMinutes($FailureWaitMinutes)
