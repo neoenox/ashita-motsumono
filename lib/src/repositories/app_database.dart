@@ -76,6 +76,9 @@ class AppDatabase extends _$AppDatabase {
 
   final File? databaseFile;
 
+  static const _maxNotificationId = 0x7FFFFFFF;
+  static const _databaseSuffixes = ['', '-wal', '-shm', '-journal'];
+
   @override
   int get schemaVersion => 2;
 
@@ -125,11 +128,40 @@ class AppDatabase extends _$AppDatabase {
   static Future<void> deleteDatabaseFiles() async {
     final dir = await getApplicationDocumentsDirectory();
     final path = p.join(dir.path, 'ashita_motsumono.db');
-    for (final suffix in const ['', '-wal', '-shm', '-journal']) {
+    await deleteDatabaseFilesAtPath(path);
+  }
+
+  @visibleForTesting
+  static Future<void> deleteDatabaseFilesAtPath(
+    String path, {
+    Future<void> Function(File file)? deleteFile,
+  }) async {
+    final delete = deleteFile ?? (File file) => file.delete();
+    final failures = <String>[];
+
+    for (final suffix in _databaseSuffixes) {
       final file = File('$path$suffix');
-      if (await file.exists()) {
-        await file.delete();
+      try {
+        if (await file.exists()) {
+          await delete(file);
+        }
+      } on Object catch (error, stackTrace) {
+        failures.add('${file.path}: $error');
+        if (kDebugMode) {
+          debugPrint(
+            'AppDatabase: failed to delete ${file.path}: '
+            '$error\n$stackTrace',
+          );
+        }
       }
+    }
+
+    if (failures.isNotEmpty) {
+      throw FileSystemException(
+        'Failed to delete one or more database files: '
+        '${failures.join(' | ')}',
+        path,
+      );
     }
   }
 
@@ -241,16 +273,50 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> _saveSnapshotRows(AppSnapshot snapshot) async {
-    final childRows = snapshot.children.map(_fromPersonProfile).toList();
-    final documentRows = snapshot.documents.map(_fromDocumentRecord).toList();
-    final todoRows = snapshot.todos.map(_fromAppTodo).toList();
-    final checklistRows = snapshot.todos
-        .expand(
-          (todo) => todo.items.map(
-            (item) => _fromChecklistItem(todo.id, item),
-          ),
+    final existingChildren = {
+      for (final row in await select(dbChild).get()) row.id: row,
+    };
+    final existingDocuments = {
+      for (final row in await select(dbDocument).get()) row.id: row,
+    };
+    final existingTodos = {
+      for (final row in await select(dbTodo).get()) row.id: row,
+    };
+    final existingChecklistItems = {
+      for (final row in await select(dbChecklistItem).get()) row.id: row,
+    };
+
+    final childRows = snapshot.children
+        .where(
+          (child) => !_matchesPersonProfile(existingChildren[child.id], child),
         )
+        .map(_fromPersonProfile)
         .toList();
+    final documentRows = snapshot.documents
+        .where(
+          (document) =>
+              !_matchesDocumentRecord(existingDocuments[document.id], document),
+        )
+        .map(_fromDocumentRecord)
+        .toList();
+    final todoRows = snapshot.todos
+        .where((todo) => !_matchesAppTodo(existingTodos[todo.id], todo))
+        .map(_fromAppTodo)
+        .toList();
+    final checklistRows = <DbChecklistItemCompanion>[];
+    final checklistItemIds = <String>[];
+    for (final todo in snapshot.todos) {
+      for (final item in todo.items) {
+        checklistItemIds.add(item.id);
+        if (!_matchesChecklistItem(
+          existingChecklistItems[item.id],
+          todo.id,
+          item,
+        )) {
+          checklistRows.add(_fromChecklistItem(todo.id, item));
+        }
+      }
+    }
 
     await batch((batch) {
       if (childRows.isNotEmpty) {
@@ -267,11 +333,12 @@ class AppDatabase extends _$AppDatabase {
       }
     });
 
-    final itemIds = checklistRows.map((row) => row.id.value).toList();
-    if (itemIds.isEmpty) {
+    if (checklistItemIds.isEmpty) {
       await delete(dbChecklistItem).go();
     } else {
-      await (delete(dbChecklistItem)..where((row) => row.id.isNotIn(itemIds))).go();
+      await (delete(dbChecklistItem)
+            ..where((row) => row.id.isNotIn(checklistItemIds)))
+          .go();
     }
 
     final todoIds = snapshot.todos.map((todo) => todo.id).toList();
@@ -294,6 +361,53 @@ class AppDatabase extends _$AppDatabase {
     } else {
       await (delete(dbDocument)..where((row) => row.id.isNotIn(documentIds))).go();
     }
+  }
+
+  bool _matchesPersonProfile(DbChildData? row, PersonProfile child) {
+    return row != null &&
+        row.name == child.name &&
+        row.colorValue == child.colorValue &&
+        row.createdAt == child.createdAt &&
+        row.updatedAt == child.updatedAt;
+  }
+
+  bool _matchesDocumentRecord(
+    DbDocumentData? row,
+    DocumentRecord document,
+  ) {
+    return row != null &&
+        row.sourceType == document.sourceType &&
+        row.localImagePath == document.localImagePath &&
+        row.ocrText == document.ocrText &&
+        row.createdAt == document.createdAt &&
+        row.updatedAt == document.updatedAt;
+  }
+
+  bool _matchesAppTodo(DbTodoData? row, AppTodo todo) {
+    return row != null &&
+        row.title == todo.title &&
+        row.childId == todo.personId &&
+        row.documentId == todo.documentId &&
+        row.dueDate == todo.dueDate &&
+        row.category == todo.category.name &&
+        row.amount == todo.amount &&
+        row.note == todo.note &&
+        row.status == todo.status.name &&
+        row.notifyPreviousNight == todo.notifyPreviousNight &&
+        row.notifySameMorning == todo.notifySameMorning &&
+        row.createdAt == todo.createdAt &&
+        row.updatedAt == todo.updatedAt;
+  }
+
+  bool _matchesChecklistItem(
+    DbChecklistItemData? row,
+    String todoId,
+    ChecklistItem item,
+  ) {
+    return row != null &&
+        row.todoId == todoId &&
+        row.label == item.label &&
+        row.isChecked == item.isChecked;
   }
 
   Future<void> clearAll() async {
@@ -326,11 +440,13 @@ class AppDatabase extends _$AppDatabase {
   Future<NotificationIdPair> getOrCreateNotificationIds(String todoId) async {
     return transaction(() async {
       final existing = await _loadNotificationIdMap(todoId);
+      final usedIds = await _loadUsedNotificationIds();
       var previousNight = existing[1];
       var sameMorning = existing[2];
 
       if (previousNight == null) {
-        previousNight = await _allocateNotificationId(todoId, 1);
+        previousNight = _allocateNotificationId(todoId, 1, usedIds);
+        usedIds.add(previousNight);
         await customStatement(
           'INSERT INTO notification_id_map '
           '(todo_id, kind, notification_id) VALUES (?, ?, ?)',
@@ -338,7 +454,8 @@ class AppDatabase extends _$AppDatabase {
         );
       }
       if (sameMorning == null) {
-        sameMorning = await _allocateNotificationId(todoId, 2);
+        sameMorning = _allocateNotificationId(todoId, 2, usedIds);
+        usedIds.add(sameMorning);
         await customStatement(
           'INSERT INTO notification_id_map '
           '(todo_id, kind, notification_id) VALUES (?, ?, ?)',
@@ -375,15 +492,26 @@ class AppDatabase extends _$AppDatabase {
     };
   }
 
-  Future<int> _allocateNotificationId(String todoId, int kind) async {
+  Future<Set<int>> _loadUsedNotificationIds() async {
+    final rows = await customSelect(
+      'SELECT notification_id FROM notification_id_map',
+    ).get();
+    return rows
+        .map((row) => row.read<int>('notification_id'))
+        .toSet();
+  }
+
+  int _allocateNotificationId(
+    String todoId,
+    int kind,
+    Set<int> usedIds,
+  ) {
     var candidate = _notificationSeed(todoId, kind);
-    for (var attempts = 0; attempts < 0x7FFFFFFF; attempts++) {
-      final used = await customSelect(
-        'SELECT 1 FROM notification_id_map WHERE notification_id = ? LIMIT 1',
-        variables: [Variable<int>(candidate)],
-      ).getSingleOrNull();
-      if (used == null) return candidate;
-      candidate = candidate == 0x7FFFFFFF ? 1 : candidate + 1;
+    // 使用済みIDがN件なら、N+1個の連続候補のどこかは必ず空いている。
+    final maxAttempts = usedIds.length + 1;
+    for (var attempts = 0; attempts < maxAttempts; attempts++) {
+      if (!usedIds.contains(candidate)) return candidate;
+      candidate = candidate == _maxNotificationId ? 1 : candidate + 1;
     }
     throw StateError('No local notification IDs are available.');
   }
@@ -391,9 +519,9 @@ class AppDatabase extends _$AppDatabase {
   int _notificationSeed(String todoId, int kind) {
     var hash = 0;
     for (final codeUnit in todoId.codeUnits) {
-      hash = (hash * 31 + codeUnit) & 0x7FFFFFFF;
+      hash = (hash * 31 + codeUnit) & _maxNotificationId;
     }
-    final candidate = (hash ^ kind) & 0x7FFFFFFF;
+    final candidate = (hash ^ kind) & _maxNotificationId;
     return candidate == 0 ? kind : candidate;
   }
 
