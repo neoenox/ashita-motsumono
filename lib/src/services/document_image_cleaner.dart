@@ -17,7 +17,7 @@ class DocumentImageCleaner {
   }
 
   Future<void> deletePath(String path) {
-    return ImageFileService.deleteIfExists(path);
+    return ImageFileService.deleteIfExistsStrict(path);
   }
 
   Future<void> deletePaths(Iterable<String> paths) async {
@@ -25,7 +25,7 @@ class DocumentImageCleaner {
       paths
           .where((path) => path.isNotEmpty)
           .toSet()
-          .map(ImageFileService.deleteIfExists),
+          .map(ImageFileService.deleteIfExistsStrict),
     );
   }
 
