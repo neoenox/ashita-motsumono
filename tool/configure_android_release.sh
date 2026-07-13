@@ -22,4 +22,5 @@ else
 fi
 
 "$PYTHON_CMD" "$SCRIPT_DIR/configure_android_release.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/configure_platform_display_name.py"
 exec "$PYTHON_CMD" "$SCRIPT_DIR/enforce_android_release_signing.py"
