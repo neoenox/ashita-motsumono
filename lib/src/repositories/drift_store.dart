@@ -116,10 +116,10 @@ class DriftStore implements Store {
   }
 
   @override
-  Future<void> save(AppSnapshot snapshot) {
+  Future<void> save(AppSnapshot snapshot) async {
     _ensureWritable();
     _validateSnapshot(snapshot);
-    return _db.saveSnapshot(snapshot);
+    await _db.saveSnapshot(snapshot);
   }
 
   @override
@@ -127,10 +127,10 @@ class DriftStore implements Store {
     AppSnapshot snapshot, {
     Map<String, NotificationSyncOperation> notificationOperations = const {},
     Iterable<String> cleanupPaths = const [],
-  }) {
+  }) async {
     _ensureWritable();
     _validateSnapshot(snapshot);
-    return _db.saveSnapshotWithSideEffects(
+    await _db.saveSnapshotWithSideEffects(
       snapshot,
       notificationOperations: notificationOperations,
       cleanupPaths: cleanupPaths,
@@ -141,18 +141,18 @@ class DriftStore implements Store {
   String? loadCorruptBackup() => _corruptBackupInfo;
 
   @override
-  Future<void> clear() {
+  Future<void> clear() async {
     _ensureWritable();
-    return _db.clearAll();
+    await _db.clearAll();
   }
 
   @override
   Future<void> clearWithSideEffects({
     Iterable<String> notificationTodoIds = const [],
     Iterable<String> cleanupPaths = const [],
-  }) {
+  }) async {
     _ensureWritable();
-    return _db.clearAllWithSideEffects(
+    await _db.clearAllWithSideEffects(
       notificationTodoIds: notificationTodoIds,
       cleanupPaths: cleanupPaths,
     );
@@ -173,21 +173,21 @@ class DriftStore implements Store {
   }
 
   @override
-  Future<NotificationIdPair> getOrCreateNotificationIds(String todoId) {
+  Future<NotificationIdPair> getOrCreateNotificationIds(String todoId) async {
     _ensureWritable();
     return _db.getOrCreateNotificationIds(todoId);
   }
 
   @override
-  Future<NotificationIdPair?> findNotificationIds(String todoId) {
+  Future<NotificationIdPair?> findNotificationIds(String todoId) async {
     _ensureWritable();
     return _db.findNotificationIds(todoId);
   }
 
   @override
-  Future<void> releaseNotificationIds(String todoId) {
+  Future<void> releaseNotificationIds(String todoId) async {
     _ensureWritable();
-    return _db.releaseNotificationIds(todoId);
+    await _db.releaseNotificationIds(todoId);
   }
 
   @override
@@ -195,9 +195,9 @@ class DriftStore implements Store {
     String todoId,
     NotificationSyncOperation operation, {
     String? lastError,
-  }) {
+  }) async {
     _ensureWritable();
-    return _db.queueNotificationSync(
+    await _db.queueNotificationSync(
       todoId,
       operation,
       lastError: lastError,
@@ -205,7 +205,7 @@ class DriftStore implements Store {
   }
 
   @override
-  Future<List<PendingNotificationSync>> loadPendingNotificationSync() {
+  Future<List<PendingNotificationSync>> loadPendingNotificationSync() async {
     _ensureWritable();
     return _db.loadPendingNotificationSync();
   }
@@ -214,33 +214,33 @@ class DriftStore implements Store {
   Future<void> completeNotificationSync(
     String todoId, {
     bool releaseIds = false,
-  }) {
+  }) async {
     _ensureWritable();
-    return _db.completeNotificationSync(todoId, releaseIds: releaseIds);
+    await _db.completeNotificationSync(todoId, releaseIds: releaseIds);
   }
 
   @override
-  Future<void> enqueueFileCleanup(Iterable<String> paths) {
+  Future<void> enqueueFileCleanup(Iterable<String> paths) async {
     _ensureWritable();
-    return _db.enqueueFileCleanup(paths);
+    await _db.enqueueFileCleanup(paths);
   }
 
   @override
-  Future<List<String>> loadPendingFileCleanup() {
+  Future<List<String>> loadPendingFileCleanup() async {
     _ensureWritable();
     return _db.loadPendingFileCleanup();
   }
 
   @override
-  Future<void> markFileCleanupComplete(String path) {
+  Future<void> markFileCleanupComplete(String path) async {
     _ensureWritable();
-    return _db.markFileCleanupComplete(path);
+    await _db.markFileCleanupComplete(path);
   }
 
   @override
-  Future<void> markFileCleanupFailed(String path, Object error) {
+  Future<void> markFileCleanupFailed(String path, Object error) async {
     _ensureWritable();
-    return _db.markFileCleanupFailed(path, error);
+    await _db.markFileCleanupFailed(path, error);
   }
 
   @override
