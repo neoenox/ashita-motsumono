@@ -7,12 +7,14 @@
 - [ ] GitHub Actions の `Flutter CI` が通ることを確認する。
 - [ ] Play Consoleのアップロード証明書SHA-256を確認し、Repository Variable `ANDROID_UPLOAD_CERT_SHA256`へ登録する。
 - [ ] GitHub Actions の `Release Android` を手動実行し、署名済みAPK/AAB artifact が生成されることを確認する。
+- [ ] `release-manifest.json`のcommit SHA、Run ID、version、application ID、課金商品ID、APK/AAB SHA-256が正式Release対象と一致することを確認する。
 - [ ] APK artifact をAndroid実機に入れ、カメラ撮影、画像選択、日本語OCR、通知許可、通知予約を確認する。
 - [ ] 内部テスト版で広告削除の購入・復元を確認する。
 - [ ] 本番AdMob App ID / 広告ユニットIDで広告が読み込まれ、購入済み状態では非表示になることを確認する。
 - [ ] Play Console に `docs/STORE_LISTING_JA.md` の掲載文、データセーフティ回答、審査メモを転記して確認する。
 - [ ] Play Console にプライバシーポリシー公開URL、連絡先メールアドレス、カテゴリ、スクリーンショット、アプリアイコンを登録する。
 - [ ] 提出直前に `docs/PLAY_CONSOLE_SUBMISSION.md` の未完了項目を上から順に確認する。
+- [ ] PR #104 merge後は追加のCI機能開発を原則停止し、Play Console設定と正式Release証跡確認へ進む。
 
 ## 今回対応済み
 
@@ -35,6 +37,7 @@
 - [x] Release AndroidでAPK/AABの署名を自動検証し、検証ログとSHA-256をartifactへ保存する。
 - [x] リリースビルドの商品IDをRepository Variableから取得し、未設定時だけ`remove_ads`へフォールバックする。
 - [x] Play Consoleで確認したアップロード証明書SHA-256を、キーストア・APK・AABの3段階で照合するCIガードを追加する。
+- [x] 証明書照合・バイナリ再ハッシュ後に`release-manifest.json`を生成し、APK/AABと監査証跡artifactへ保存する。
 
 ## v0.7以降の候補
 
