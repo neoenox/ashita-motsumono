@@ -42,7 +42,7 @@ function PreflightState([switch]$RequireApp){
   [pscustomobject]@{Result=$(if($ok){'PASS'}else{'BLOCKED'});State=$state;Boot=$boot;Qemu=$qemu;Timezone=$tz;Installed=$installed;Permission=$perm;Git=$git}
 }
 function RequirePreflight([switch]$RequireApp){$p=PreflightState -RequireApp:$RequireApp;if($p.Result -ne 'PASS'){throw "preflight blocked: $($p|ConvertTo-Json -Compress -Depth 5)"};$p}
-function Filter($Source,$Destination,[string[]]$Patterns){if(Test-Path $Source){Select-String $Source -Pattern $Patterns -SimpleMatch -Context 4,8|Out-File $Destination -Encoding utf8}}
+function FilterEvidence($Source,$Destination,[string[]]$Patterns){if(Test-Path $Source){Select-String $Source -Pattern $Patterns -SimpleMatch -Context 4,8|Out-File $Destination -Encoding utf8}}
 function Screen($Directory,[switch]$Shade){
   if($Shade){Adb @('shell','cmd','statusbar','expand-notifications') (Join-Path $Directory 'expand-shade.txt') -AllowFailure|Out-Null;Start-Sleep 2}
   $n="issue60-$CaseName-$(Stamp)";$png="/sdcard/Download/$n.png";$xml="/sdcard/Download/$n.xml"
@@ -60,10 +60,10 @@ function Snapshot([string]$Label,[switch]$Shade){
     'package.txt'=@('shell','dumpsys','package',$PackageName);'appop.txt'=@('shell','cmd','appops','get',$PackageName,'POST_NOTIFICATION');'activities.txt'=@('shell','dumpsys','activity','activities');'power.txt'=@('shell','dumpsys','power');'deviceidle.txt'=@('shell','dumpsys','deviceidle');'alarm.txt'=@('shell','dumpsys','alarm');'notification.txt'=@('shell','dumpsys','notification','--noredact');'logcat.txt'=@('logcat','-d','-v','threadtime')
   }
   foreach($k in $commands.Keys){Adb $commands[$k] (Join-Path $d $k) -AllowFailure|Out-Null}
-  Filter (Join-Path $d 'alarm.txt') (Join-Path $d 'alarm-filtered.txt') @($PackageName,'ScheduledNotification','flutterlocalnotifications')
-  Filter (Join-Path $d 'notification.txt') (Join-Path $d 'notification-filtered.txt') @($PackageName,$TodoTitle)
-  Filter (Join-Path $d 'activities.txt') (Join-Path $d 'foreground-filtered.txt') @('mResumedActivity','topResumedActivity',$PackageName)
-  Filter (Join-Path $d 'logcat.txt') (Join-Path $d 'logcat-filtered.txt') @($PackageName,'MY_PACKAGE_REPLACED','BOOT_COMPLETED','ScheduledNotification','flutterlocalnotifications')
+  FilterEvidence (Join-Path $d 'alarm.txt') (Join-Path $d 'alarm-filtered.txt') @($PackageName,'ScheduledNotification','flutterlocalnotifications')
+  FilterEvidence (Join-Path $d 'notification.txt') (Join-Path $d 'notification-filtered.txt') @($PackageName,$TodoTitle)
+  FilterEvidence (Join-Path $d 'activities.txt') (Join-Path $d 'foreground-filtered.txt') @('mResumedActivity','topResumedActivity',$PackageName)
+  FilterEvidence (Join-Path $d 'logcat.txt') (Join-Path $d 'logcat-filtered.txt') @($PackageName,'MY_PACKAGE_REPLACED','BOOT_COMPLETED','ScheduledNotification','flutterlocalnotifications')
   Screen $d -Shade:$Shade
   $ui=if(Test-Path (Join-Path $d 'ui.xml')){Get-Content -Raw (Join-Path $d 'ui.xml')}else{''};$not=Get-Content -Raw (Join-Path $d 'notification.txt');$fg=Foreground
   $uiTitle=$TodoTitle -and $ui -match [regex]::Escape($TodoTitle);$dumpTitle=$TodoTitle -and $not -match [regex]::Escape($TodoTitle)
