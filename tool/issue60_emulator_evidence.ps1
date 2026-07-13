@@ -34,7 +34,7 @@ param(
   [string]$OutputRoot = (
     Join-Path (
       [Environment]::GetFolderPath('MyDocuments')
-    ) 'ashita-issue60-evidence'
+    ) 'ashita-release-evidence'
   ),
   [int]$BootTimeoutSeconds = 300,
   [int]$FailureWaitMinutes = 20,
@@ -134,10 +134,24 @@ switch ($Action) {
       throw 'plan Source SHA differs from current HEAD'
     }
     $baseline = Snapshot 'baseline'
+    $registrationPath = Join-Path $CaseDirectory 'alarm-registration.json'
     $registration = AlarmRegistration `
       ([string]$plan.PreSave) `
       $baseline `
-      (Join-Path $CaseDirectory 'alarm-registration.json')
+      $registrationPath
+    $countIncreased = (
+      [int]$registration.AfterRelevantLineCount -gt
+      [int]$registration.BeforeRelevantLineCount
+    )
+    $registration |
+      Add-Member `
+        -NotePropertyName RelevantLineCountIncreased `
+        -NotePropertyValue ([bool]$countIncreased) `
+        -Force
+    if (-not $countIncreased) {
+      $registration.Result = 'INCONCLUSIVE'
+    }
+    Json $registration $registrationPath
     Json (
       [ordered]@{
         CaseName = $CaseName
