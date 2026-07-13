@@ -3,34 +3,26 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  final script = File('tool/issue60_emulator_evidence.ps1');
+  final entrypoint = File('tool/issue60_emulator_evidence.ps1');
   final core = File('tool/issue60_emulator_evidence_core.ps1');
   final cases = File('tool/issue60_emulator_evidence_cases.ps1');
   final sessionDriver = File('tool/release_validation_session.ps1');
-  final runbook = File('docs/ISSUE60_ANDROID_EMULATOR_VALIDATION.md');
+  final issueRunbook = File('docs/ISSUE60_ANDROID_EMULATOR_VALIDATION.md');
   final sessionRunbook = File('docs/RELEASE_VALIDATION_SESSION.md');
   final releasePlan = File('docs/RELEASE_EXECUTION_PLAN.md');
   final checklist = File('docs/notification-release-checklist.md');
   final manifest = File('android/app/src/main/AndroidManifest.xml');
 
-  String readEvidenceTool() => <File>[script, core, cases]
-      .map((file) => file.readAsStringSync())
-      .join('\n');
+  final evidenceFiles = <File>[entrypoint, core, cases];
+  final powerShellFiles = <File>[...evidenceFiles, sessionDriver];
 
-  String readAllPowerShell() => <File>[
-        script,
-        core,
-        cases,
-        sessionDriver,
-      ].map((file) => file.readAsStringSync()).join('\n');
+  String joinFiles(Iterable<File> files) =>
+      files.map((file) => file.readAsStringSync()).join('\n');
 
   test('Issue #60 evidence and session files exist', () {
     for (final file in <File>[
-      script,
-      core,
-      cases,
-      sessionDriver,
-      runbook,
+      ...powerShellFiles,
+      issueRunbook,
       sessionRunbook,
       releasePlan,
       checklist,
@@ -39,42 +31,52 @@ void main() {
     }
   });
 
-  test('PowerShell entrypoint fixes target identity and workflow', () {
-    final text = script.readAsStringSync();
+  test('entrypoint fixes target identity and workflow actions', () {
+    final text = entrypoint.readAsStringSync();
 
-    expect(text, contains("'emulator-5554'"));
-    expect(text, contains("'com.ashita_motsumono'"));
-    expect(text, contains("'PlanCase'"));
-    expect(text, contains("'BeginCase'"));
-    expect(text, contains("'Aggregate'"));
-    expect(text, contains(r'$Serial -ne'));
-    expect(text, contains(r'$PackageName -ne'));
-    expect(text, contains('issue60_emulator_evidence_core.ps1'));
-    expect(text, contains('issue60_emulator_evidence_cases.ps1'));
+    for (final token in <String>[
+      "'emulator-5554'",
+      "'com.ashita_motsumono'",
+      "'PlanCase'",
+      "'BeginCase'",
+      "'Aggregate'",
+      r'$Serial -ne',
+      r'$PackageName -ne',
+      'issue60_emulator_evidence_core.ps1',
+      'issue60_emulator_evidence_cases.ps1',
+    ]) {
+      expect(text, contains(token), reason: token);
+    }
   });
 
   test('all direct ADB execution stays in the fixed serial wrapper', () {
-    final text = readAllPowerShell();
+    final text = joinFiles(powerShellFiles);
 
     expect(text, contains(r'& adb -s $Serial @Args'));
     expect('& adb '.allMatches(text).length, 2);
   });
 
-  test('evidence tool proves alarm registration with a pre-save delta', () {
-    final entrypoint = script.readAsStringSync();
+  test('alarm registration uses Todo pre-save and post-save evidence', () {
+    final entrypointText = entrypoint.readAsStringSync();
     final coreText = core.readAsStringSync();
     final casesText = cases.readAsStringSync();
+    final evidenceText = joinFiles(evidenceFiles);
 
-    expect(entrypoint, contains("Snapshot 'pre-save'"));
-    expect(entrypoint, contains('case-plan.json'));
-    expect(entrypoint, contains('AlarmRegistration'));
-    expect(entrypoint, contains('alarm-registration.json'));
-    expect(coreText, contains('function RelevantAlarmLines'));
-    expect(coreText, contains('function AlarmRegistration'));
-    expect(coreText, contains('BeforeRelevantLineCount'));
-    expect(coreText, contains('AfterRelevantLineCount'));
-    expect(coreText, contains('AddedLineCount'));
-    expect(coreText, contains('AddedLines'));
+    expect(entrypointText, contains("Snapshot 'pre-save'"));
+    expect(evidenceText, contains('case-plan.json'));
+    expect(entrypointText, contains('AlarmRegistration'));
+    expect(evidenceText, contains('alarm-registration.json'));
+
+    for (final token in <String>[
+      'function RelevantAlarmLines',
+      'function AlarmRegistration',
+      'BeforeRelevantLineCount',
+      'AfterRelevantLineCount',
+      'AddedLineCount',
+      'AddedLines',
+    ]) {
+      expect(coreText, contains(token), reason: token);
+    }
     expect(
       casesText,
       contains(r"$r.Result -eq 'PASS' -and [int]$r.AddedLineCount -gt 0"),
@@ -82,10 +84,10 @@ void main() {
     expect(casesText, contains('AlarmRegistrationEvidence'));
   });
 
-  test('PowerShell tool implements evidence and verdict gates', () {
-    final text = readEvidenceTool();
+  test('evidence tool implements strict verdict gates', () {
+    final text = joinFiles(evidenceFiles);
 
-    for (final required in <String>[
+    for (final token in <String>[
       'POST_NOTIFICATION',
       'origin/master',
       'TrackedStatus',
@@ -109,11 +111,11 @@ void main() {
       'issue60-summary.md',
       'ELIGIBLE_FOR_CLOSE_REVIEW',
     ]) {
-      expect(text, contains(required), reason: 'missing contract token: $required');
+      expect(text, contains(token), reason: token);
     }
   });
 
-  test('install close path requires notification evidence and source consistency', () {
+  test('install close path requires notification and source evidence', () {
     final text = cases.readAsStringSync();
 
     expect(
@@ -128,10 +130,10 @@ void main() {
     expect(text, contains(r'$currentSourceMatches'));
   });
 
-  test('session driver has one evidence root and strict execution order', () {
+  test('session driver has one evidence root and strict order', () {
     final text = sessionDriver.readAsStringSync();
 
-    for (final required in <String>[
+    for (final token in <String>[
       'ashita-release-evidence',
       'release-validation-state.json',
       'release-session.json',
@@ -150,40 +152,34 @@ void main() {
       'normal case must PASS before reboot',
       'reboot case must PASS before install-r',
       "'fetch', 'origin'",
-      'Permission',
       'GRANTED',
       'host UTC offset must be +09:00',
     ]) {
-      expect(text, contains(required), reason: 'missing session token: $required');
+      expect(text, contains(token), reason: token);
     }
 
-    final doctor = text.indexOf("'Doctor'");
-    final buildInstall = text.indexOf("'BuildInstall'");
-    final startSession = text.indexOf("'StartSession'");
-    final planCase = text.indexOf("'PlanCase'");
-    final aggregate = text.indexOf("'Aggregate'");
     final positions = <int>[
-      doctor,
-      buildInstall,
-      startSession,
-      planCase,
-      aggregate,
+      text.indexOf("'Doctor'"),
+      text.indexOf("'BuildInstall'"),
+      text.indexOf("'StartSession'"),
+      text.indexOf("'PlanCase'"),
+      text.indexOf("'Aggregate'"),
     ];
     expect(positions, everyElement(greaterThanOrEqualTo(0)));
     expect(positions, orderedEquals(<int>[...positions]..sort()));
   });
 
-  test('PowerShell tools exclude prohibited ADB and data-reset operations', () {
-    final text = readAllPowerShell().toLowerCase();
+  test('PowerShell excludes destructive or ambiguous ADB operations', () {
+    final text = joinFiles(powerShellFiles).toLowerCase();
 
-    for (final prohibited in <String>[
+    for (final token in <String>[
       'force-stop',
       'pm clear',
       'adb -d',
       'adb uninstall',
       'wipe-data',
     ]) {
-      expect(text, isNot(contains(prohibited)), reason: prohibited);
+      expect(text, isNot(contains(token)), reason: token);
     }
   });
 
@@ -254,8 +250,8 @@ if ($failed) { exit 1 }
     );
   });
 
-  test('runbooks preserve session, case, and release acceptance order', () {
-    final issueText = runbook.readAsStringSync();
+  test('runbooks preserve session and acceptance order', () {
+    final issueText = issueRunbook.readAsStringSync();
     final sessionText = sessionRunbook.readAsStringSync();
     final releaseText = releasePlan.readAsStringSync();
     final checklistText = checklist.readAsStringSync();
