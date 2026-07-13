@@ -146,6 +146,8 @@ jobs:
             'case-plan.json',
             'alarm-registration.json',
             'AddedLineCount',
+            'RelevantLineCountIncreased',
+            'AfterRelevantLineCount -gt [int]$r.BeforeRelevantLineCount',
             'ashita-release-evidence',
             'release-validation-state.json',
             'release_execution_orchestrator.py',
