@@ -9,7 +9,7 @@ param(
   [string]$OutputRoot=(Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'ashita-issue60-evidence'),
   [int]$BootTimeoutSeconds=300, [int]$FailureWaitMinutes=20, [int]$PollSeconds=15,
   [switch]$RequireInstalledApp, [switch]$ExpandNotificationShade, [switch]$ResetLogcatBeforeMutation,
-  [switch]$InstallBroadcastUnverified, [switch]$ManualScreenshotVerified,
+  [switch]$InstallBroadcastVerified, [switch]$InstallBroadcastUnverified, [switch]$ManualScreenshotVerified,
   [string]$NormalCaseName='', [string]$RebootCaseName='', [string]$InstallCaseName=''
 )
 Set-StrictMode -Version Latest
@@ -18,7 +18,8 @@ if($Serial -ne 'emulator-5554'){throw 'serial must be emulator-5554'}
 if($PackageName -ne 'com.ashita_motsumono'){throw 'package must be com.ashita_motsumono'}
 if($FailureWaitMinutes -lt 15){throw 'FailureWaitMinutes must be at least 15'}
 if($PollSeconds -lt 5 -or $PollSeconds -gt 60){throw 'PollSeconds must be 5..60'}
-if(-not (Get-Command adb -ErrorAction SilentlyContinue)){throw 'adb not found'}
+if($InstallBroadcastVerified -and $InstallBroadcastUnverified){throw 'broadcast cannot be both verified and unverified'}
+if($Action -ne 'Aggregate' -and -not (Get-Command adb -ErrorAction SilentlyContinue)){throw 'adb not found'}
 $CaseDirectory=Join-Path $OutputRoot $CaseName
 New-Item -ItemType Directory -Force $CaseDirectory|Out-Null
 
@@ -31,7 +32,7 @@ switch($Action){
   'BeginCase'{if($CaseType -eq 'setup' -or -not $TodoTitle -or -not $ExpectedTime){throw 'case type, title and expected time required'};$e=ParseTime $ExpectedTime 'ExpectedTime';if($e -le [DateTimeOffset]::Now.AddMinutes(2)){throw 'expected time too soon'};$p=RequirePreflight -RequireApp;$d=Snapshot 'baseline';Json ([ordered]@{CaseName=$CaseName;CaseType=$CaseType;TodoTitle=$TodoTitle;ExpectedTime=$e.ToString('o');SourceSha=$p.Git.Head;OriginMaster=$p.Git.OriginMaster;StartedAtHost=(Get-Date -Format o);StartedAtDevice=(DeviceTime);Baseline=$d;ProhibitedOperationsUsed=$false}) (MetadataPath)}
   'Wait'{WaitCase}
   'Capture'{AssertCase|Out-Null;RequirePreflight -RequireApp|Out-Null;Snapshot 'capture' -Shade:$ExpandNotificationShade|Out-Null}
-  'Install'{if(-not $ApkPath){throw 'ApkPath required'};if($CaseType -eq 'install-r'){AssertCase|Out-Null;RequirePreflight -RequireApp|Out-Null}else{RequirePreflight|Out-Null};$apk=(Resolve-Path $ApkPath).Path;$before=Snapshot 'before-install';$old=LastUpdate;$hash=(Get-FileHash $apk -Algorithm SHA256).Hash.ToLowerInvariant();if($ResetLogcatBeforeMutation){Adb @('logcat','-c') (Join-Path $before 'logcat-clear.txt')|Out-Null};$d=Join-Path $CaseDirectory "$(Stamp)-install";New-Item -ItemType Directory -Force $d|Out-Null;$x=Adb @('install','-r',$apk) (Join-Path $d 'adb-install-r.txt');Start-Sleep 3;$after=Snapshot 'after-install';$ok=$x.ExitCode -eq 0 -and (($x.Output -join "`n") -match '(?m)^Success$');Json ([ordered]@{Result=$(if($ok){'PASS'}else{'FAIL'});ApkSha256=$hash;BeforeLastUpdate=$old;AfterLastUpdate=(LastUpdate);Before=$before;After=$after;AppOpenedByScript=$false}) (Join-Path $CaseDirectory 'install-result.json');if(-not $ok){throw 'install failed'}}
+  'Install'{if(-not $ApkPath){throw 'ApkPath required'};if($CaseType -eq 'install-r'){AssertCase|Out-Null;RequirePreflight -RequireApp|Out-Null}else{RequirePreflight|Out-Null};$apk=(Resolve-Path $ApkPath).Path;$before=Snapshot 'before-install';$old=LastUpdate;$hash=(Get-FileHash $apk -Algorithm SHA256).Hash.ToLowerInvariant();if($ResetLogcatBeforeMutation){Adb @('logcat','-c') (Join-Path $before 'logcat-clear.txt')|Out-Null};$d=Join-Path $CaseDirectory "$(Stamp)-install";New-Item -ItemType Directory -Force $d|Out-Null;$x=Adb @('install','-r',$apk) (Join-Path $d 'adb-install-r.txt');Start-Sleep 3;$after=Snapshot 'after-install';$new=LastUpdate;$ok=$x.ExitCode -eq 0 -and (($x.Output -join "`n") -match '(?m)^Success$');Json ([ordered]@{Result=$(if($ok){'PASS'}else{'FAIL'});ApkSha256=$hash;BeforeLastUpdate=$old;AfterLastUpdate=$new;LastUpdateTimeChanged=[bool]($old -and $new -and $old -ne $new);InstallCompletedAt=(Get-Date -Format o);Before=$before;After=$after;AppOpenedByScript=$false}) (Join-Path $CaseDirectory 'install-result.json');if(-not $ok){throw 'install failed'}}
   'Reboot'{if($CaseType -ne 'reboot'){throw 'CaseType reboot required'};AssertCase|Out-Null;RequirePreflight -RequireApp|Out-Null;$before=Snapshot 'before-reboot';$old=AdbText @('shell','cat','/proc/sys/kernel/random/boot_id');if($ResetLogcatBeforeMutation){Adb @('logcat','-c') (Join-Path $before 'logcat-clear.txt')|Out-Null};$requested=Get-Date -Format o;Adb @('reboot') (Join-Path $CaseDirectory 'adb-reboot.txt')|Out-Null;Adb @('wait-for-device') (Join-Path $CaseDirectory 'adb-wait.txt')|Out-Null;$limit=(Get-Date).AddSeconds($BootTimeoutSeconds);do{Start-Sleep 2;$boot=AdbText @('shell','getprop','sys.boot_completed')}while($boot -ne '1' -and (Get-Date) -lt $limit);if($boot -ne '1'){Json ([ordered]@{Result='BLOCKED';Reason='boot timeout'}) (Join-Path $CaseDirectory 'reboot-result.json');throw 'boot timeout'};$new=AdbText @('shell','cat','/proc/sys/kernel/random/boot_id');$changed=$old -and $new -and $old -ne $new;$after=Snapshot 'after-reboot';Json ([ordered]@{Result=$(if($changed){'PASS'}else{'BLOCKED'});RequestedAt=$requested;CompletedAt=(Get-Date -Format o);BeforeBootId=$old;AfterBootId=$new;BootIdChanged=[bool]$changed;Before=$before;After=$after;AppOpenedByScript=$false}) (Join-Path $CaseDirectory 'reboot-result.json');if(-not $changed){throw 'boot id unchanged'}}
   'Finalize'{FinalizeCase}
   'Aggregate'{Aggregate}
