@@ -1,0 +1,47 @@
+name: PR Analyze Diagnostics
+
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/pr-analyze-diagnostics.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Capture analyze report
+        id: analyze
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter analyze --no-fatal-infos 2>&1 | tee analyze-report.txt
+
+      - name: Upload analyze report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyze-report
+          path: analyze-report.txt
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Enforce analyze result
+        if: steps.analyze.outcome == 'failure'
+        run: exit 1
