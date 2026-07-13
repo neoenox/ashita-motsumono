@@ -1,11 +1,21 @@
 from __future__ import annotations
 
 from pathlib import Path
+import plistlib
 import unittest
+import xml.etree.ElementTree as ET
+
+from tool.configure_platform_display_name import (
+    ANDROID_NS,
+    APP_DISPLAY_NAME,
+    transform_android_manifest,
+    transform_ios_info_plist,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / '.github/workflows/ci.yml'
+CONFIGURE_RELEASE = ROOT / 'tool/configure_android_release.sh'
 
 
 class ReleaseWorkflowTest(unittest.TestCase):
@@ -70,6 +80,68 @@ class ReleaseWorkflowTest(unittest.TestCase):
             '--dart-define=IAP_REMOVE_ADS_PRODUCT_ID=${IAP_REMOVE_ADS_PRODUCT_ID}',
             self.workflow,
         )
+
+    def test_release_configuration_applies_platform_display_name(self) -> None:
+        script = CONFIGURE_RELEASE.read_text(encoding='utf-8')
+        display_name = script.index('configure_platform_display_name.py')
+        signing = script.index('enforce_android_release_signing.py')
+
+        self.assertLess(display_name, signing)
+
+
+class PlatformDisplayNameTest(unittest.TestCase):
+    def test_android_manifest_label_is_overwritten_and_idempotent(self) -> None:
+        manifest = '''<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:label="old name">
+        <activity android:name=".MainActivity" />
+    </application>
+</manifest>
+'''
+
+        updated = transform_android_manifest(manifest)
+        root = ET.fromstring(updated)
+        application = root.find('application')
+
+        self.assertIsNotNone(application)
+        self.assertEqual(
+            application.get(f'{{{ANDROID_NS}}}label'),
+            APP_DISPLAY_NAME,
+        )
+        self.assertEqual(transform_android_manifest(updated), updated)
+
+    def test_ios_display_name_is_overwritten_and_idempotent(self) -> None:
+        info_plist = plistlib.dumps(
+            {
+                'CFBundleDisplayName': 'old name',
+                'CFBundleName': 'old name',
+                'CFBundleIdentifier': '$(PRODUCT_BUNDLE_IDENTIFIER)',
+            },
+            fmt=plistlib.FMT_XML,
+            sort_keys=False,
+        )
+
+        updated = transform_ios_info_plist(info_plist)
+        values = plistlib.loads(updated)
+
+        self.assertEqual(values['CFBundleDisplayName'], APP_DISPLAY_NAME)
+        self.assertEqual(values['CFBundleName'], APP_DISPLAY_NAME)
+        self.assertEqual(transform_ios_info_plist(updated), updated)
+
+    def test_public_name_is_consistent_in_release_sources(self) -> None:
+        paths = (
+            ROOT / 'README.md',
+            ROOT / 'android/app/src/main/AndroidManifest.xml',
+            ROOT / 'lib/main.dart',
+            ROOT / 'docs/STORE_LISTING_JA.md',
+            ROOT / 'docs/PLAY_CONSOLE_SUBMISSION.md',
+        )
+
+        for path in paths:
+            with self.subTest(path=path):
+                text = path.read_text(encoding='utf-8')
+                self.assertIn(APP_DISPLAY_NAME, text)
+                self.assertNotIn('あした持つもの', text)
 
 
 if __name__ == '__main__':
