@@ -61,6 +61,11 @@ void main() {
       'HostGapDetected',
       'TitleEvidence',
       'AppForeground',
+      'InstallBroadcastVerified',
+      'InstallBroadcastUnverified',
+      'NotificationEvidenceComplete',
+      'SourceConsistency',
+      'CurrentSourceMatches',
       'case-result.json',
       'issue-comment.md',
       'issue60-summary.md',
@@ -68,6 +73,21 @@ void main() {
     ]) {
       expect(text, contains(required), reason: 'missing contract token: $required');
     }
+  });
+
+  test('install close path requires notification evidence and source consistency', () {
+    final text = cases.readAsStringSync();
+
+    expect(
+      text,
+      contains("if(-not \$notificationComplete -or -not \$installResult"),
+    );
+    expect(
+      text,
+      contains("\$i.Verdict -eq 'PASS' -and \$i.InstallBroadcastVerified"),
+    );
+    expect(text, contains(r'$sourceConsistent'));
+    expect(text, contains(r'$currentSourceMatches'));
   });
 
   test('PowerShell tool excludes prohibited ADB operations', () {
@@ -85,14 +105,26 @@ void main() {
 
   test('PowerShell files parse when a shell is available', () {
     String? shell;
-    for (final candidate in <String>['pwsh', if (Platform.isWindows) 'powershell']) {
-      final probe = Process.runSync(
-        candidate,
-        <String>['-NoLogo', '-NoProfile', '-Command', r'$PSVersionTable.PSVersion.ToString()'],
-      );
-      if (probe.exitCode == 0) {
-        shell = candidate;
-        break;
+    for (final candidate in <String>[
+      'pwsh',
+      if (Platform.isWindows) 'powershell',
+    ]) {
+      try {
+        final probe = Process.runSync(
+          candidate,
+          <String>[
+            '-NoLogo',
+            '-NoProfile',
+            '-Command',
+            r'$PSVersionTable.PSVersion.ToString()',
+          ],
+        );
+        if (probe.exitCode == 0) {
+          shell = candidate;
+          break;
+        }
+      } on ProcessException {
+        continue;
       }
     }
 
@@ -114,7 +146,9 @@ Get-ChildItem tool/issue60_emulator_evidence*.ps1 | ForEach-Object {
     [ref]$errors
   ) | Out-Null
   if ($errors.Count -gt 0) {
-    Write-Error ("{0}: {1}" -f $_.Name, ($errors -join [Environment]::NewLine))
+    foreach ($parseError in $errors) {
+      Write-Error ("{0}:{1}:{2}: {3}" -f $_.Name, $parseError.Extent.StartLineNumber, $parseError.Extent.StartColumnNumber, $parseError.Message)
+    }
     $failed = $true
   }
 }
@@ -139,11 +173,14 @@ if ($failed) { exit 1 }
     expect(runbookText, contains('通常通知がPASSしてから進む'));
     expect(runbookText, contains('boot ID'));
     expect(runbookText, contains('MY_PACKAGE_REPLACED'));
+    expect(runbookText, contains('InstallBroadcastVerified'));
     expect(runbookText, contains('INCONCLUSIVE'));
+    expect(runbookText, contains('Source SHA'));
     expect(runbookText, contains('Aggregate'));
     expect(checklistText, contains('予定時刻+20分'));
     expect(checklistText, contains('NormalがPASS'));
     expect(checklistText, contains('RebootがPASS'));
+    expect(checklistText, contains('3ケースのSource SHA'));
   });
 
   test('Boot receiver remains non-exported', () {
