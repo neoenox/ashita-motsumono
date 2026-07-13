@@ -1,0 +1,77 @@
+name: Release Execution Gate CI
+
+on:
+  pull_request:
+    paths:
+      - 'tool/release_execution_gate.py'
+      - 'tool/test_release_execution_gate.py'
+      - 'docs/RELEASE_EXECUTION_PLAN.md'
+      - 'docs/PLAY_CONSOLE_SUBMISSION.md'
+      - 'docs/ANDROID_RELEASE.md'
+      - '.github/workflows/release-execution-gate.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'tool/release_execution_gate.py'
+      - 'tool/test_release_execution_gate.py'
+      - 'docs/RELEASE_EXECUTION_PLAN.md'
+      - 'docs/PLAY_CONSOLE_SUBMISSION.md'
+      - 'docs/ANDROID_RELEASE.md'
+      - '.github/workflows/release-execution-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-gate-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile release gate
+        run: |
+          python -m py_compile \
+            tool/release_execution_gate.py \
+            tool/test_release_execution_gate.py
+
+      - name: Test release gate
+        run: python tool/test_release_execution_gate.py
+
+      - name: Verify fixed release identity and gate order
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          tool = Path('tool/release_execution_gate.py').read_text(encoding='utf-8')
+          runbook = Path('docs/RELEASE_EXECUTION_PLAN.md').read_text(encoding='utf-8')
+
+          required = (
+              'kaenozu/ashita-motsumono',
+              'com.ashita_motsumono',
+              'ELIGIBLE_FOR_CLOSE_REVIEW',
+              'READY_FOR_SUBMISSION',
+              'issueOrder": [60, 98, 59, 94]',
+              'mergeFreezeRequiredUntilIssue60Aggregation',
+          )
+          for token in required:
+              if token not in tool:
+                  raise SystemExit(f'missing release-gate token: {token}')
+
+          order = [
+              'Issue #60',
+              'Issue #98',
+              'Issue #59',
+              'Issue #94',
+          ]
+          positions = [runbook.index(token) for token in order]
+          if positions != sorted(positions):
+              raise SystemExit('release issue order is not 60 -> 98 -> 59 -> 94')
+          PY
