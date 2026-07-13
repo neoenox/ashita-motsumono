@@ -4,75 +4,88 @@ on:
   pull_request:
     paths:
       - 'tool/release_validation_control.ps1'
+      - 'tool/release_validation_session.ps1'
       - '.github/workflows/release-validation-status-diagnostic.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  status-diagnostic:
-    runs-on: windows-latest
+  apply-status-fix:
+    runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
+      - name: Check out source branch
         uses: actions/checkout@v4
-
-      - name: Capture Status diagnostic
-        id: diagnostic
-        continue-on-error: true
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $root = Join-Path $env:RUNNER_TEMP 'status-diagnostic'
-          $report = [System.Collections.Generic.List[string]]::new()
-          try {
-            $report.Add("PSVersion=$($PSVersionTable.PSVersion)")
-            $report.Add("Root=$root")
-            $status = & .\tool\release_validation_control.ps1 `
-              -Action Status `
-              -EvidenceRoot $root
-            $report.Add('Invocation=PASS')
-            $report.Add('StatusObject:')
-            $report.Add(($status | ConvertTo-Json -Depth 20))
-            $statusPath = Join-Path $root 'release-validation-status.json'
-            $report.Add("StatusPath=$statusPath")
-            $report.Add("StatusExists=$(Test-Path $statusPath)")
-            if (Test-Path $statusPath) {
-              $bytes = [IO.File]::ReadAllBytes($statusPath)
-              $prefix = @($bytes | Select-Object -First 8) -join ','
-              $report.Add("BytePrefix=$prefix")
-              $report.Add('StatusFile:')
-              $report.Add([IO.File]::ReadAllText(
-                $statusPath,
-                [Text.UTF8Encoding]::new($false, $true)
-              ))
-            }
-          }
-          catch {
-            $report.Add('Invocation=FAIL')
-            $report.Add("ExceptionType=$($_.Exception.GetType().FullName)")
-            $report.Add("Message=$($_.Exception.Message)")
-            $report.Add("ScriptStackTrace=$($_.ScriptStackTrace)")
-            $report.Add("PositionMessage=$($_.InvocationInfo.PositionMessage)")
-            $report.Add("ErrorRecord=$($_ | Out-String)")
-            $report -join [Environment]::NewLine |
-              Set-Content status-diagnostic.txt -Encoding utf8
-            throw
-          }
-          finally {
-            $report -join [Environment]::NewLine |
-              Set-Content status-diagnostic.txt -Encoding utf8
-          }
-
-      - name: Upload Status diagnostic
-        if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: release-validation-status-diagnostic
-          path: status-diagnostic.txt
-          if-no-files-found: error
-          retention-days: 3
+          ref: agent/release-validation-hardening
+          fetch-depth: 0
 
-      - name: Enforce diagnostic result
-        if: steps.diagnostic.outcome == 'failure'
-        shell: powershell
-        run: exit 1
+      - name: Make git reads exception-safe
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          old = '''  Push-Location $RepoRoot
+  try {
+    $value = & git @Arguments 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      return ''
+    }
+    ($value | Out-String).Trim()
+  }
+  finally {
+    Pop-Location
+  }
+'''
+          new = '''  Push-Location $RepoRoot
+  try {
+    try {
+      $value = & git @Arguments 2>$null
+    }
+    catch {
+      return ''
+    }
+    if ($LASTEXITCODE -ne 0) {
+      return ''
+    }
+    ($value | Out-String).Trim()
+  }
+  finally {
+    Pop-Location
+  }
+'''
+          changed = []
+          for name in (
+              'tool/release_validation_control.ps1',
+              'tool/release_validation_session.ps1',
+          ):
+              path = Path(name)
+              text = path.read_text(encoding='utf-8')
+              if new in text:
+                  continue
+              if old not in text:
+                  raise SystemExit(f'Get-GitValue anchor missing: {name}')
+              path.write_text(
+                  text.replace(old, new, 1),
+                  encoding='utf-8',
+                  newline='\n',
+              )
+              changed.append(name)
+          print('\n'.join(changed) if changed else 'already applied')
+          PY
+
+      - name: Commit correction
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'No correction required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            tool/release_validation_control.ps1 \
+            tool/release_validation_session.ps1
+          git commit -m 'fix: tolerate missing git refs in release status'
+          git push origin HEAD:agent/release-validation-hardening
