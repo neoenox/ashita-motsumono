@@ -83,6 +83,55 @@ void main() {
     }
   });
 
+  test('PowerShell files parse when a shell is available', () {
+    String? shell;
+    for (final candidate in <String>['pwsh', if (Platform.isWindows) 'powershell']) {
+      final probe = Process.runSync(
+        candidate,
+        <String>['-NoLogo', '-NoProfile', '-Command', r'$PSVersionTable.PSVersion.ToString()'],
+      );
+      if (probe.exitCode == 0) {
+        shell = candidate;
+        break;
+      }
+    }
+
+    if (shell == null) {
+      if (Platform.environment['CI'] == 'true') {
+        fail('PowerShell is required in CI to parse the Issue #60 evidence tool.');
+      }
+      return;
+    }
+
+    final parserScript = r'''
+$failed = $false
+Get-ChildItem tool/issue60_emulator_evidence*.ps1 | ForEach-Object {
+  $tokens = $null
+  $errors = $null
+  [System.Management.Automation.Language.Parser]::ParseFile(
+    $_.FullName,
+    [ref]$tokens,
+    [ref]$errors
+  ) | Out-Null
+  if ($errors.Count -gt 0) {
+    Write-Error ("{0}: {1}" -f $_.Name, ($errors -join [Environment]::NewLine))
+    $failed = $true
+  }
+}
+if ($failed) { exit 1 }
+''';
+    final result = Process.runSync(
+      shell,
+      <String>['-NoLogo', '-NoProfile', '-Command', parserScript],
+    );
+
+    expect(
+      result.exitCode,
+      0,
+      reason: '${result.stdout}\n${result.stderr}',
+    );
+  });
+
   test('Runbook and checklist preserve acceptance order', () {
     final runbookText = runbook.readAsStringSync();
     final checklistText = checklist.readAsStringSync();
