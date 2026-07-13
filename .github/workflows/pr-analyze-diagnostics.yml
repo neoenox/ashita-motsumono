@@ -1,4 +1,4 @@
-name: PR Analyze Diagnostics
+name: PR Validation Diagnostics
 
 on:
   pull_request:
@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  analyze-report:
+  validation-report:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,15 +33,25 @@ jobs:
           set -o pipefail
           flutter analyze --no-fatal-infos 2>&1 | tee analyze-report.txt
 
-      - name: Upload analyze report
+      - name: Capture test report
+        id: tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter test --reporter expanded 2>&1 | tee test-report.txt
+
+      - name: Upload validation reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: analyze-report
-          path: analyze-report.txt
+          name: validation-reports
+          path: |
+            analyze-report.txt
+            test-report.txt
           if-no-files-found: error
           retention-days: 3
 
-      - name: Enforce analyze result
-        if: steps.analyze.outcome == 'failure'
+      - name: Enforce validation result
+        if: steps.analyze.outcome == 'failure' || steps.tests.outcome == 'failure'
         run: exit 1
