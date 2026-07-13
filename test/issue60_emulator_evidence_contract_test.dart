@@ -6,16 +6,35 @@ void main() {
   final script = File('tool/issue60_emulator_evidence.ps1');
   final core = File('tool/issue60_emulator_evidence_core.ps1');
   final cases = File('tool/issue60_emulator_evidence_cases.ps1');
+  final sessionDriver = File('tool/release_validation_session.ps1');
   final runbook = File('docs/ISSUE60_ANDROID_EMULATOR_VALIDATION.md');
+  final sessionRunbook = File('docs/RELEASE_VALIDATION_SESSION.md');
+  final releasePlan = File('docs/RELEASE_EXECUTION_PLAN.md');
   final checklist = File('docs/notification-release-checklist.md');
   final manifest = File('android/app/src/main/AndroidManifest.xml');
 
-  String readTool() => <File>[script, core, cases]
+  String readEvidenceTool() => <File>[script, core, cases]
       .map((file) => file.readAsStringSync())
       .join('\n');
 
-  test('Issue #60 evidence files exist', () {
-    for (final file in <File>[script, core, cases, runbook, checklist]) {
+  String readAllPowerShell() => <File>[
+        script,
+        core,
+        cases,
+        sessionDriver,
+      ].map((file) => file.readAsStringSync()).join('\n');
+
+  test('Issue #60 evidence and session files exist', () {
+    for (final file in <File>[
+      script,
+      core,
+      cases,
+      sessionDriver,
+      runbook,
+      sessionRunbook,
+      releasePlan,
+      checklist,
+    ]) {
       expect(file.existsSync(), isTrue, reason: file.path);
     }
   });
@@ -25,27 +44,46 @@ void main() {
 
     expect(text, contains("'emulator-5554'"));
     expect(text, contains("'com.ashita_motsumono'"));
-    expect(
-      text,
-      contains(
-        "[ValidateSet('Preflight','BeginCase','Wait','Capture','Install','Reboot','Finalize','Aggregate')]",
-      ),
-    );
+    expect(text, contains("'PlanCase'"));
+    expect(text, contains("'BeginCase'"));
+    expect(text, contains("'Aggregate'"));
     expect(text, contains(r'$Serial -ne'));
     expect(text, contains(r'$PackageName -ne'));
     expect(text, contains('issue60_emulator_evidence_core.ps1'));
     expect(text, contains('issue60_emulator_evidence_cases.ps1'));
   });
 
-  test('all ADB execution uses the fixed serial wrapper', () {
-    final text = readTool();
+  test('all direct ADB execution stays in the fixed serial wrapper', () {
+    final text = readAllPowerShell();
 
     expect(text, contains(r'& adb -s $Serial @Args'));
     expect('& adb '.allMatches(text).length, 2);
   });
 
+  test('evidence tool proves alarm registration with a pre-save delta', () {
+    final entrypoint = script.readAsStringSync();
+    final coreText = core.readAsStringSync();
+    final casesText = cases.readAsStringSync();
+
+    expect(entrypoint, contains("Snapshot 'pre-save'"));
+    expect(entrypoint, contains('case-plan.json'));
+    expect(entrypoint, contains('AlarmRegistration'));
+    expect(entrypoint, contains('alarm-registration.json'));
+    expect(coreText, contains('function RelevantAlarmLines'));
+    expect(coreText, contains('function AlarmRegistration'));
+    expect(coreText, contains('BeforeRelevantLineCount'));
+    expect(coreText, contains('AfterRelevantLineCount'));
+    expect(coreText, contains('AddedLineCount'));
+    expect(coreText, contains('AddedLines'));
+    expect(
+      casesText,
+      contains("\\$r.Result -eq 'PASS' -and [int]\\$r.AddedLineCount -gt 0"),
+    );
+    expect(casesText, contains('AlarmRegistrationEvidence'));
+  });
+
   test('PowerShell tool implements evidence and verdict gates', () {
-    final text = readTool();
+    final text = readEvidenceTool();
 
     for (final required in <String>[
       'POST_NOTIFICATION',
@@ -80,24 +118,67 @@ void main() {
 
     expect(
       text,
-      contains("if(-not \$notificationComplete -or -not \$installResult"),
+      contains("if(-not \\$notificationComplete -or -not \\$installResult"),
     );
     expect(
       text,
-      contains("\$i.Verdict -eq 'PASS' -and \$i.InstallBroadcastVerified"),
+      contains("\\$i.Verdict -eq 'PASS' -and \\$i.InstallBroadcastVerified"),
     );
     expect(text, contains(r'$sourceConsistent'));
     expect(text, contains(r'$currentSourceMatches'));
   });
 
-  test('PowerShell tool excludes prohibited ADB operations', () {
-    final text = readTool().toLowerCase();
+  test('session driver has one evidence root and strict execution order', () {
+    final text = sessionDriver.readAsStringSync();
+
+    for (final required in <String>[
+      'ashita-release-evidence',
+      'release-validation-state.json',
+      'release-session.json',
+      'release_execution_orchestrator.py',
+      "'Doctor'",
+      "'BuildInstall'",
+      "'StartSession'",
+      "'PlanCase'",
+      "'BeginCase'",
+      "'MutateCase'",
+      "'WaitCase'",
+      "'FinalizeCase'",
+      "'Aggregate'",
+      "'WriteTemplates'",
+      "'Evaluate'",
+      'normal case must PASS before reboot',
+      'reboot case must PASS before install-r',
+      "git fetch origin",
+      'Permission',
+      'GRANTED',
+      'host UTC offset must be +09:00',
+    ]) {
+      expect(text, contains(required), reason: 'missing session token: $required');
+    }
+
+    final doctor = text.indexOf("'Doctor'");
+    final buildInstall = text.indexOf("'BuildInstall'");
+    final startSession = text.indexOf("'StartSession'");
+    final planCase = text.indexOf("'PlanCase'");
+    final aggregate = text.indexOf("'Aggregate'");
+    expect(
+      <int>[doctor, buildInstall, startSession, planCase, aggregate],
+      orderedEquals(
+        <int>[doctor, buildInstall, startSession, planCase, aggregate]..sort(),
+      ),
+    );
+  });
+
+  test('PowerShell tools exclude prohibited ADB and data-reset operations', () {
+    final text = readAllPowerShell().toLowerCase();
 
     for (final prohibited in <String>[
-      'force' '-stop',
-      'pm' ' clear',
-      'adb' ' -d',
-      'adb' ' uninstall',
+      'force-stop',
+      'pm clear',
+      'adb -d',
+      'adb uninstall',
+      'wipe-data',
     ]) {
       expect(text, isNot(contains(prohibited)), reason: prohibited);
     }
@@ -130,14 +211,18 @@ void main() {
 
     if (shell == null) {
       if (Platform.environment['CI'] == 'true') {
-        fail('PowerShell is required in CI to parse the Issue #60 evidence tool.');
+        fail('PowerShell is required in CI to parse release validation tools.');
       }
       return;
     }
 
     final parserScript = r'''
 $failed = $false
-Get-ChildItem tool/issue60_emulator_evidence*.ps1 | ForEach-Object {
+$files = @(
+  Get-ChildItem tool/issue60_emulator_evidence*.ps1
+  Get-Item tool/release_validation_session.ps1
+)
+$files | ForEach-Object {
   $tokens = $null
   $errors = $null
   [System.Management.Automation.Language.Parser]::ParseFile(
@@ -166,18 +251,46 @@ if ($failed) { exit 1 }
     );
   });
 
-  test('Runbook and checklist preserve acceptance order', () {
-    final runbookText = runbook.readAsStringSync();
+  test('runbooks preserve session, case, and release acceptance order', () {
+    final issueText = runbook.readAsStringSync();
+    final sessionText = sessionRunbook.readAsStringSync();
+    final releaseText = releasePlan.readAsStringSync();
     final checklistText = checklist.readAsStringSync();
 
-    expect(runbookText, contains('通常通知がPASSしてから進む'));
-    expect(runbookText, contains('boot ID'));
-    expect(runbookText, contains('MY_PACKAGE_REPLACED'));
-    expect(runbookText, contains('InstallBroadcastVerified'));
-    expect(runbookText, contains('INCONCLUSIVE'));
-    expect(runbookText, contains('Source SHA'));
-    expect(runbookText, contains('Aggregate'));
+    for (final token in <String>[
+      'Todo作成前',
+      'alarm-registration.json',
+      'AddedLineCount > 0',
+      '通常通知がPASSしてから進み',
+      'boot ID',
+      'MY_PACKAGE_REPLACED',
+      'InstallBroadcastVerified',
+      'INCONCLUSIVE',
+      'Source SHA',
+      'Aggregate',
+    ]) {
+      expect(issueText, contains(token), reason: token);
+    }
+
+    final doctor = sessionText.indexOf('## 3. GO/NO-GO診断');
+    final install = sessionText.indexOf('## 4. APKビルドと初期インストール');
+    final start = sessionText.indexOf('## 5. Release session開始');
+    final normal = sessionText.indexOf('## 6. Normalケース');
+    final reboot = sessionText.indexOf('## 7. Rebootケース');
+    final update = sessionText.indexOf('## 8. install-rケース');
+    final aggregate = sessionText.indexOf('## 9. Issue #60集約');
+    expect(
+      <int>[doctor, install, start, normal, reboot, update, aggregate],
+      orderedEquals(
+        <int>[doctor, install, start, normal, reboot, update, aggregate]..sort(),
+      ),
+    );
+
+    expect(releaseText, contains('Documents\\ashita-release-evidence'));
+    expect(releaseText, contains('release_validation_session.ps1'));
+    expect(releaseText, contains('Todo作成前後のAlarm登録差分'));
     expect(checklistText, contains('予定時刻+20分'));
+    expect(checklistText, contains('Alarm登録差分'));
     expect(checklistText, contains('NormalがPASS'));
     expect(checklistText, contains('RebootがPASS'));
     expect(checklistText, contains('3ケースのSource SHA'));
