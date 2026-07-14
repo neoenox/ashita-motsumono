@@ -20,32 +20,32 @@ Downloading packages...
 Got dependencies!
 16 packages have newer versions incompatible with dependency constraints.
 Try `flutter pub outdated` for more information.
-00:00 +0: loading C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/ad_service_test.dart
-00:00 +0: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/ad_service_test.dart: does not create banner ads without a production ad unit id
-00:00 +1: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/amount_test.dart: parseAmount parses plain number
-00:00 +2: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/amount_test.dart: parseAmount parses number with commas
-00:00 +3: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/amount_test.dart: parseAmount returns null amount for empty string
-00:00 +4: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/amount_test.dart: parseAmount returns null amount for whitespace
-00:00 +5: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/amount_test.dart: parseAmount returns invalid for non-numeric
-00:00 +6: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/amount_test.dart: parseAmount parses amount with 円 suffix
-00:00 +7: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/amount_test.dart: parseAmount parses amount with ¥ prefix and comma
-00:00 +8: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/android_manifest_test.dart: release manifest declares permissions needed by production features
-00:00 +9: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/android_manifest_test.dart: structural Android manifest verifier passes
-00:00 +10: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/android_manifest_test.dart: structural Android manifest verifier passes
-00:00 +11: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/android_manifest_test.dart: structural Android manifest verifier passes
-00:00 +12: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/android_manifest_test.dart: structural Android manifest verifier passes
-00:00 +13: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart: saves and loads a document
-00:00 +14: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart: saves and loads a document
-00:00 +15: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart: saves and loads a document
-00:00 +16: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart: saves and loads a document
-00:00 +17: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/android_manifest_test.dart: release workflow validates AdMob secrets before building
-00:00 +18: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart: clearAll removes all data
-00:00 +19: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart: clearAll removes all data
-00:00 +20: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart: clearAll removes all data
-00:00 +21: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart: backupDatabaseFile returns null for in-memory db
-00:00 +22: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart: database file deletion attempts every file before reporting failure
-AppDatabase: failed to delete C:\Users\neoen\AppData\Local\Temp\ashita_database_delete_28f2aebc\ashita_motsumono.db: FileSystemException: injected delete failure, path = ''
-#0      main.<anonymous closure>.<anonymous closure> (file:///C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart:134:13)
+00:00 +0: loading <WORKTREE>/test/ad_service_test.dart
+00:00 +0: <WORKTREE>/test/ad_service_test.dart: does not create banner ads without a production ad unit id
+00:00 +1: <WORKTREE>/test/amount_test.dart: parseAmount parses plain number
+00:00 +2: <WORKTREE>/test/amount_test.dart: parseAmount parses number with commas
+00:00 +3: <WORKTREE>/test/amount_test.dart: parseAmount returns null amount for empty string
+00:00 +4: <WORKTREE>/test/amount_test.dart: parseAmount returns null amount for whitespace
+00:00 +5: <WORKTREE>/test/amount_test.dart: parseAmount returns invalid for non-numeric
+00:00 +6: <WORKTREE>/test/amount_test.dart: parseAmount parses amount with 円 suffix
+00:00 +7: <WORKTREE>/test/amount_test.dart: parseAmount parses amount with ¥ prefix and comma
+00:00 +8: <WORKTREE>/test/android_manifest_test.dart: release manifest declares permissions needed by production features
+00:00 +9: <WORKTREE>/test/android_manifest_test.dart: structural Android manifest verifier passes
+00:00 +10: <WORKTREE>/test/android_manifest_test.dart: structural Android manifest verifier passes
+00:00 +11: <WORKTREE>/test/android_manifest_test.dart: structural Android manifest verifier passes
+00:00 +12: <WORKTREE>/test/android_manifest_test.dart: structural Android manifest verifier passes
+00:00 +13: <WORKTREE>/test/app_database_test.dart: saves and loads a document
+00:00 +14: <WORKTREE>/test/app_database_test.dart: saves and loads a document
+00:00 +15: <WORKTREE>/test/app_database_test.dart: saves and loads a document
+00:00 +16: <WORKTREE>/test/app_database_test.dart: saves and loads a document
+00:00 +17: <WORKTREE>/test/android_manifest_test.dart: release workflow validates AdMob secrets before building
+00:00 +18: <WORKTREE>/test/app_database_test.dart: clearAll removes all data
+00:00 +19: <WORKTREE>/test/app_database_test.dart: clearAll removes all data
+00:00 +20: <WORKTREE>/test/app_database_test.dart: clearAll removes all data
+00:00 +21: <WORKTREE>/test/app_database_test.dart: backupDatabaseFile returns null for in-memory db
+00:00 +22: <WORKTREE>/test/app_database_test.dart: database file deletion attempts every file before reporting failure
+AppDatabase: failed to delete <TEMP_DIR>/ashita_database_delete_28f2aebc\ashita_motsumono.db: FileSystemException: injected delete failure, path = ''
+#0      main.<anonymous closure>.<anonymous closure> (file:///<WORKTREE>/test/app_database_test.dart:134:13)
 #1      AppDatabase.deleteDatabaseFilesAtPath (package:ashita_motsumono/src/repositories/app_database.dart:146:23)
 <asynchronous suspension>
 #2      Throws._matchFuture (package:matcher/src/expect/throws_matcher.dart:103:19)
@@ -56,7 +56,7 @@ AppDatabase: failed to delete C:\Users\neoen\AppData\Local\Temp\ashita_database_
 <asynchronous suspension>
 #5      expectLater.<anonymous closure> (package:flutter_test/src/widget_tester.dart:508:19)
 <asynchronous suspension>
-#6      main.<anonymous closure> (file:///C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart:128:5)
+#6      main.<anonymous closure> (file:///<WORKTREE>/test/app_database_test.dart:128:5)
 <asynchronous suspension>
 #7      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)
 <asynchronous suspension>
@@ -65,23 +65,23 @@ AppDatabase: failed to delete C:\Users\neoen\AppData\Local\Temp\ashita_database_
 #9      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
 <asynchronous suspension>
 
-00:00 +23: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart: legacy migration safety migrates valid legacy snapshot
-00:01 +24: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart: legacy migration safety preserves valid legacy childId through database migration
-00:01 +25: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart: legacy migration safety current personId takes precedence over legacy childId
-00:01 +26: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_settings_test.dart: adds learned item labels with trimming, dedupe and empty filtering
-00:01 +27: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_settings_test.dart: adds learned item labels with trimming, dedupe and empty filtering
-00:01 +28: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_settings_test.dart: adds learned item labels with trimming, dedupe and empty filtering
-00:01 +29: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_database_test.dart: legacy migration safety migrates todo with invalid dueDate gracefully
-00:01 +30: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_settings_test.dart: clears learned item labels without changing purchase state
-00:01 +31: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_atomicity_test.dart: does not publish child state when persistence fails
-00:01 +32: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_atomicity_test.dart: does not publish todo state or notify when persistence fails
-00:01 +33: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_atomicity_test.dart: keeps failed schedule queued and clears it after retry
+00:00 +23: <WORKTREE>/test/app_database_test.dart: legacy migration safety migrates valid legacy snapshot
+00:01 +24: <WORKTREE>/test/app_database_test.dart: legacy migration safety preserves valid legacy childId through database migration
+00:01 +25: <WORKTREE>/test/app_database_test.dart: legacy migration safety current personId takes precedence over legacy childId
+00:01 +26: <WORKTREE>/test/app_settings_test.dart: adds learned item labels with trimming, dedupe and empty filtering
+00:01 +27: <WORKTREE>/test/app_settings_test.dart: adds learned item labels with trimming, dedupe and empty filtering
+00:01 +28: <WORKTREE>/test/app_settings_test.dart: adds learned item labels with trimming, dedupe and empty filtering
+00:01 +29: <WORKTREE>/test/app_database_test.dart: legacy migration safety migrates todo with invalid dueDate gracefully
+00:01 +30: <WORKTREE>/test/app_settings_test.dart: clears learned item labels without changing purchase state
+00:01 +31: <WORKTREE>/test/app_state_atomicity_test.dart: does not publish child state when persistence fails
+00:01 +32: <WORKTREE>/test/app_state_atomicity_test.dart: does not publish todo state or notify when persistence fails
+00:01 +33: <WORKTREE>/test/app_state_atomicity_test.dart: keeps failed schedule queued and clears it after retry
 NotificationCoordinator: schedule failed: Bad state: injected schedule failure
-#0      _ControllableNotificationService.scheduleTodo (file:///C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_atomicity_test.dart:69:7)
+#0      _ControllableNotificationService.scheduleTodo (file:///<WORKTREE>/test/app_state_atomicity_test.dart:69:7)
 #1      NotificationCoordinator.executeScheduledTodo (package:ashita_motsumono/src/services/notification_coordinator.dart:37:28)
 #2      TodoAppStateOperations.addTodoFromDraft (package:ashita_motsumono/src/app_state_todos.dart:26:36)
 <asynchronous suspension>
-#3      main.<anonymous closure> (file:///C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_atomicity_test.dart:136:18)
+#3      main.<anonymous closure> (file:///<WORKTREE>/test/app_state_atomicity_test.dart:136:18)
 <asynchronous suspension>
 #4      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)
 <asynchronous suspension>
@@ -90,14 +90,14 @@ NotificationCoordinator: schedule failed: Bad state: injected schedule failure
 #6      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
 <asynchronous suspension>
 
-00:01 +34: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_child_validation_test.dart: rejects empty and whitespace-only child names without persistence
-00:01 +34: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_atomicity_test.dart: keeps failed cancel queued after todo deletion and retries it
+00:01 +34: <WORKTREE>/test/app_state_child_validation_test.dart: rejects empty and whitespace-only child names without persistence
+00:01 +34: <WORKTREE>/test/app_state_atomicity_test.dart: keeps failed cancel queued after todo deletion and retries it
 NotificationCoordinator: cancel failed: Bad state: injected cancel failure
-#0      _ControllableNotificationService.cancelTodo (file:///C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_atomicity_test.dart:78:7)
+#0      _ControllableNotificationService.cancelTodo (file:///<WORKTREE>/test/app_state_atomicity_test.dart:78:7)
 #1      NotificationCoordinator.executeCanceledTodo (package:ashita_motsumono/src/services/notification_coordinator.dart:52:28)
 #2      TodoAppStateOperations.deleteTodo (package:ashita_motsumono/src/app_state_todos.dart:124:36)
 <asynchronous suspension>
-#3      main.<anonymous closure> (file:///C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_atomicity_test.dart:169:5)
+#3      main.<anonymous closure> (file:///<WORKTREE>/test/app_state_atomicity_test.dart:169:5)
 <asynchronous suspension>
 #4      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)
 <asynchronous suspension>
@@ -106,11 +106,11 @@ NotificationCoordinator: cancel failed: Bad state: injected cancel failure
 #6      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
 <asynchronous suspension>
 
-00:01 +35: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_child_validation_test.dart: rejects empty and whitespace-only child names without persistence
-00:01 +36: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_child_validation_test.dart: rejects empty and whitespace-only child names without persistence
-00:01 +37: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_child_validation_test.dart: trims a valid child name before storing it
-00:01 +38: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_notifier_scope_test.dart: document changes notify only DocumentState
-00:01 +39: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_notifier_scope_test.dart: todo changes notify only TodoState
+00:01 +35: <WORKTREE>/test/app_state_child_validation_test.dart: rejects empty and whitespace-only child names without persistence
+00:01 +36: <WORKTREE>/test/app_state_child_validation_test.dart: rejects empty and whitespace-only child names without persistence
+00:01 +37: <WORKTREE>/test/app_state_child_validation_test.dart: trims a valid child name before storing it
+00:01 +38: <WORKTREE>/test/app_state_notifier_scope_test.dart: document changes notify only DocumentState
+00:01 +39: <WORKTREE>/test/app_state_notifier_scope_test.dart: todo changes notify only TodoState
 NotificationCoordinator: schedule failed: LateInitializationError: Field '_instance@648271368' has not been initialized.
 #0      FlutterLocalNotificationsPlatform._instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart)
 #1      FlutterLocalNotificationsPlatform.instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart:21:60)
@@ -122,7 +122,7 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 #7      NotificationCoordinator.executeScheduledTodo (package:ashita_motsumono/src/services/notification_coordinator.dart:37:28)
 #8      TodoAppStateOperations.addTodoFromDraft (package:ashita_motsumono/src/app_state_todos.dart:26:36)
 <asynchronous suspension>
-#9      main.<anonymous closure> (file:///C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_notifier_scope_test.dart:54:5)
+#9      main.<anonymous closure> (file:///<WORKTREE>/test/app_state_notifier_scope_test.dart:54:5)
 <asynchronous suspension>
 #10     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)
 <asynchronous suspension>
@@ -131,207 +131,207 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 #12     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
 <asynchronous suspension>
 
-00:01 +40: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_test.dart: reschedules all stored todos after notification time changes
-00:01 +41: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_test.dart: reschedules all stored todos after notification time changes
-00:01 +42: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/app_state_test.dart: clearAllData removes local records, document images and notifications
-00:02 +43: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/bulk_extraction_review_state_test.dart: editing a candidate replaces the value used for registration
-00:02 +44: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/bulk_extraction_review_state_test.dart: registration payload contains only selected edited drafts
-00:02 +45: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/bulk_extraction_review_state_test.dart: constructor defensively copies the original draft list
-00:02 +46: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +47: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +48: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +49: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +50: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +51: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +52: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +53: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +54: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +55: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +56: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +57: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +58: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +59: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +60: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +61: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +62: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +63: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +64: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +65: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +66: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +67: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +68: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +69: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
-00:02 +70: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/drift_store_snapshot_replace_test.dart: second save completely replaces previous children, todos, items and documents
-00:02 +71: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/drift_store_snapshot_replace_test.dart: saving an empty snapshot clears every table
-00:02 +72: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/drift_store_test.dart: saves and loads a full snapshot through Store boundary
-00:02 +73: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/drift_store_test.dart: does not rewrite unchanged snapshot rows
-00:02 +74: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/drift_store_test.dart: persists unique notification IDs and side effect queues
-00:02 +75: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/drift_store_test.dart: notification ID allocation skips occupied seed in memory
-00:02 +76: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extractMany splits item, payment and submit notices into separate drafts
-00:02 +77: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extractMany splits item, payment and submit notices into separate drafts
-00:02 +78: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/drift_store_test.dart: throws and blocks writes when sqlite file is corrupt
-00:02 +79: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/drift_store_test.dart: throws and blocks writes when sqlite file is corrupt
-00:02 +80: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extractMany uses learned item labels as extraction candidates
-00:02 +81: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extractMany returns empty list for non-actionable text
-00:02 +82: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract extracts date, items and payment from Japanese print text
-00:02 +83: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract returns null dueDate for past month/day date and flags confirmation
-00:02 +84: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract normalizes full-width digits
-00:02 +85: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract normalizes O/l only adjacent to digits, not in English words
-00:02 +86: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract extracts date with slash format
-00:02 +87: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract extracts date with full year format
-00:02 +88: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract recognizes "明日" as tomorrow
-00:02 +89: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract recognizes "今日" as today
-00:02 +90: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract recognizes next week weekday expressions
-00:02 +91: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract recognizes this week weekday expressions
-00:02 +92: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract recognizes next weekday expression on the same weekday
-00:02 +93: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract "来週" without weekday yields null (not yet supported)
-00:02 +94: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract recognizes "明後日" as day after tomorrow
-00:02 +95: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract recognizes "翌日" as next day
-00:02 +96: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract subtracts one day for "前日まで" with concrete date
-00:02 +97: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract subtracts one day for "前日まで" with slash date
-00:02 +98: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract extracts date with weekday in parentheses (半角)
-00:02 +99: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract extracts date with weekday in full-width parentheses
-00:02 +100: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract extracts slash date with weekday in parentheses
-00:02 +101: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract returns null when no date found with "前日まで"
-00:02 +102: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract returns null for ambiguous date "今月末"
-00:02 +103: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract marks ambiguous "月末" deadline as confirmation needed
-00:02 +104: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract returns null for ambiguous date "始業式の日"
-00:02 +105: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract returns null date when no date found
-00:02 +106: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract extracts amount with yen sign
-00:02 +107: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract extracts amount with comma
-00:02 +108: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract extracts amount without comma
-00:02 +109: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract returns null amount when no amount found
-00:02 +110: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract infers category as payment when amount present
-00:02 +111: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract infers category as submit from keywords
-00:02 +112: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract infers category as event from keywords
-00:02 +113: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract infers category as item when items found
-00:02 +114: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract infers category as other when nothing matches
-00:02 +115: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract generates title for payment with amount
-00:02 +116: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract generates title for submit item
-00:03 +117: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract generates title from first line when category is other
-00:03 +118: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract generates fallback title when text is empty
-00:03 +119: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract truncates rawText longer than 500 chars
-00:03 +120: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract extracts items from dictionary
-00:03 +121: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract extracts expanded school item dictionary
-00:03 +122: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract keeps long vowel marks in item names
-00:03 +123: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract does not duplicate shorter item contained in longer item
-00:03 +124: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract returns empty items when nothing matches
-00:03 +125: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract extracts integer part from decimal amount
-00:03 +126: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract recognizes "午前中" as time context (no date extractable)
-00:03 +127: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract recognizes "締切" near date
-00:03 +128: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.extract extracts items in text order
-00:03 +129: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize converts full-width digits to half-width
-00:03 +130: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize normalizes slashes, yen signs and full-width commas
-00:03 +131: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize does not replace Japanese long vowel marks
-00:03 +132: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize corrects OCR misread O→0 in date
-00:03 +133: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize corrects OCR misread l→1 in date
-00:03 +134: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize extracts date after OCR correction O→0
-00:03 +135: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize extracts date after OCR correction l→1
-00:03 +136: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize extracts slash date after OCR correction
-00:03 +137: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize extracts date after OCR correction for long vowel date separator
-00:03 +138: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize extracts date after OCR correction for kanji one date separator
-00:03 +139: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize extracts amount after OCR correction for yen mark read as 円 prefix
-00:03 +140: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize collapses multiple spaces
-00:03 +141: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize collapses excessive newlines
-00:03 +142: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize converts full-width spaces to half-width
-00:03 +143: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/extraction_service_test.dart: ExtractionService.normalize trims whitespace
-00:03 +144: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/image_file_service_test.dart: ImageFileService deleteIfExists does not throw for non-existent file
-00:03 +145: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/image_file_service_test.dart: ImageFileService deleteIfExists does not throw for empty path
-00:03 +146: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/image_file_service_test.dart: ImageFileService deleteIfExists deletes existing file
-00:03 +147: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: Issue #60 evidence and session files exist
-00:03 +148: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: entrypoint fixes target identity and workflow actions
-00:03 +149: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: all direct ADB execution stays in the fixed serial wrapper
-00:03 +150: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: alarm registration uses Todo pre-save and post-save evidence
-00:03 +151: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: evidence tool implements strict verdict gates
-00:03 +152: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: install close path requires notification and source evidence
-00:03 +153: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: session driver has one evidence root and strict order
-00:03 +154: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell excludes destructive or ambiguous ADB operations
-00:03 +155: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +156: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +157: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +158: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +159: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +160: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +161: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +162: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +163: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +164: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +165: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +166: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +167: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +168: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +169: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +170: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +171: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +172: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +173: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +174: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +175: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +176: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +177: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +178: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +179: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +180: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +181: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +182: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +183: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +184: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +185: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +186: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +187: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +188: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +189: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +190: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +191: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +192: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +193: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +194: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +195: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +196: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:03 +197: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
-00:04 +198: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/purchase_provider_test.dart: loads store product price into price label
-00:04 +199: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: runbooks preserve session and acceptance order
-00:04 +200: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: runbooks preserve session and acceptance order
-00:04 +201: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/purchase_provider_test.dart: reports missing store product before purchase
-00:04 +202: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/issue60_emulator_evidence_contract_test.dart: Boot receiver remains non-exported
-00:04 +203: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/settings_external_link_test.dart: returns false without launching when canOpen is false
-00:04 +204: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/settings_external_link_test.dart: returns false when launcher returns false
-00:04 +205: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/settings_external_link_test.dart: returns false when availability check throws
-00:04 +206: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/settings_external_link_test.dart: returns false when launcher throws
-00:04 +207: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/settings_external_link_test.dart: returns true only when the page is launched
-00:04 +208: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/store_assets_test.dart: store icon and screenshots are present as PNG assets
-00:04 +209: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/store_listing_docs_test.dart: store listing documents privacy-sensitive behavior
-00:04 +210: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/store_listing_docs_test.dart: privacy policy documents local storage, export, and deletion
-00:04 +211: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/store_listing_docs_test.dart: submission checklist includes store assets and monetization checks
-00:04 +212: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/store_listing_docs_test.dart: submission checklist matches AI image data flow
-00:04 +213: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/store_listing_docs_test.dart: todo document points release work to the Play Console checklist
-00:04 +214: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/string_utils_test.dart: splitItems splits by comma
-00:04 +215: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/string_utils_test.dart: splitItems splits by Japanese comma
-00:04 +216: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/string_utils_test.dart: splitItems splits by newline
-00:04 +217: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/string_utils_test.dart: splitItems trims whitespace
-00:04 +218: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/string_utils_test.dart: splitItems filters empty entries
-00:04 +219: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/string_utils_test.dart: splitItems returns empty list for empty input
-00:04 +220: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize converts full-width digits to half-width
-00:04 +221: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize normalizes slashes, yen signs and full-width commas
-00:04 +222: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize does not replace Japanese long vowel marks
-00:04 +223: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize corrects OCR misread O to 0 adjacent to digits
-00:04 +224: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize corrects OCR misread l to 1 adjacent to digits
-00:04 +225: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize corrects lO and Ol OCR artifacts
-00:04 +226: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize does not replace O or l in non-numeric context
-00:04 +227: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize converts full-width spaces to half-width
-00:04 +228: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize collapses multiple spaces
-00:04 +229: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize collapses excessive newlines
-00:04 +230: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize trims whitespace
-00:04 +231: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize replaces long vowel separator between digits with slash
-00:04 +232: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize replaces kanji one separator between digits with slash
-00:04 +233: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize inverts yen mark before digits
-00:04 +234: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize handles empty input
-00:04 +235: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/text_normalizer_test.dart: TextNormalizer.normalize handles mixed full-width and half-width
-00:05 +236: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/todo_factory_test.dart: normalizes title and checklist labels
-00:05 +237: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/todo_factory_test.dart: batch creation shares one timestamp and creates independent ids
-00:05 +238: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: HomeScreen shows home screen and first run card
-00:06 +239: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: HomeScreen shows empty state when children exist but no todos
-00:06 +240: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: HomeScreen shows today section with due todo
+00:01 +40: <WORKTREE>/test/app_state_test.dart: reschedules all stored todos after notification time changes
+00:01 +41: <WORKTREE>/test/app_state_test.dart: reschedules all stored todos after notification time changes
+00:01 +42: <WORKTREE>/test/app_state_test.dart: clearAllData removes local records, document images and notifications
+00:02 +43: <WORKTREE>/test/bulk_extraction_review_state_test.dart: editing a candidate replaces the value used for registration
+00:02 +44: <WORKTREE>/test/bulk_extraction_review_state_test.dart: registration payload contains only selected edited drafts
+00:02 +45: <WORKTREE>/test/bulk_extraction_review_state_test.dart: constructor defensively copies the original draft list
+00:02 +46: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +47: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +48: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +49: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +50: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +51: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +52: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +53: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +54: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +55: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +56: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +57: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +58: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +59: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +60: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +61: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +62: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +63: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +64: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +65: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +66: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +67: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +68: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +69: <WORKTREE>/test/database_schema_migration_test.dart: upgrades v1 data and repairs legacy orphan references
+00:02 +70: <WORKTREE>/test/drift_store_snapshot_replace_test.dart: second save completely replaces previous children, todos, items and documents
+00:02 +71: <WORKTREE>/test/drift_store_snapshot_replace_test.dart: saving an empty snapshot clears every table
+00:02 +72: <WORKTREE>/test/drift_store_test.dart: saves and loads a full snapshot through Store boundary
+00:02 +73: <WORKTREE>/test/drift_store_test.dart: does not rewrite unchanged snapshot rows
+00:02 +74: <WORKTREE>/test/drift_store_test.dart: persists unique notification IDs and side effect queues
+00:02 +75: <WORKTREE>/test/drift_store_test.dart: notification ID allocation skips occupied seed in memory
+00:02 +76: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extractMany splits item, payment and submit notices into separate drafts
+00:02 +77: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extractMany splits item, payment and submit notices into separate drafts
+00:02 +78: <WORKTREE>/test/drift_store_test.dart: throws and blocks writes when sqlite file is corrupt
+00:02 +79: <WORKTREE>/test/drift_store_test.dart: throws and blocks writes when sqlite file is corrupt
+00:02 +80: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extractMany uses learned item labels as extraction candidates
+00:02 +81: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extractMany returns empty list for non-actionable text
+00:02 +82: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract extracts date, items and payment from Japanese print text
+00:02 +83: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract returns null dueDate for past month/day date and flags confirmation
+00:02 +84: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract normalizes full-width digits
+00:02 +85: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract normalizes O/l only adjacent to digits, not in English words
+00:02 +86: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract extracts date with slash format
+00:02 +87: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract extracts date with full year format
+00:02 +88: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract recognizes "明日" as tomorrow
+00:02 +89: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract recognizes "今日" as today
+00:02 +90: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract recognizes next week weekday expressions
+00:02 +91: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract recognizes this week weekday expressions
+00:02 +92: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract recognizes next weekday expression on the same weekday
+00:02 +93: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract "来週" without weekday yields null (not yet supported)
+00:02 +94: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract recognizes "明後日" as day after tomorrow
+00:02 +95: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract recognizes "翌日" as next day
+00:02 +96: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract subtracts one day for "前日まで" with concrete date
+00:02 +97: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract subtracts one day for "前日まで" with slash date
+00:02 +98: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract extracts date with weekday in parentheses (半角)
+00:02 +99: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract extracts date with weekday in full-width parentheses
+00:02 +100: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract extracts slash date with weekday in parentheses
+00:02 +101: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract returns null when no date found with "前日まで"
+00:02 +102: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract returns null for ambiguous date "今月末"
+00:02 +103: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract marks ambiguous "月末" deadline as confirmation needed
+00:02 +104: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract returns null for ambiguous date "始業式の日"
+00:02 +105: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract returns null date when no date found
+00:02 +106: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract extracts amount with yen sign
+00:02 +107: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract extracts amount with comma
+00:02 +108: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract extracts amount without comma
+00:02 +109: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract returns null amount when no amount found
+00:02 +110: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract infers category as payment when amount present
+00:02 +111: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract infers category as submit from keywords
+00:02 +112: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract infers category as event from keywords
+00:02 +113: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract infers category as item when items found
+00:02 +114: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract infers category as other when nothing matches
+00:02 +115: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract generates title for payment with amount
+00:02 +116: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract generates title for submit item
+00:03 +117: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract generates title from first line when category is other
+00:03 +118: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract generates fallback title when text is empty
+00:03 +119: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract truncates rawText longer than 500 chars
+00:03 +120: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract extracts items from dictionary
+00:03 +121: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract extracts expanded school item dictionary
+00:03 +122: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract keeps long vowel marks in item names
+00:03 +123: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract does not duplicate shorter item contained in longer item
+00:03 +124: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract returns empty items when nothing matches
+00:03 +125: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract extracts integer part from decimal amount
+00:03 +126: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract recognizes "午前中" as time context (no date extractable)
+00:03 +127: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract recognizes "締切" near date
+00:03 +128: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.extract extracts items in text order
+00:03 +129: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize converts full-width digits to half-width
+00:03 +130: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize normalizes slashes, yen signs and full-width commas
+00:03 +131: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize does not replace Japanese long vowel marks
+00:03 +132: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize corrects OCR misread O→0 in date
+00:03 +133: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize corrects OCR misread l→1 in date
+00:03 +134: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize extracts date after OCR correction O→0
+00:03 +135: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize extracts date after OCR correction l→1
+00:03 +136: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize extracts slash date after OCR correction
+00:03 +137: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize extracts date after OCR correction for long vowel date separator
+00:03 +138: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize extracts date after OCR correction for kanji one date separator
+00:03 +139: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize extracts amount after OCR correction for yen mark read as 円 prefix
+00:03 +140: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize collapses multiple spaces
+00:03 +141: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize collapses excessive newlines
+00:03 +142: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize converts full-width spaces to half-width
+00:03 +143: <WORKTREE>/test/extraction_service_test.dart: ExtractionService.normalize trims whitespace
+00:03 +144: <WORKTREE>/test/image_file_service_test.dart: ImageFileService deleteIfExists does not throw for non-existent file
+00:03 +145: <WORKTREE>/test/image_file_service_test.dart: ImageFileService deleteIfExists does not throw for empty path
+00:03 +146: <WORKTREE>/test/image_file_service_test.dart: ImageFileService deleteIfExists deletes existing file
+00:03 +147: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: Issue #60 evidence and session files exist
+00:03 +148: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: entrypoint fixes target identity and workflow actions
+00:03 +149: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: all direct ADB execution stays in the fixed serial wrapper
+00:03 +150: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: alarm registration uses Todo pre-save and post-save evidence
+00:03 +151: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: evidence tool implements strict verdict gates
+00:03 +152: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: install close path requires notification and source evidence
+00:03 +153: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: session driver has one evidence root and strict order
+00:03 +154: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell excludes destructive or ambiguous ADB operations
+00:03 +155: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +156: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +157: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +158: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +159: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +160: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +161: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +162: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +163: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +164: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +165: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +166: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +167: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +168: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +169: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +170: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +171: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +172: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +173: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +174: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +175: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +176: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +177: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +178: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +179: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +180: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +181: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +182: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +183: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +184: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +185: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +186: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +187: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +188: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +189: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +190: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +191: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +192: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +193: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +194: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +195: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +196: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:03 +197: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: PowerShell files parse when a shell is available
+00:04 +198: <WORKTREE>/test/purchase_provider_test.dart: loads store product price into price label
+00:04 +199: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: runbooks preserve session and acceptance order
+00:04 +200: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: runbooks preserve session and acceptance order
+00:04 +201: <WORKTREE>/test/purchase_provider_test.dart: reports missing store product before purchase
+00:04 +202: <WORKTREE>/test/issue60_emulator_evidence_contract_test.dart: Boot receiver remains non-exported
+00:04 +203: <WORKTREE>/test/settings_external_link_test.dart: returns false without launching when canOpen is false
+00:04 +204: <WORKTREE>/test/settings_external_link_test.dart: returns false when launcher returns false
+00:04 +205: <WORKTREE>/test/settings_external_link_test.dart: returns false when availability check throws
+00:04 +206: <WORKTREE>/test/settings_external_link_test.dart: returns false when launcher throws
+00:04 +207: <WORKTREE>/test/settings_external_link_test.dart: returns true only when the page is launched
+00:04 +208: <WORKTREE>/test/store_assets_test.dart: store icon and screenshots are present as PNG assets
+00:04 +209: <WORKTREE>/test/store_listing_docs_test.dart: store listing documents privacy-sensitive behavior
+00:04 +210: <WORKTREE>/test/store_listing_docs_test.dart: privacy policy documents local storage, export, and deletion
+00:04 +211: <WORKTREE>/test/store_listing_docs_test.dart: submission checklist includes store assets and monetization checks
+00:04 +212: <WORKTREE>/test/store_listing_docs_test.dart: submission checklist matches AI image data flow
+00:04 +213: <WORKTREE>/test/store_listing_docs_test.dart: todo document points release work to the Play Console checklist
+00:04 +214: <WORKTREE>/test/string_utils_test.dart: splitItems splits by comma
+00:04 +215: <WORKTREE>/test/string_utils_test.dart: splitItems splits by Japanese comma
+00:04 +216: <WORKTREE>/test/string_utils_test.dart: splitItems splits by newline
+00:04 +217: <WORKTREE>/test/string_utils_test.dart: splitItems trims whitespace
+00:04 +218: <WORKTREE>/test/string_utils_test.dart: splitItems filters empty entries
+00:04 +219: <WORKTREE>/test/string_utils_test.dart: splitItems returns empty list for empty input
+00:04 +220: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize converts full-width digits to half-width
+00:04 +221: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize normalizes slashes, yen signs and full-width commas
+00:04 +222: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize does not replace Japanese long vowel marks
+00:04 +223: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize corrects OCR misread O to 0 adjacent to digits
+00:04 +224: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize corrects OCR misread l to 1 adjacent to digits
+00:04 +225: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize corrects lO and Ol OCR artifacts
+00:04 +226: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize does not replace O or l in non-numeric context
+00:04 +227: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize converts full-width spaces to half-width
+00:04 +228: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize collapses multiple spaces
+00:04 +229: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize collapses excessive newlines
+00:04 +230: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize trims whitespace
+00:04 +231: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize replaces long vowel separator between digits with slash
+00:04 +232: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize replaces kanji one separator between digits with slash
+00:04 +233: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize inverts yen mark before digits
+00:04 +234: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize handles empty input
+00:04 +235: <WORKTREE>/test/text_normalizer_test.dart: TextNormalizer.normalize handles mixed full-width and half-width
+00:05 +236: <WORKTREE>/test/todo_factory_test.dart: normalizes title and checklist labels
+00:05 +237: <WORKTREE>/test/todo_factory_test.dart: batch creation shares one timestamp and creates independent ids
+00:05 +238: <WORKTREE>/test/widget_test.dart: HomeScreen shows home screen and first run card
+00:06 +239: <WORKTREE>/test/widget_test.dart: HomeScreen shows empty state when children exist but no todos
+00:06 +240: <WORKTREE>/test/widget_test.dart: HomeScreen shows today section with due todo
 NotificationCoordinator: schedule failed: LateInitializationError: Field '_instance@898271368' has not been initialized.
 #0      FlutterLocalNotificationsPlatform._instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart)
 #1      FlutterLocalNotificationsPlatform.instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart:21:60)
@@ -343,7 +343,7 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 #7      NotificationCoordinator.executeScheduledTodo (package:ashita_motsumono/src/services/notification_coordinator.dart:37:28)
 #8      TodoAppStateOperations.addTodoFromDraft (package:ashita_motsumono/src/app_state_todos.dart:26:36)
 <asynchronous suspension>
-#9      main.<anonymous closure>.<anonymous closure> (file:///C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart:145:7)
+#9      main.<anonymous closure>.<anonymous closure> (file:///<WORKTREE>/test/widget_test.dart:145:7)
 <asynchronous suspension>
 #10     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
 <asynchronous suspension>
@@ -352,9 +352,9 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 #12     StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
 <asynchronous suspension>
 
-00:06 +241: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: HomeScreen reports no corrupt data on normal load
-00:06 +242: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: HomeScreen opens settings from bottom nav
-00:06 +243: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: HomeScreen creates export snapshot without local image paths
+00:06 +241: <WORKTREE>/test/widget_test.dart: HomeScreen reports no corrupt data on normal load
+00:06 +242: <WORKTREE>/test/widget_test.dart: HomeScreen opens settings from bottom nav
+00:06 +243: <WORKTREE>/test/widget_test.dart: HomeScreen creates export snapshot without local image paths
 NotificationCoordinator: schedule failed: LateInitializationError: Field '_instance@898271368' has not been initialized.
 #0      FlutterLocalNotificationsPlatform._instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart)
 #1      FlutterLocalNotificationsPlatform.instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart:21:60)
@@ -366,7 +366,7 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 #7      NotificationCoordinator.executeScheduledTodo (package:ashita_motsumono/src/services/notification_coordinator.dart:37:28)
 #8      TodoAppStateOperations.addTodoFromDraft (package:ashita_motsumono/src/app_state_todos.dart:26:36)
 <asynchronous suspension>
-#9      main.<anonymous closure>.<anonymous closure> (file:///C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart:198:7)
+#9      main.<anonymous closure>.<anonymous closure> (file:///<WORKTREE>/test/widget_test.dart:198:7)
 <asynchronous suspension>
 #10     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)
 <asynchronous suspension>
@@ -375,9 +375,9 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 #12     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)
 <asynchronous suspension>
 
-00:06 +244: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: AddChildScreen shows empty state and can add a child
-00:07 +245: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: AddChildScreen prevents duplicate name
-00:07 +246: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: TodoDetailScreen shows todo details after tapping a tile
+00:06 +244: <WORKTREE>/test/widget_test.dart: AddChildScreen shows empty state and can add a child
+00:07 +245: <WORKTREE>/test/widget_test.dart: AddChildScreen prevents duplicate name
+00:07 +246: <WORKTREE>/test/widget_test.dart: TodoDetailScreen shows todo details after tapping a tile
 NotificationCoordinator: schedule failed: LateInitializationError: Field '_instance@898271368' has not been initialized.
 #0      FlutterLocalNotificationsPlatform._instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart)
 #1      FlutterLocalNotificationsPlatform.instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart:21:60)
@@ -389,7 +389,7 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 #7      NotificationCoordinator.executeScheduledTodo (package:ashita_motsumono/src/services/notification_coordinator.dart:37:28)
 #8      TodoAppStateOperations.addTodoFromDraft (package:ashita_motsumono/src/app_state_todos.dart:26:36)
 <asynchronous suspension>
-#9      main.<anonymous closure>.<anonymous closure> (file:///C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart:269:7)
+#9      main.<anonymous closure>.<anonymous closure> (file:///<WORKTREE>/test/widget_test.dart:269:7)
 <asynchronous suspension>
 #10     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
 <asynchronous suspension>
@@ -398,14 +398,14 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 #12     StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
 <asynchronous suspension>
 
-00:07 +247: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: TodoDetailScreen shows not found when todo is missing
-00:07 +248: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: ReviewExtractionScreen deletes document when cancelled without save
+00:07 +247: <WORKTREE>/test/widget_test.dart: TodoDetailScreen shows not found when todo is missing
+00:07 +248: <WORKTREE>/test/widget_test.dart: ReviewExtractionScreen deletes document when cancelled without save
 Document cleanup: deleted
-00:07 +249: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: SettingsScreen shows notification time tiles
-00:07 +250: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: SettingsScreen shows purchase section
-00:07 +251: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: SettingsScreen shows purchase status when store product is unavailable
-00:08 +252: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: SettingsScreen shows supporter thank-you when ads are removed
-00:08 +253: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: SettingsScreen clears all local data after confirmation
+00:07 +249: <WORKTREE>/test/widget_test.dart: SettingsScreen shows notification time tiles
+00:07 +250: <WORKTREE>/test/widget_test.dart: SettingsScreen shows purchase section
+00:07 +251: <WORKTREE>/test/widget_test.dart: SettingsScreen shows purchase status when store product is unavailable
+00:08 +252: <WORKTREE>/test/widget_test.dart: SettingsScreen shows supporter thank-you when ads are removed
+00:08 +253: <WORKTREE>/test/widget_test.dart: SettingsScreen clears all local data after confirmation
 NotificationCoordinator: schedule failed: LateInitializationError: Field '_instance@898271368' has not been initialized.
 #0      FlutterLocalNotificationsPlatform._instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart)
 #1      FlutterLocalNotificationsPlatform.instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart:21:60)
@@ -417,7 +417,7 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 #7      NotificationCoordinator.executeScheduledTodo (package:ashita_motsumono/src/services/notification_coordinator.dart:37:28)
 #8      TodoAppStateOperations.addTodoFromDraft (package:ashita_motsumono/src/app_state_todos.dart:26:36)
 <asynchronous suspension>
-#9      main.<anonymous closure>.<anonymous closure> (file:///C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart:479:7)
+#9      main.<anonymous closure>.<anonymous closure> (file:///<WORKTREE>/test/widget_test.dart:479:7)
 <asynchronous suspension>
 #10     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
 <asynchronous suspension>
@@ -442,12 +442,12 @@ NotificationCoordinator: cancel failed: LateInitializationError: Field '_instanc
 #10     _SettingsScreenState._confirmClearAllData (package:ashita_motsumono/src/screens/settings_screen.dart:273:7)
 <asynchronous suspension>
 
-00:08 +254: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: AddTodoScreen AI button opens external data disclosure
-00:08 +255: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: AddTodoScreen AI analysis starts only after explicit consent
-00:08 +256: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: AddTodoScreen shows add screen with OCR and paste options
-00:08 +257: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: AddTodoScreen shows manual input form when toggled
-00:08 +258: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: AddTodoScreen validates empty title on manual save
-00:09 +259: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: AddTodoScreen creates multiple review candidates from pasted notice
+00:08 +254: <WORKTREE>/test/widget_test.dart: AddTodoScreen AI button opens external data disclosure
+00:08 +255: <WORKTREE>/test/widget_test.dart: AddTodoScreen AI analysis starts only after explicit consent
+00:08 +256: <WORKTREE>/test/widget_test.dart: AddTodoScreen shows add screen with OCR and paste options
+00:08 +257: <WORKTREE>/test/widget_test.dart: AddTodoScreen shows manual input form when toggled
+00:08 +258: <WORKTREE>/test/widget_test.dart: AddTodoScreen validates empty title on manual save
+00:09 +259: <WORKTREE>/test/widget_test.dart: AddTodoScreen creates multiple review candidates from pasted notice
 NotificationCoordinator: schedule failed: LateInitializationError: Field '_instance@898271368' has not been initialized.
 #0      FlutterLocalNotificationsPlatform._instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart)
 #1      FlutterLocalNotificationsPlatform.instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart:21:60)
@@ -499,7 +499,7 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 #12     _ReviewExtractionsScreenState._saveSelected (package:ashita_motsumono/src/screens/review_extractions_screen.dart:191:7)
 <asynchronous suspension>
 
-00:09 +260: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: AddTodoScreen learns manually entered items for later pasted extraction
+00:09 +260: <WORKTREE>/test/widget_test.dart: AddTodoScreen learns manually entered items for later pasted extraction
 NotificationCoordinator: schedule failed: LateInitializationError: Field '_instance@898271368' has not been initialized.
 #0      FlutterLocalNotificationsPlatform._instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart)
 #1      FlutterLocalNotificationsPlatform.instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart:21:60)
@@ -515,7 +515,7 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 <asynchronous suspension>
 
 Document cleanup: deleted
-00:09 +261: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: HomeScreen search filters todos by search query
+00:09 +261: <WORKTREE>/test/widget_test.dart: HomeScreen search filters todos by search query
 NotificationCoordinator: schedule failed: LateInitializationError: Field '_instance@898271368' has not been initialized.
 #0      FlutterLocalNotificationsPlatform._instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart)
 #1      FlutterLocalNotificationsPlatform.instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart:21:60)
@@ -527,7 +527,7 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 #7      NotificationCoordinator.executeScheduledTodo (package:ashita_motsumono/src/services/notification_coordinator.dart:37:28)
 #8      TodoAppStateOperations.addTodoFromDraft (package:ashita_motsumono/src/app_state_todos.dart:26:36)
 <asynchronous suspension>
-#9      main.<anonymous closure>.<anonymous closure> (file:///C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart:778:7)
+#9      main.<anonymous closure>.<anonymous closure> (file:///<WORKTREE>/test/widget_test.dart:778:7)
 <asynchronous suspension>
 #10     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
 <asynchronous suspension>
@@ -547,7 +547,7 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 #7      NotificationCoordinator.executeScheduledTodo (package:ashita_motsumono/src/services/notification_coordinator.dart:37:28)
 #8      TodoAppStateOperations.addTodoFromDraft (package:ashita_motsumono/src/app_state_todos.dart:26:36)
 <asynchronous suspension>
-#9      main.<anonymous closure>.<anonymous closure> (file:///C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart:786:7)
+#9      main.<anonymous closure>.<anonymous closure> (file:///<WORKTREE>/test/widget_test.dart:786:7)
 <asynchronous suspension>
 #10     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
 <asynchronous suspension>
@@ -556,7 +556,7 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 #12     StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
 <asynchronous suspension>
 
-00:09 +262: C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart: HomeScreen todo completion toggles todo completion via checkbox
+00:09 +262: <WORKTREE>/test/widget_test.dart: HomeScreen todo completion toggles todo completion via checkbox
 NotificationCoordinator: schedule failed: LateInitializationError: Field '_instance@898271368' has not been initialized.
 #0      FlutterLocalNotificationsPlatform._instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart)
 #1      FlutterLocalNotificationsPlatform.instance (package:flutter_local_notifications_platform_interface/flutter_local_notifications_platform_interface.dart:21:60)
@@ -568,7 +568,7 @@ NotificationCoordinator: schedule failed: LateInitializationError: Field '_insta
 #7      NotificationCoordinator.executeScheduledTodo (package:ashita_motsumono/src/services/notification_coordinator.dart:37:28)
 #8      TodoAppStateOperations.addTodoFromDraft (package:ashita_motsumono/src/app_state_todos.dart:26:36)
 <asynchronous suspension>
-#9      main.<anonymous closure>.<anonymous closure> (file:///C:/Users/neoen/AppData/Local/Temp/ashita-motsumono/test/widget_test.dart:821:7)
+#9      main.<anonymous closure>.<anonymous closure> (file:///<WORKTREE>/test/widget_test.dart:821:7)
 <asynchronous suspension>
 #10     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
 <asynchronous suspension>

@@ -10,8 +10,8 @@
 
 ## Android SDK
 
-- パス: C:\Users\neoen\AppData\Local\Android\Sdk
-- adb: C:\Users\neoen\AppData\Local\Android\Sdk\platform-tools\adb.exe
+- パス: <ANDROID_SDK>
+- adb: <ANDROID_SDK>\platform-tools\adb.exe
 
 ## Androidデバイス/Emulator
 
@@ -21,9 +21,10 @@
 
 ## リポジトリ情報
 
-- Clone先: /tmp/ashita-motsumono
+- Clone先: <WORKTREE>
 - Branch: agent/full-review-hardening
-- HEAD: 5a64ff35aa3eebf5f1682da6459560a2e1d4cbb7
+- Validated code HEAD: (テスト・format実行時点のSHA — 本文末尾参照)
+- Current PR HEAD at final verification: (コミット後に再取得 — 本文末尾参照)
 - Application ID: com.ashita_motsumono
 - pubspec version: 0.6.3+2
 - minSdk: 24
@@ -38,9 +39,10 @@
 
 ## テスト結果
 
-- flutter test: 263件通過
+- flutter test: 263件通過 (LateInitializationErrorなし)
 - flutter analyze: エラー0件 (info 33件のみ)
-- dart format: 50ファイルに差分 (CI未チェック)
+- dart format (PR変更対象): PASS — 変更Dartファイルはformat済み
+- dart format (全体): 50ファイルに差分 — うち46件はBase由来の既存format負債
 
 ## 通知関連の設定
 
