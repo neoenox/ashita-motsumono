@@ -1,0 +1,10 @@
+5a64ff3 test: cover notification collisions and differential writes
+0c3d97b test: cover resilient database file deletion
+a6d2fa0 fix: address database review feedback and minimize writes
+b87445a ci: remove temporary validation diagnostics
+37401e8 test: align database migration coverage with v2 integrity
+7c4680b fix: report store validation failures as async errors
+4a5dc33 ci: capture temporary flutter test diagnostics
+46ffef3 fix: disambiguate matcher isNull in migration test
+c051e33 fix: avoid nullable promotion in migration test
+611c9af ci: capture temporary flutter analyze diagnostics
