@@ -122,10 +122,17 @@ void main() {
       text,
       contains(r'if(-not $notificationComplete -or -not $installResult'),
     );
+    expect(text, contains(r'$installEligible'));
     expect(
       text,
-      contains(r"$i.Verdict -eq 'PASS' -and $i.InstallBroadcastVerified"),
+      contains(r"$install.Verdict -eq 'PASS' -and"),
     );
+    expect(text, contains(r'$install.InstallBroadcastVerified'));
+    expect(
+      text,
+      contains(r"$install.Verdict -eq 'INCONCLUSIVE' -and"),
+    );
+    expect(text, contains(r'$install.InstallBroadcastUnverified'));
     expect(text, contains(r'$sourceConsistent'));
     expect(text, contains(r'$currentSourceMatches'));
   });
