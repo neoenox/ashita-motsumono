@@ -38,18 +38,20 @@ class PersonProfile {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'colorValue': colorValue,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'name': name,
+    'colorValue': colorValue,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 
   factory PersonProfile.fromJson(Map<String, dynamic> json) => PersonProfile(
-        id: (json['id'] as String?) ?? '',
-        name: (json['name'] as String?) ?? '',
-        colorValue: (json['colorValue'] as int?) ?? 0,
-        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
-        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
-      );
+    id: (json['id'] as String?) ?? '',
+    name: (json['name'] as String?) ?? '',
+    colorValue: (json['colorValue'] as int?) ?? 0,
+    createdAt:
+        DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+    updatedAt:
+        DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
+  );
 }

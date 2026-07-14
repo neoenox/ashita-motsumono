@@ -246,7 +246,11 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
             _detailRow(Icons.event, '期限', formatDueDate(todo.dueDate)),
             if (child != null) _detailRow(Icons.person, '対象', child.name),
             if (todo.amount != null)
-              _detailRow(Icons.monetization_on_outlined, '金額', '${todo.amount}円'),
+              _detailRow(
+                Icons.monetization_on_outlined,
+                '金額',
+                '${todo.amount}円',
+              ),
           ],
         ),
       ),
@@ -276,9 +280,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
               children: [
                 const Icon(Icons.checklist, size: 18),
                 const SizedBox(width: Spacing.sm),
-                Text('チェック項目',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text('チェック項目', style: Theme.of(context).textTheme.titleMedium),
                 const Spacer(),
                 Text(
                   '${todo.items.where((i) => i.isChecked).length}/${todo.items.length}',
@@ -314,7 +316,8 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
               children: [
                 const Icon(Icons.description_outlined, size: 18),
                 const SizedBox(width: Spacing.sm),
-                Text('メモ・OCR全文',
+                Text(
+                  'メモ・OCR全文',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ],
@@ -325,9 +328,9 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
             OutlinedButton.icon(
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: note));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('全文をコピーしました')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('全文をコピーしました')));
               },
               icon: const Icon(Icons.content_copy, size: 16),
               label: const Text('全文をコピー'),
@@ -355,9 +358,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                 children: [
                   const Icon(Icons.image_outlined, size: 18),
                   const SizedBox(width: Spacing.sm),
-                  Text('元画像',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  Text('元画像', style: Theme.of(context).textTheme.titleMedium),
                 ],
               ),
               const SizedBox(height: Spacing.sm),

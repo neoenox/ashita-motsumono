@@ -94,9 +94,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   Widget build(BuildContext context) {
     final children = context.watch<AppState>().children;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.editOnly ? '候補を編集' : '読み取り結果の確認'),
-      ),
+      appBar: AppBar(title: Text(widget.editOnly ? '候補を編集' : '読み取り結果の確認')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
           Spacing.md,
@@ -197,10 +195,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
           const SizedBox(height: Spacing.md),
           TextField(
             controller: _amountController,
-            decoration: const InputDecoration(
-              labelText: '金額',
-              hintText: '500',
-            ),
+            decoration: const InputDecoration(labelText: '金額', hintText: '500'),
             keyboardType: TextInputType.number,
           ),
           if (!widget.editOnly) ...[

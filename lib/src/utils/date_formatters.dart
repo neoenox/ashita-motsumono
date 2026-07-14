@@ -16,9 +16,11 @@ String formatDueDate(DateTime? value) {
   return _ymd.format(value);
 }
 
-String formatDateTime(DateTime value) => '${_ymd.format(value)} ${_hm.format(value)}';
+String formatDateTime(DateTime value) =>
+    '${_ymd.format(value)} ${_hm.format(value)}';
 
-DateTime dateOnly(DateTime value) => DateTime(value.year, value.month, value.day);
+DateTime dateOnly(DateTime value) =>
+    DateTime(value.year, value.month, value.day);
 
 bool isSameDate(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;

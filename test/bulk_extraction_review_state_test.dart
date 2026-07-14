@@ -48,10 +48,7 @@ void main() {
       draft('一件目', ['水筒']),
       draft('二件目', ['体操着']),
     ]);
-    state.updateDraft(
-      0,
-      draft('編集済み一件目', [' 水筒 ', '', '   ', '連絡帳']),
-    );
+    state.updateDraft(0, draft('編集済み一件目', [' 水筒 ', '', '   ', '連絡帳']));
     state.setSelected(1, false);
 
     expect(state.selectedCount, 1);
@@ -60,7 +57,9 @@ void main() {
   });
 
   test('constructor defensively copies the original draft list', () {
-    final original = [draft('一件目', ['水筒'])];
+    final original = [
+      draft('一件目', ['水筒']),
+    ];
     final state = BulkExtractionReviewState(original);
 
     original.add(draft('後から追加', ['体操着']));

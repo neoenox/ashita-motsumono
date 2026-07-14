@@ -66,10 +66,11 @@ class _AddChildScreenState extends State<AddChildScreen> {
           const SizedBox(height: Spacing.lg),
           Padding(
             padding: const EdgeInsets.only(left: 4),
-            child: Text('登録済み',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: cs.primary,
-              ),
+            child: Text(
+              '登録済み',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: cs.primary),
             ),
           ),
           const SizedBox(height: Spacing.sm),
@@ -86,9 +87,11 @@ class _AddChildScreenState extends State<AddChildScreen> {
                   leading: CircleAvatar(
                     backgroundColor: Color(child.colorValue),
                     foregroundColor: cs.onPrimary,
-                    child: Text(child.name.isNotEmpty
-                        ? child.name.characters.first.toUpperCase()
-                        : '?'),
+                    child: Text(
+                      child.name.isNotEmpty
+                          ? child.name.characters.first.toUpperCase()
+                          : '?',
+                    ),
                   ),
                   title: Text(child.name),
                   trailing: Row(
@@ -100,7 +103,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _confirmDelete(context, child.id, child.name),
+                        onPressed: () =>
+                            _confirmDelete(context, child.id, child.name),
                       ),
                     ],
                   ),
@@ -148,7 +152,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
           onSubmitted: (value) => Navigator.pop(context, value.trim()),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('キャンセル'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, controller.text.trim()),
             child: const Text('保存'),
@@ -165,11 +172,19 @@ class _AddChildScreenState extends State<AddChildScreen> {
     await appState.updateChild(child.copyWith(name: result));
   }
 
-  bool _hasDuplicateName(List<PersonProfile> children, String name, {String? exceptId}) {
+  bool _hasDuplicateName(
+    List<PersonProfile> children,
+    String name, {
+    String? exceptId,
+  }) {
     return children.any((child) => child.id != exceptId && child.name == name);
   }
 
-  Future<void> _confirmDelete(BuildContext context, String id, String name) async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    String id,
+    String name,
+  ) async {
     final appState = context.read<AppState>();
     final result = await showDialog<bool>(
       context: context,
@@ -177,8 +192,14 @@ class _AddChildScreenState extends State<AddChildScreen> {
         title: const Text('削除確認'),
         content: Text('$name を削除しますか？\n関連するTodoは対象の人物指定がクリアされます。'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('削除')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('削除'),
+          ),
         ],
       ),
     );

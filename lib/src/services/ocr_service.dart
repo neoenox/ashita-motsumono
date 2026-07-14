@@ -23,13 +23,13 @@ class OcrException implements Exception {
 class OcrService {
   OcrService();
 
-  static const _androidOcrChannel = MethodChannel('ashita_motsumono/native_ocr');
+  static const _androidOcrChannel = MethodChannel(
+    'ashita_motsumono/native_ocr',
+  );
 
   Future<String> recognize(File imageFile) async {
     if (!Platform.isAndroid && !Platform.isIOS) {
-      throw OcrException(
-        'OCRはAndroid/iOS専用です。Windowsではテキスト貼り付けを使ってください。',
-      );
+      throw OcrException('OCRはAndroid/iOS専用です。Windowsではテキスト貼り付けを使ってください。');
     }
 
     if (!await imageFile.exists()) {
@@ -82,7 +82,8 @@ class OcrService {
     if (raw.contains('NullPointerException') || raw.contains('getClass()')) {
       return '日本語OCRの内部処理で失敗しました。最新コードで flutter clean → flutter pub get → flutter run を実行し直してください。';
     }
-    if (raw.contains('JapaneseTextRecognizerOptions') || raw.contains('text-recognition-japanese')) {
+    if (raw.contains('JapaneseTextRecognizerOptions') ||
+        raw.contains('text-recognition-japanese')) {
       return '日本語OCRの初期化に失敗しました。Androidの日本語OCR言語パックがAPKに入っていない可能性があります。';
     }
     return 'OCRの読み取りに失敗しました。画像を撮り直すか、テキスト貼り付けを使ってください。';

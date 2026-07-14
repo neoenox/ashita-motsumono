@@ -18,9 +18,7 @@ extension TodoAppStateOperations on AppState {
     final nextTodos = [...todos, todo];
     await _persistSnapshot(
       nextTodos: nextTodos,
-      notificationOperations: {
-        todo.id: NotificationSyncOperation.schedule,
-      },
+      notificationOperations: {todo.id: NotificationSyncOperation.schedule},
     );
     _replaceTodos(nextTodos);
     await _notificationCoordinator.executeScheduledTodo(todo);
@@ -36,9 +34,7 @@ extension TodoAppStateOperations on AppState {
     bool rescheduleNotification = true,
   }) async {
     final nextTodos = todos
-        .map(
-          (existing) => existing.id == updated.id ? updated : existing,
-        )
+        .map((existing) => existing.id == updated.id ? updated : existing)
         .toList();
     final operation = updated.isDone
         ? NotificationSyncOperation.cancel
@@ -114,9 +110,7 @@ extension TodoAppStateOperations on AppState {
     await _persistSnapshot(
       nextTodos: nextTodos,
       nextDocuments: nextDocuments,
-      notificationOperations: {
-        id: NotificationSyncOperation.cancel,
-      },
+      notificationOperations: {id: NotificationSyncOperation.cancel},
       cleanupPaths: cleanupPaths,
     );
     _replaceTodos(nextTodos);
