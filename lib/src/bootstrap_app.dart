@@ -237,15 +237,14 @@ class _BootstrapAppState extends State<BootstrapApp> {
       home: switch (_phase) {
         _BootstrapPhase.loading => const _BootstrapLoadingScreen(),
         _BootstrapPhase.recoverableFailure => _DatabaseRecoveryScreen(
-            backupInfo:
-                _loadFailure?.backupInfo ?? _store?.loadCorruptBackup(),
-            onRetry: _retryLoad,
-            onReset: _confirmAndResetLocalDatabase,
-          ),
+          backupInfo: _loadFailure?.backupInfo ?? _store?.loadCorruptBackup(),
+          onRetry: _retryLoad,
+          onReset: _confirmAndResetLocalDatabase,
+        ),
         _BootstrapPhase.fatalFailure => _BootstrapFailureScreen(
-            error: _fatalError,
-            onRetry: _restartBootstrap,
-          ),
+          error: _fatalError,
+          onRetry: _restartBootstrap,
+        ),
         _BootstrapPhase.ready => const SizedBox.shrink(),
       },
     );
@@ -299,9 +298,7 @@ class _DatabaseRecoveryScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'この状態ではデータを上書きしません。まず再試行し、改善しない場合のみ端末内データの初期化を選んでください。',
-            ),
+            const Text('この状態ではデータを上書きしません。まず再試行し、改善しない場合のみ端末内データの初期化を選んでください。'),
             if (details != null && details.isNotEmpty) ...[
               const SizedBox(height: 20),
               SelectableText(details),

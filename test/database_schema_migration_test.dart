@@ -50,7 +50,9 @@ void main() {
     }
 
     final now = DateTime(2026, 7, 13);
-    await legacy.into(legacy.dbTodo).insert(
+    await legacy
+        .into(legacy.dbTodo)
+        .insert(
           DbTodoCompanion.insert(
             id: 'legacy-todo',
             title: '旧データ',
@@ -64,7 +66,9 @@ void main() {
             updatedAt: now,
           ),
         );
-    await legacy.into(legacy.dbChecklistItem).insert(
+    await legacy
+        .into(legacy.dbChecklistItem)
+        .insert(
           DbChecklistItemCompanion.insert(
             id: 'orphan-item',
             todoId: 'missing-todo',

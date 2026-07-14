@@ -132,10 +132,7 @@ void main() {
 
     expect(firstAgain.previousNight, first.previousNight);
     expect(firstAgain.sameMorning, first.sameMorning);
-    expect(
-      {...first.values, ...second.values},
-      hasLength(4),
-    );
+    expect({...first.values, ...second.values}, hasLength(4));
 
     await store.saveWithSideEffects(
       AppSnapshot.empty,
@@ -186,11 +183,15 @@ void main() {
     final allocated = await store.getOrCreateNotificationIds(todoId);
 
     expect(allocated.previousNight, isNot(occupiedSeed));
-    expect(allocated.previousNight, occupiedSeed == maxNotificationId ? 1 : occupiedSeed + 1);
     expect(
-      {occupiedSeed, allocated.previousNight, allocated.sameMorning},
-      hasLength(3),
+      allocated.previousNight,
+      occupiedSeed == maxNotificationId ? 1 : occupiedSeed + 1,
     );
+    expect({
+      occupiedSeed,
+      allocated.previousNight,
+      allocated.sameMorning,
+    }, hasLength(3));
   });
 
   test('rejects snapshots with missing referenced records', () async {
@@ -224,58 +225,44 @@ void main() {
     expect(loaded.todos, isEmpty);
   });
 
-  test(
-    'throws and blocks writes when sqlite file is corrupt',
-    () async {
-      final tempDir = await Directory.systemTemp.createTemp(
-        'ashita_drift_store_test_',
+  test('throws and blocks writes when sqlite file is corrupt', () async {
+    final tempDir = await Directory.systemTemp.createTemp(
+      'ashita_drift_store_test_',
+    );
+    DriftStore? store;
+    try {
+      final dbFile = File('${tempDir.path}${Platform.pathSeparator}broken.db');
+      await dbFile.writeAsString('not a sqlite database');
+      final db = AppDatabase(NativeDatabase(dbFile), databaseFile: dbFile);
+      store = DriftStore(db);
+
+      await expectLater(store.load(), throwsA(isA<StoreLoadException>()));
+
+      expect(store.lastLoadHadCorruptData, isTrue);
+      expect(store.writesBlockedAfterLoadFailure, isTrue);
+      expect(store.loadCorruptBackup(), contains('退避コピーを作成しました'));
+      expect(store.loadCorruptBackup(), contains('ashita_motsumono_corrupt_'));
+      await expectLater(
+        store.save(AppSnapshot.empty),
+        throwsA(isA<StateError>()),
       );
-      DriftStore? store;
-      try {
-        final dbFile = File(
-          '${tempDir.path}${Platform.pathSeparator}broken.db',
-        );
-        await dbFile.writeAsString('not a sqlite database');
-        final db = AppDatabase(NativeDatabase(dbFile), databaseFile: dbFile);
-        store = DriftStore(db);
 
-        await expectLater(
-          store.load(),
-          throwsA(isA<StoreLoadException>()),
-        );
-
-        expect(store.lastLoadHadCorruptData, isTrue);
-        expect(store.writesBlockedAfterLoadFailure, isTrue);
-        expect(store.loadCorruptBackup(), contains('退避コピーを作成しました'));
-        expect(
-          store.loadCorruptBackup(),
-          contains('ashita_motsumono_corrupt_'),
-        );
-        await expectLater(
-          store.save(AppSnapshot.empty),
-          throwsA(isA<StateError>()),
-        );
-
-        final backupFiles = tempDir
-            .listSync()
-            .whereType<File>()
-            .where(
-              (file) => file.uri.pathSegments.last.startsWith(
-                'ashita_motsumono_corrupt_',
-              ),
-            )
-            .toList();
-        expect(backupFiles, hasLength(1));
-        expect(
-          await backupFiles.single.readAsString(),
-          'not a sqlite database',
-        );
-      } finally {
-        await store?.close();
-        if (await tempDir.exists()) {
-          await tempDir.delete(recursive: true);
-        }
+      final backupFiles = tempDir
+          .listSync()
+          .whereType<File>()
+          .where(
+            (file) => file.uri.pathSegments.last.startsWith(
+              'ashita_motsumono_corrupt_',
+            ),
+          )
+          .toList();
+      expect(backupFiles, hasLength(1));
+      expect(await backupFiles.single.readAsString(), 'not a sqlite database');
+    } finally {
+      await store?.close();
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
       }
-    },
-  );
+    }
+  });
 }

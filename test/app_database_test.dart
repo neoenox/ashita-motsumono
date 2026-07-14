@@ -103,48 +103,52 @@ void main() {
     expect(await db.backupDatabaseFile(), isNull);
   });
 
-  test('database file deletion attempts every file before reporting failure', () async {
-    final tempDir = await Directory.systemTemp.createTemp(
-      'ashita_database_delete_',
-    );
-    addTearDown(() async {
-      if (await tempDir.exists()) {
-        await tempDir.delete(recursive: true);
+  test(
+    'database file deletion attempts every file before reporting failure',
+    () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'ashita_database_delete_',
+      );
+      addTearDown(() async {
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      final path =
+          '${tempDir.path}${Platform.pathSeparator}ashita_motsumono.db';
+      final files = [
+        File(path),
+        File('$path-wal'),
+        File('$path-shm'),
+        File('$path-journal'),
+      ];
+      for (final file in files) {
+        await file.writeAsString(file.path);
       }
-    });
 
-    final path = '${tempDir.path}${Platform.pathSeparator}ashita_motsumono.db';
-    final files = [
-      File(path),
-      File('$path-wal'),
-      File('$path-shm'),
-      File('$path-journal'),
-    ];
-    for (final file in files) {
-      await file.writeAsString(file.path);
-    }
+      final attempted = <String>[];
+      await expectLater(
+        AppDatabase.deleteDatabaseFilesAtPath(
+          path,
+          deleteFile: (file) async {
+            attempted.add(file.path);
+            if (file.path == path) {
+              throw const FileSystemException('injected delete failure');
+            }
+            await file.delete();
+          },
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
 
-    final attempted = <String>[];
-    await expectLater(
-      AppDatabase.deleteDatabaseFilesAtPath(
-        path,
-        deleteFile: (file) async {
-          attempted.add(file.path);
-          if (file.path == path) {
-            throw const FileSystemException('injected delete failure');
-          }
-          await file.delete();
-        },
-      ),
-      throwsA(isA<FileSystemException>()),
-    );
-
-    expect(attempted, files.map((file) => file.path).toList());
-    expect(await File(path).exists(), isTrue);
-    expect(await File('$path-wal').exists(), isFalse);
-    expect(await File('$path-shm').exists(), isFalse);
-    expect(await File('$path-journal').exists(), isFalse);
-  });
+      expect(attempted, files.map((file) => file.path).toList());
+      expect(await File(path).exists(), isTrue);
+      expect(await File('$path-wal').exists(), isFalse);
+      expect(await File('$path-shm').exists(), isFalse);
+      expect(await File('$path-journal').exists(), isFalse);
+    },
+  );
 
   group('legacy migration safety', () {
     test('migrates valid legacy snapshot', () async {

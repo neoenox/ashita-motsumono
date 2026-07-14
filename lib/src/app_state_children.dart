@@ -52,10 +52,7 @@ extension ChildAppStateOperations on AppState {
               : todo,
         )
         .toList();
-    await _persistSnapshot(
-      nextChildren: nextChildren,
-      nextTodos: nextTodos,
-    );
+    await _persistSnapshot(nextChildren: nextChildren, nextTodos: nextTodos);
     _replaceChildren(nextChildren);
     _replaceTodos(nextTodos);
   }
@@ -63,9 +60,7 @@ extension ChildAppStateOperations on AppState {
   Future<void> updateChild(PersonProfile child) async {
     final updated = child.copyWith(updatedAt: DateTime.now());
     final nextChildren = children
-        .map(
-          (existing) => existing.id == updated.id ? updated : existing,
-        )
+        .map((existing) => existing.id == updated.id ? updated : existing)
         .toList();
     await _persistSnapshot(nextChildren: nextChildren);
     _replaceChildren(nextChildren);

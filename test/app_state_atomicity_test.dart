@@ -84,7 +84,7 @@ void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
   Future<(_FailingDriftStore, AppState, _ControllableNotificationService)>
-      createSubject() async {
+  createSubject() async {
     final database = await AppDatabase.createInMemory();
     final store = _FailingDriftStore(database);
     final notifications = _ControllableNotificationService();
@@ -98,35 +98,35 @@ void main() {
     addTearDown(appState.dispose);
     store.failSnapshotWrites = true;
 
-    await expectLater(
-      appState.addChild('長女'),
-      throwsA(isA<StateError>()),
-    );
+    await expectLater(appState.addChild('長女'), throwsA(isA<StateError>()));
 
     expect(appState.children, isEmpty);
     store.failSnapshotWrites = false;
     expect((await store.load()).children, isEmpty);
   });
 
-  test('does not publish todo state or notify when persistence fails', () async {
-    final (store, appState, notifications) = await createSubject();
-    addTearDown(appState.dispose);
-    store.failSnapshotWrites = true;
+  test(
+    'does not publish todo state or notify when persistence fails',
+    () async {
+      final (store, appState, notifications) = await createSubject();
+      addTearDown(appState.dispose);
+      store.failSnapshotWrites = true;
 
-    await expectLater(
-      appState.addTodoFromDraft(
-        draft: ExtractionDraft(
-          title: '水筒',
-          category: TodoCategory.item,
-          items: const ['水筒'],
+      await expectLater(
+        appState.addTodoFromDraft(
+          draft: ExtractionDraft(
+            title: '水筒',
+            category: TodoCategory.item,
+            items: const ['水筒'],
+          ),
         ),
-      ),
-      throwsA(isA<StateError>()),
-    );
+        throwsA(isA<StateError>()),
+      );
 
-    expect(appState.todos, isEmpty);
-    expect(notifications.scheduleAttempts, 0);
-  });
+      expect(appState.todos, isEmpty);
+      expect(notifications.scheduleAttempts, 0);
+    },
+  );
 
   test('keeps failed schedule queued and clears it after retry', () async {
     final (store, appState, notifications) = await createSubject();
@@ -153,31 +153,34 @@ void main() {
     expect(notifications.scheduleAttempts, greaterThanOrEqualTo(2));
   });
 
-  test('keeps failed cancel queued after todo deletion and retries it', () async {
-    final (store, appState, notifications) = await createSubject();
-    addTearDown(appState.dispose);
+  test(
+    'keeps failed cancel queued after todo deletion and retries it',
+    () async {
+      final (store, appState, notifications) = await createSubject();
+      addTearDown(appState.dispose);
 
-    final todo = await appState.addTodoFromDraft(
-      draft: ExtractionDraft(
-        title: '集金袋',
-        category: TodoCategory.submit,
-        items: const ['集金袋'],
-      ),
-    );
-    notifications.failNextCancel = true;
+      final todo = await appState.addTodoFromDraft(
+        draft: ExtractionDraft(
+          title: '集金袋',
+          category: TodoCategory.submit,
+          items: const ['集金袋'],
+        ),
+      );
+      notifications.failNextCancel = true;
 
-    await appState.deleteTodo(todo.id);
+      await appState.deleteTodo(todo.id);
 
-    expect(appState.todos, isEmpty);
-    final pending = await store.loadPendingNotificationSync();
-    expect(pending.single.todoId, todo.id);
-    expect(pending.single.operation, NotificationSyncOperation.cancel);
+      expect(appState.todos, isEmpty);
+      final pending = await store.loadPendingNotificationSync();
+      expect(pending.single.todoId, todo.id);
+      expect(pending.single.operation, NotificationSyncOperation.cancel);
 
-    await appState.rescheduleAllNotifications();
+      await appState.rescheduleAllNotifications();
 
-    expect(await store.loadPendingNotificationSync(), isEmpty);
-    expect(notifications.cancelAttempts, greaterThanOrEqualTo(2));
-  });
+      expect(await store.loadPendingNotificationSync(), isEmpty);
+      expect(notifications.cancelAttempts, greaterThanOrEqualTo(2));
+    },
+  );
 
   test('does not clear visible state when clear transaction fails', () async {
     final (store, appState, _) = await createSubject();
@@ -185,10 +188,7 @@ void main() {
     await appState.addChild('長女');
     store.failClear = true;
 
-    await expectLater(
-      appState.clearAllData(),
-      throwsA(isA<StateError>()),
-    );
+    await expectLater(appState.clearAllData(), throwsA(isA<StateError>()));
 
     expect(appState.children.single.name, '長女');
     store.failClear = false;
