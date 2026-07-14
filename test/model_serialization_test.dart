@@ -65,7 +65,12 @@ void main() {
     });
 
     test('fromJson handles null fields', () {
-      final json = {'id': 't1', 'title': 'test', 'category': 'item', 'status': 'active'};
+      final json = {
+        'id': 't1',
+        'title': 'test',
+        'category': 'item',
+        'status': 'active',
+      };
       final restored = AppTodo.fromJson(json);
       expect(restored.id, 't1');
       expect(restored.personId, isNull);
@@ -226,7 +231,12 @@ void main() {
     });
 
     test('fromJson handles null optional fields', () {
-      final doc2 = DocumentRecord(id: 'doc-2', sourceType: 'gallery', createdAt: DateTime.now(), updatedAt: DateTime.now());
+      final doc2 = DocumentRecord(
+        id: 'doc-2',
+        sourceType: 'gallery',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
       final json = doc2.toJson();
       final restored = DocumentRecord.fromJson(json);
       expect(restored.localImagePath, isNull);

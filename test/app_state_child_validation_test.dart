@@ -10,28 +10,35 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
-  test('rejects empty and whitespace-only child names without persistence', () async {
-    final store = await DriftStore.createInMemory();
-    final appState = AppState(
-      store: store,
-      notifications: NotificationService(timezoneName: 'Asia/Tokyo'),
-    );
-    await appState.load();
-
-    for (final invalidName in ['', '   ', '\t\n', '　']) {
-      await expectLater(
-        appState.addChild(invalidName),
-        throwsA(
-          isA<ArgumentError>()
-              .having((error) => error.name, 'name', 'name')
-              .having((error) => error.invalidValue, 'invalidValue', invalidName),
-        ),
+  test(
+    'rejects empty and whitespace-only child names without persistence',
+    () async {
+      final store = await DriftStore.createInMemory();
+      final appState = AppState(
+        store: store,
+        notifications: NotificationService(timezoneName: 'Asia/Tokyo'),
       );
+      await appState.load();
 
-      expect(appState.children, isEmpty);
-      expect((await store.load()).children, isEmpty);
-    }
-  });
+      for (final invalidName in ['', '   ', '\t\n', '　']) {
+        await expectLater(
+          appState.addChild(invalidName),
+          throwsA(
+            isA<ArgumentError>()
+                .having((error) => error.name, 'name', 'name')
+                .having(
+                  (error) => error.invalidValue,
+                  'invalidValue',
+                  invalidName,
+                ),
+          ),
+        );
+
+        expect(appState.children, isEmpty);
+        expect((await store.load()).children, isEmpty);
+      }
+    },
+  );
 
   test('trims a valid child name before storing it', () async {
     final store = await DriftStore.createInMemory();

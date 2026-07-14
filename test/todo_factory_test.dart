@@ -60,6 +60,9 @@ void main() {
     expect(todos, hasLength(2));
     expect(todos.map((todo) => todo.createdAt).toSet(), {now});
     expect(todos.map((todo) => todo.id).toSet(), hasLength(2));
-    expect(todos.expand((todo) => todo.items).map((item) => item.id).toSet(), hasLength(2));
+    expect(
+      todos.expand((todo) => todo.items).map((item) => item.id).toSet(),
+      hasLength(2),
+    );
   });
 }

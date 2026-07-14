@@ -4,7 +4,7 @@
 
 ## リリース前に確認すること
 
-- [ ] GitHub Actions の `Flutter CI` が通ることを確認する。
+- [x] GitHub Actions の `Flutter CI` が通ることを確認する。（PR #114 マージ済み、最新masterでCI成功）
 - [ ] Play Consoleのアップロード証明書SHA-256を確認し、Repository Variable `ANDROID_UPLOAD_CERT_SHA256`へ登録する。
 - [ ] GitHub Actions の `Release Android` を手動実行し、署名済みAPK/AAB artifact が生成されることを確認する。
 - [ ] `release-manifest.json`のcommit SHA、Run ID、version、application ID、課金商品ID、APK/AAB SHA-256が正式Release対象と一致することを確認する。
@@ -14,7 +14,7 @@
 - [ ] Play Console に `docs/STORE_LISTING_JA.md` の掲載文、データセーフティ回答、審査メモを転記して確認する。
 - [ ] Play Console にプライバシーポリシー公開URL、連絡先メールアドレス、カテゴリ、スクリーンショット、アプリアイコンを登録する。
 - [ ] 提出直前に `docs/PLAY_CONSOLE_SUBMISSION.md` の未完了項目を上から順に確認する。
-- [ ] PR #104 merge後は追加のCI機能開発を原則停止し、Play Console設定と正式Release証跡確認へ進む。
+- [x] PR #104 merge後は追加のCI機能開発を原則停止し、Play Console設定と正式Release証跡確認へ進む。（PR #104, #111, #114 マージ済み、オープンPRなし）
 
 ## 今回対応済み
 

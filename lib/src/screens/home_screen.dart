@@ -255,33 +255,46 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           if (state.children.length > 1)
             Padding(
-              padding: EdgeInsets.fromLTRB(Spacing.md, Spacing.sm, Spacing.md, 0),
+              padding: EdgeInsets.fromLTRB(
+                Spacing.md,
+                Spacing.sm,
+                Spacing.md,
+                0,
+              ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
-                  children: state.children.map(
-                    (c) => Padding(
-                      padding: const EdgeInsets.only(right: Spacing.sm),
-                      child: FilterChip(
-                        label: Text(c.name),
-                        selected: _filterPersonId == c.id,
-                        onSelected: (selected) {
-                          setState(() => _filterPersonId = selected ? c.id : null);
-                        },
-                        selectedColor: Theme.of(context).colorScheme.primary,
-                        labelStyle: TextStyle(
-                          color: _filterPersonId == c.id
-                              ? Theme.of(context).colorScheme.onPrimary
-                              : null,
+                  children: state.children
+                      .map(
+                        (c) => Padding(
+                          padding: const EdgeInsets.only(right: Spacing.sm),
+                          child: FilterChip(
+                            label: Text(c.name),
+                            selected: _filterPersonId == c.id,
+                            onSelected: (selected) {
+                              setState(
+                                () => _filterPersonId = selected ? c.id : null,
+                              );
+                            },
+                            selectedColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            labelStyle: TextStyle(
+                              color: _filterPersonId == c.id
+                                  ? Theme.of(context).colorScheme.onPrimary
+                                  : null,
+                            ),
+                            checkmarkColor: Theme.of(
+                              context,
+                            ).colorScheme.onPrimary,
+                            avatar: CircleAvatar(
+                              radius: 10,
+                              backgroundColor: Color(c.colorValue),
+                            ),
+                          ),
                         ),
-                        checkmarkColor: Theme.of(context).colorScheme.onPrimary,
-                        avatar: CircleAvatar(
-                          radius: 10,
-                          backgroundColor: Color(c.colorValue),
-                        ),
-                      ),
-                    ),
-                  ).toList(),
+                      )
+                      .toList(),
                 ),
               ),
             ),
@@ -359,9 +372,8 @@ class _MainBottomNav extends StatelessWidget {
         if (index == 1 && selectedIndex != 1) {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => SettingsScreen(
-                settings: context.read<AppSettings>(),
-              ),
+              builder: (_) =>
+                  SettingsScreen(settings: context.read<AppSettings>()),
             ),
           );
         }

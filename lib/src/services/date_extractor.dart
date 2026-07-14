@@ -128,8 +128,8 @@ class DateExtractor {
   }
 
   static bool hasPastMonthDayDate(String text, DateTime now) {
-    final match = _monthDayPattern.firstMatch(text) ??
-        _slashDatePattern.firstMatch(text);
+    final match =
+        _monthDayPattern.firstMatch(text) ?? _slashDatePattern.firstMatch(text);
     if (match == null) return false;
     final month = int.parse(match.group(1)!);
     final day = int.parse(match.group(2)!);

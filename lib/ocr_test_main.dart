@@ -19,7 +19,8 @@ void main() async {
 class _OcrTestApp extends StatelessWidget {
   const _OcrTestApp();
   @override
-  Widget build(BuildContext context) => const MaterialApp(home: _OcrTestScreen());
+  Widget build(BuildContext context) =>
+      const MaterialApp(home: _OcrTestScreen());
 }
 
 class _OcrTestScreen extends StatefulWidget {
@@ -64,7 +65,9 @@ class _OcrTestScreenState extends State<_OcrTestScreen> {
       return;
     }
 
-    _logLine('✅ Image found: ${imageFile.path} (${await imageFile.length()} bytes)');
+    _logLine(
+      '✅ Image found: ${imageFile.path} (${await imageFile.length()} bytes)',
+    );
     _logLine('');
 
     final ocr = OcrService();
@@ -102,7 +105,9 @@ class _OcrTestScreenState extends State<_OcrTestScreen> {
     _logLine('  Drafts: ${drafts.length}');
     for (var i = 0; i < drafts.length; i++) {
       final d = drafts[i];
-      _logLine('  [$i] ${d.title} | ${d.category.label} | ${d.dueDate} | ${d.amount}円');
+      _logLine(
+        '  [$i] ${d.title} | ${d.category.label} | ${d.dueDate} | ${d.amount}円',
+      );
     }
 
     _logLine('');
@@ -134,7 +139,10 @@ class _OcrTestScreenState extends State<_OcrTestScreen> {
       body: SingleChildScrollView(
         controller: _scrollController,
         padding: const EdgeInsets.all(16),
-        child: SelectableText(_log, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+        child: SelectableText(
+          _log,
+          style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+        ),
       ),
     );
   }

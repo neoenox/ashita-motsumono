@@ -83,40 +83,42 @@ class AppTodo {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'personId': personId,
-        'documentId': documentId,
-        'dueDate': dueDate?.toIso8601String(),
-        'category': category.name,
-        'amount': amount,
-        'note': note,
-        'status': status.name,
-        'items': items.map((e) => e.toJson()).toList(),
-        'notifyPreviousNight': notifyPreviousNight,
-        'notifySameMorning': notifySameMorning,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'title': title,
+    'personId': personId,
+    'documentId': documentId,
+    'dueDate': dueDate?.toIso8601String(),
+    'category': category.name,
+    'amount': amount,
+    'note': note,
+    'status': status.name,
+    'items': items.map((e) => e.toJson()).toList(),
+    'notifyPreviousNight': notifyPreviousNight,
+    'notifySameMorning': notifySameMorning,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 
   factory AppTodo.fromJson(Map<String, dynamic> json) => AppTodo(
-        id: (json['id'] as String?) ?? '',
-        title: (json['title'] as String?) ?? '',
-        personId: json['personId'] as String? ?? json['childId'] as String?,
-        documentId: json['documentId'] as String?,
-        dueDate: (json['dueDate'] as String?) != null
-            ? DateTime.tryParse(json['dueDate'] as String)
-            : null,
-        category: TodoCategory.fromName(json['category'] as String?),
-        amount: json['amount'] as int?,
-        note: json['note'] as String?,
-        status: TodoStatus.fromName(json['status'] as String?),
-        items: (json['items'] as List<dynamic>? ?? const [])
-            .map((e) => ChecklistItem.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        notifyPreviousNight: json['notifyPreviousNight'] as bool? ?? true,
-        notifySameMorning: json['notifySameMorning'] as bool? ?? true,
-        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
-        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
-      );
+    id: (json['id'] as String?) ?? '',
+    title: (json['title'] as String?) ?? '',
+    personId: json['personId'] as String? ?? json['childId'] as String?,
+    documentId: json['documentId'] as String?,
+    dueDate: (json['dueDate'] as String?) != null
+        ? DateTime.tryParse(json['dueDate'] as String)
+        : null,
+    category: TodoCategory.fromName(json['category'] as String?),
+    amount: json['amount'] as int?,
+    note: json['note'] as String?,
+    status: TodoStatus.fromName(json['status'] as String?),
+    items: (json['items'] as List<dynamic>? ?? const [])
+        .map((e) => ChecklistItem.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    notifyPreviousNight: json['notifyPreviousNight'] as bool? ?? true,
+    notifySameMorning: json['notifySameMorning'] as bool? ?? true,
+    createdAt:
+        DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+    updatedAt:
+        DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
+  );
 }

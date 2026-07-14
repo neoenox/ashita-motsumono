@@ -13,19 +13,13 @@ void main() {
     });
 
     test('preserves learned 集金 label when separate from 集金袋', () {
-      final items = ItemExtractor.extract(
-        '集金と集金袋を確認してください',
-        const ['集金'],
-      );
+      final items = ItemExtractor.extract('集金と集金袋を確認してください', const ['集金']);
 
       expect(items, orderedEquals(['集金', '集金袋']));
     });
 
     test('preserves learned 水泳 label when separate from 水泳カード', () {
-      final items = ItemExtractor.extract(
-        '水泳カードと水泳の予定を確認してください',
-        const ['水泳'],
-      );
+      final items = ItemExtractor.extract('水泳カードと水泳の予定を確認してください', const ['水泳']);
 
       expect(items, orderedEquals(['水泳カード', '水泳']));
     });

@@ -40,7 +40,9 @@ Future<void> main() async {
   print('Due date: ${draft.dueDate}');
   print('Amount: ${draft.amount}');
   print('Items: ${draft.items}');
-  print('Note (first 200): ${draft.note?.substring(0, (draft.note?.length ?? 0).clamp(0, 200))}');
+  print(
+    'Note (first 200): ${draft.note?.substring(0, (draft.note?.length ?? 0).clamp(0, 200))}',
+  );
 
   print('');
   print('=== Multi-extraction ===');
@@ -48,7 +50,9 @@ Future<void> main() async {
   print('Drafts: ${drafts.length}');
   for (var i = 0; i < drafts.length; i++) {
     final d = drafts[i];
-    print('  [$i] ${d.title} | ${d.category.label} | ${d.dueDate} | ${d.amount}円 | items=${d.items}');
+    print(
+      '  [$i] ${d.title} | ${d.category.label} | ${d.dueDate} | ${d.amount}円 | items=${d.items}',
+    );
   }
 
   print('');
