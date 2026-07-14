@@ -86,7 +86,6 @@ void main() {
         },
       );
 
-      // First task fails, second should still run
       await Future.wait([
         runner.run(
           name: 'task-a',
@@ -166,7 +165,6 @@ void main() {
     test('returns normally even when action throws', () async {
       final runner = BackgroundTaskRunner(onError: (_, _, _) {});
 
-      // Should not throw — completes normally despite action failure
       await runner.run(
         name: 'task',
         action: () async => throw Exception('error'),
@@ -179,7 +177,6 @@ void main() {
       final callOrder = <String>[];
       final runner = BackgroundTaskRunner(onError: (_, _, _) {});
 
-      // Start first task (will fail)
       final first = runner.run(
         name: 'first',
         action: () async {
@@ -188,7 +185,6 @@ void main() {
         },
       );
 
-      // Start second task (should succeed independently)
       final second = runner.run(
         name: 'second',
         action: () async {
@@ -242,9 +238,12 @@ void main() {
 
   group('BackgroundTaskRunner default handler', () {
     test('default handler does not throw', () async {
+      final previousHandler = FlutterError.onError;
+      addTearDown(() => FlutterError.onError = previousHandler);
+      FlutterError.onError = (_) {};
+
       final runner = BackgroundTaskRunner();
 
-      // Should not throw even without custom error handler
       await runner.run(
         name: 'default handler task',
         action: () async => throw Exception('default handler test'),
