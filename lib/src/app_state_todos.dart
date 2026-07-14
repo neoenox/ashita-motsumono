@@ -15,9 +15,15 @@ extension TodoAppStateOperations on AppState {
       notifyPreviousNight: notifyPreviousNight,
       notifySameMorning: notifySameMorning,
     );
-    _replaceTodos([...todos, todo]);
-    await _persist();
-    await _notificationCoordinator.schedule(todo);
+    final nextTodos = [...todos, todo];
+    await _persistSnapshot(
+      nextTodos: nextTodos,
+      notificationOperations: {
+        todo.id: NotificationSyncOperation.schedule,
+      },
+    );
+    _replaceTodos(nextTodos);
+    await _notificationCoordinator.executeScheduledTodo(todo);
     return todo;
   }
 
@@ -29,14 +35,27 @@ extension TodoAppStateOperations on AppState {
     AppTodo updated, {
     bool rescheduleNotification = true,
   }) async {
-    _replaceTodos(
-      todos.map(
-        (existing) => existing.id == updated.id ? updated : existing,
-      ),
+    final nextTodos = todos
+        .map(
+          (existing) => existing.id == updated.id ? updated : existing,
+        )
+        .toList();
+    final operation = updated.isDone
+        ? NotificationSyncOperation.cancel
+        : NotificationSyncOperation.schedule;
+    await _persistSnapshot(
+      nextTodos: nextTodos,
+      notificationOperations: rescheduleNotification
+          ? {updated.id: operation}
+          : const {},
     );
-    await _persist();
+    _replaceTodos(nextTodos);
     if (rescheduleNotification) {
-      await _notificationCoordinator.schedule(updated);
+      if (operation == NotificationSyncOperation.cancel) {
+        await _notificationCoordinator.executeCanceledTodo(updated.id);
+      } else {
+        await _notificationCoordinator.executeScheduledTodo(updated);
+      }
     }
   }
 
@@ -49,14 +68,21 @@ extension TodoAppStateOperations on AppState {
           : TodoStatus.done,
       updatedAt: DateTime.now(),
     );
-    _replaceTodos(
-      todos.map((existing) => existing.id == id ? updated : existing),
+    final nextTodos = todos
+        .map((existing) => existing.id == id ? updated : existing)
+        .toList();
+    final operation = updated.isDone
+        ? NotificationSyncOperation.cancel
+        : NotificationSyncOperation.schedule;
+    await _persistSnapshot(
+      nextTodos: nextTodos,
+      notificationOperations: {updated.id: operation},
     );
-    await _persist();
+    _replaceTodos(nextTodos);
     if (updated.isDone) {
-      await _notificationCoordinator.cancel(updated.id);
+      await _notificationCoordinator.executeCanceledTodo(updated.id);
     } else {
-      await _notificationCoordinator.schedule(updated);
+      await _notificationCoordinator.executeScheduledTodo(updated);
     }
   }
 
@@ -77,11 +103,26 @@ extension TodoAppStateOperations on AppState {
   }
 
   Future<void> deleteTodo(String id) async {
-    _replaceTodos(todos.where((todo) => todo.id != id));
-    final orphanDocuments = _cleanupOrphanDocuments();
-    await _persist();
-    await _notificationCoordinator.cancel(id);
-    await _documentImageCleaner.deleteAll(orphanDocuments);
+    final nextTodos = todos.where((todo) => todo.id != id).toList();
+    if (nextTodos.length == todos.length) return;
+
+    final orphanDocuments = _orphanDocumentsAfter(nextTodos);
+    final nextDocuments = _documentsReferencedBy(nextTodos);
+    final cleanupPaths = _documentImageCleaner
+        .pathsFor(orphanDocuments)
+        .toList();
+    await _persistSnapshot(
+      nextTodos: nextTodos,
+      nextDocuments: nextDocuments,
+      notificationOperations: {
+        id: NotificationSyncOperation.cancel,
+      },
+      cleanupPaths: cleanupPaths,
+    );
+    _replaceTodos(nextTodos);
+    _replaceDocuments(nextDocuments);
+    await _notificationCoordinator.executeCanceledTodo(id);
+    await _retryPendingFileCleanup();
   }
 
   Future<List<AppTodo>> addTodosFromDrafts({
@@ -98,13 +139,25 @@ extension TodoAppStateOperations on AppState {
       notifyPreviousNight: notifyPreviousNight,
       notifySameMorning: notifySameMorning,
     );
-    _replaceTodos([...todos, ...newTodos]);
-    await _persist();
-    await _notificationCoordinator.rescheduleAll(newTodos);
+    if (newTodos.isEmpty) return const [];
+
+    final nextTodos = [...todos, ...newTodos];
+    await _persistSnapshot(
+      nextTodos: nextTodos,
+      notificationOperations: {
+        for (final todo in newTodos)
+          todo.id: NotificationSyncOperation.schedule,
+      },
+    );
+    _replaceTodos(nextTodos);
+    await Future.wait(
+      newTodos.map(_notificationCoordinator.executeScheduledTodo),
+    );
     return newTodos;
   }
 
-  Future<void> rescheduleAllNotifications() {
-    return _notificationCoordinator.rescheduleAll(todos);
+  Future<void> rescheduleAllNotifications() async {
+    await retryPendingSideEffects();
+    await _notificationCoordinator.rescheduleAll(todos);
   }
 }

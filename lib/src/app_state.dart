@@ -1,6 +1,8 @@
 // lib/src/app_state.dart
 // アプリ状態ファサード。状態別Notifierと永続化順序を統括する。
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
@@ -32,8 +34,13 @@ int _sortTodo(AppTodo a, AppTodo b) {
 }
 
 class AppState extends ChangeNotifier {
-  AppState({required this._store, required this._notifications, Uuid? uuid})
-    : _uuid = uuid ?? const Uuid() {
+  AppState({
+    required Store store,
+    required NotificationService notifications,
+    Uuid? uuid,
+  }) : _store = store,
+       _notifications = notifications,
+       _uuid = uuid ?? const Uuid() {
     // 既存のcontext.watch<AppState>()は人物選択UIとの互換用に限定する。
     childState.addListener(notifyListeners);
   }
@@ -48,11 +55,13 @@ class AppState extends ChangeNotifier {
 
   late final TodoFactory _todoFactory = TodoFactory(_uuid);
   late final NotificationCoordinator _notificationCoordinator =
-      NotificationCoordinator(_notifications);
+      NotificationCoordinator(_notifications, _store);
   final DocumentImageCleaner _documentImageCleaner =
       const DocumentImageCleaner();
 
   bool _loaded = false;
+  Future<void>? _closeFuture;
+
   bool get loaded => _loaded;
   bool get lastLoadHadCorruptData => _store.lastLoadHadCorruptData;
 
@@ -142,14 +151,56 @@ class AppState extends ChangeNotifier {
     documentState.replace(values);
   }
 
-  Future<void> _persist() {
-    return _store.save(
+  Future<void> _persistSnapshot({
+    Iterable<PersonProfile>? nextChildren,
+    Iterable<AppTodo>? nextTodos,
+    Iterable<DocumentRecord>? nextDocuments,
+    Map<String, NotificationSyncOperation> notificationOperations = const {},
+    Iterable<String> cleanupPaths = const [],
+  }) {
+    return _store.saveWithSideEffects(
       AppSnapshot(
-        children: children,
-        todos: todos,
-        documents: documents,
+        children: List<PersonProfile>.of(nextChildren ?? children),
+        todos: List<AppTodo>.of(nextTodos ?? todos),
+        documents: List<DocumentRecord>.of(nextDocuments ?? documents),
       ),
+      notificationOperations: notificationOperations,
+      cleanupPaths: cleanupPaths,
     );
+  }
+
+  Future<void> _retryPendingFileCleanup() async {
+    final paths = await _store.loadPendingFileCleanup();
+    for (final path in paths) {
+      try {
+        await _documentImageCleaner.deletePath(path);
+        await _store.markFileCleanupComplete(path);
+      } on Object catch (error, stackTrace) {
+        try {
+          await _store.markFileCleanupFailed(path, error);
+        } on Object catch (queueError, queueStackTrace) {
+          if (kDebugMode) {
+            debugPrint(
+              'File cleanup: failed to persist retry state: '
+              '$queueError\n$queueStackTrace',
+            );
+          }
+        }
+        if (kDebugMode) {
+          debugPrint('File cleanup failed: $error\n$stackTrace');
+        }
+      }
+    }
+  }
+
+  Future<void> retryPendingSideEffects() async {
+    await _notificationCoordinator.retryPending(todos);
+    await _retryPendingFileCleanup();
+  }
+
+  /// DBを一度だけ閉じる。再初期化前はこのFutureを待ってclose/open競合を防ぐ。
+  Future<void> close() {
+    return _closeFuture ??= _store.close();
   }
 
   @override
@@ -158,6 +209,7 @@ class AppState extends ChangeNotifier {
     childState.dispose();
     todoState.dispose();
     documentState.dispose();
+    unawaited(close());
     super.dispose();
   }
 }

@@ -1,0 +1,35 @@
+Notification validation commit provenance
+=========================================
+
+This file is a curated provenance summary, not the output of `git log` at the
+current branch tip. Current branch state must be obtained from GitHub or Git.
+
+Application and review hardening excerpt
+----------------------------------------
+
+5a64ff3 test: cover notification collisions and differential writes
+0c3d97b test: cover resilient database file deletion
+a6d2fa0 fix: address database review feedback and minimize writes
+37401e8 test: align database migration coverage with v2 integrity
+7c4680b fix: report store validation failures as async errors
+
+Authoritative CI validation before evidence correction
+------------------------------------------------------
+
+PR HEAD: d40f591745051ad6feab82a86221eb0d648d7ead
+Pull-request merge commit: bd261d53e13e2585f1cfb3e521589666e2f3051f
+Flutter CI: #754
+Run id: 29298500627
+Result: SUCCESS
+
+Evidence consistency correction sequence
+----------------------------------------
+
+fe855d5 test: enforce notification validation evidence consistency
+de4d27e docs: make notification validation references concrete
+b92f003 docs: record immutable notification validation environment
+448a795 docs: replace stale notification test log with CI evidence
+
+The commit that updates this provenance file is intentionally not embedded in
+this file to avoid a self-referential SHA. Use the PR history for the current
+evidence commit and the PR body for the latest CI run.

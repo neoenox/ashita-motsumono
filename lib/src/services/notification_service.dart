@@ -1,17 +1,18 @@
 // lib/src/services/notification_service.dart
 // flutter_local_notifications を使ったローカル通知のスケジュール・キャンセル。
-// 前日20:00 と 当日7:00 に Todo 内容を通知する。
+// 前日夜と当日朝に Todo 内容を通知する。
 // 端末のタイムゾーンを自動検出（flutter_timezone）、フォールバックは Asia/Tokyo。
 // 関連: models/entities.dart, app_state.dart
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/entities.dart';
 import 'app_settings.dart';
+import 'notification_id_repository.dart';
 
 @immutable
 class NotificationScheduleRequest {
@@ -30,11 +31,16 @@ class NotificationScheduleRequest {
 
 class NotificationService {
   /// [timezoneName] を指定すると flutter_timezone による自動検出をスキップする（テスト用）。
-  NotificationService({this.settings, String? timezoneName})
-    : _timezoneName = timezoneName;
+  NotificationService({
+    this.settings,
+    this.notificationIds,
+    String? timezoneName,
+  }) : _timezoneName = timezoneName;
 
   final AppSettings? settings;
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final NotificationIdRepository? notificationIds;
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
   final String? _timezoneName;
   bool _initialized = false;
   Future<void>? _initFuture;
@@ -93,10 +99,16 @@ class NotificationService {
 
   Future<void> scheduleTodo(AppTodo todo) async {
     await initialize();
+    final ids = notificationIds == null
+        ? _fallbackNotificationIds(todo.id)
+        : await notificationIds!.getOrCreateNotificationIds(todo.id);
 
     // 同じTodoの既存2通知を必ず先に削除してから、必要な未来通知だけを再登録する。
-    await cancelTodo(todo.id);
-    for (final request in buildScheduleRequests(todo)) {
+    await _cancelIds(ids);
+    for (final request in buildScheduleRequests(
+      todo,
+      notificationIdPair: ids,
+    )) {
       await _scheduleIfFuture(
         request.id,
         request.scheduledDate,
@@ -110,10 +122,12 @@ class NotificationService {
   List<NotificationScheduleRequest> buildScheduleRequests(
     AppTodo todo, {
     DateTime? now,
+    NotificationIdPair? notificationIdPair,
   }) {
     final due = todo.dueDate?.toLocal();
     if (due == null || todo.isDone) return const [];
 
+    final ids = notificationIdPair ?? _fallbackNotificationIds(todo.id);
     final referenceTime = now ?? DateTime.now();
     final requests = <NotificationScheduleRequest>[];
 
@@ -122,17 +136,18 @@ class NotificationService {
           settings?.previousNightHour ?? AppSettings.defaultPreviousNightHour;
       final m = settings?.previousNightMinute ??
           AppSettings.defaultPreviousNightMinute;
+      // ここでは「端末の壁時計時刻」を表す。実際のTZ変換は登録直前に行う。
       final when = DateTime(
         due.year,
         due.month,
-        due.day,
+        due.day - 1,
         h,
         m,
-      ).subtract(const Duration(days: 1));
+      );
       if (when.isAfter(referenceTime)) {
         requests.add(
           NotificationScheduleRequest(
-            id: _notificationId(todo.id, 1),
+            id: ids.previousNight,
             scheduledDate: when,
             title: '明日の支度',
             body: _buildBody(todo),
@@ -145,11 +160,17 @@ class NotificationService {
       final h = settings?.sameMorningHour ?? AppSettings.defaultSameMorningHour;
       final m =
           settings?.sameMorningMinute ?? AppSettings.defaultSameMorningMinute;
-      final when = DateTime(due.year, due.month, due.day, h, m);
+      final when = DateTime(
+        due.year,
+        due.month,
+        due.day,
+        h,
+        m,
+      );
       if (when.isAfter(referenceTime)) {
         requests.add(
           NotificationScheduleRequest(
-            id: _notificationId(todo.id, 2),
+            id: ids.sameMorning,
             scheduledDate: when,
             title: '今日の支度・提出',
             body: _buildBody(todo),
@@ -163,8 +184,16 @@ class NotificationService {
 
   Future<void> cancelTodo(String todoId) async {
     await initialize();
-    await _plugin.cancel(id: _notificationId(todoId, 1));
-    await _plugin.cancel(id: _notificationId(todoId, 2));
+    final ids = notificationIds == null
+        ? _fallbackNotificationIds(todoId)
+        : await notificationIds!.findNotificationIds(todoId);
+    if (ids == null) return;
+    await _cancelIds(ids);
+  }
+
+  Future<void> _cancelIds(NotificationIdPair ids) async {
+    await _plugin.cancel(id: ids.previousNight);
+    await _plugin.cancel(id: ids.sameMorning);
   }
 
   Future<void> _scheduleIfFuture(
@@ -173,7 +202,20 @@ class NotificationService {
     String title,
     String body,
   ) async {
-    if (!when.isAfter(DateTime.now())) return;
+    // TZDateTime.from は同じ「瞬間」へ変換するため、壁時計の時刻がずれる場合がある。
+    // 年月日時分から端末TZ上の予定時刻を構築し、設定した時刻を維持する。
+    final scheduled = tz.TZDateTime(
+      tz.local,
+      when.year,
+      when.month,
+      when.day,
+      when.hour,
+      when.minute,
+      when.second,
+      when.millisecond,
+      when.microsecond,
+    );
+    if (!scheduled.isAfter(tz.TZDateTime.now(tz.local))) return;
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
         'preparation_reminders',
@@ -190,7 +232,7 @@ class NotificationService {
       id: id,
       title: title,
       body: body,
-      scheduledDate: tz.TZDateTime.from(when, tz.local),
+      scheduledDate: scheduled,
       notificationDetails: details,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
     );
@@ -208,6 +250,16 @@ class NotificationService {
     return '${todo.title}：${parts.join(' / ')}';
   }
 
-  int _notificationId(String id, int salt) =>
-      (id.codeUnits.fold<int>(0, (h, c) => h * 31 + c) ^ salt) & 0x7FFFFFFF;
+  NotificationIdPair _fallbackNotificationIds(String todoId) =>
+      NotificationIdPair(
+        previousNight: _legacyNotificationId(todoId, 1),
+        sameMorning: _legacyNotificationId(todoId, 2),
+      );
+
+  int _legacyNotificationId(String id, int salt) {
+    final value =
+        (id.codeUnits.fold<int>(0, (hash, code) => hash * 31 + code) ^ salt) &
+        0x7FFFFFFF;
+    return value == 0 ? salt : value;
+  }
 }

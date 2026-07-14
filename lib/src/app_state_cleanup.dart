@@ -4,12 +4,20 @@ extension CleanupAppStateOperations on AppState {
   Future<void> clearAllData() async {
     final documentsToDelete = List<DocumentRecord>.from(documents);
     final todosToCancel = List<AppTodo>.from(todos);
+    final cleanupPaths = _documentImageCleaner
+        .pathsFor(documentsToDelete)
+        .toList();
+
+    await _store.clearWithSideEffects(
+      notificationTodoIds: todosToCancel.map((todo) => todo.id),
+      cleanupPaths: cleanupPaths,
+    );
     _replaceChildren(const []);
     _replaceTodos(const []);
     _replaceDocuments(const []);
-    await _store.clear();
-    await _notificationCoordinator.cancelAll(todosToCancel);
-    await _documentImageCleaner.deleteAll(documentsToDelete);
+
+    await _notificationCoordinator.retryPending(const <AppTodo>[]);
+    await _retryPendingFileCleanup();
   }
 
   Future<void> tryDeleteDocumentOnDispose({

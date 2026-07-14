@@ -8,6 +8,29 @@ import 'package:ashita_motsumono/src/services/notification_service.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+class _FakeNotificationService extends NotificationService {
+  _FakeNotificationService() : super(timezoneName: 'Asia/Tokyo');
+
+  final List<String> scheduledTodoIds = [];
+  final List<String> canceledTodoIds = [];
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> requestPermissions() async {}
+
+  @override
+  Future<void> scheduleTodo(AppTodo todo) async {
+    scheduledTodoIds.add(todo.id);
+  }
+
+  @override
+  Future<void> cancelTodo(String todoId) async {
+    canceledTodoIds.add(todoId);
+  }
+}
+
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
@@ -15,7 +38,7 @@ void main() {
     final store = await DriftStore.createInMemory();
     final state = AppState(
       store: store,
-      notifications: NotificationService(timezoneName: 'Asia/Tokyo'),
+      notifications: _FakeNotificationService(),
     );
     await state.load();
     return state;
@@ -66,22 +89,25 @@ void main() {
     expect(appNotifications, 0);
   });
 
-  test('child changes notify ChildState and the compatibility AppState listener', () async {
-    final state = await createState();
-    var appNotifications = 0;
-    var childNotifications = 0;
-    var todoNotifications = 0;
-    var documentNotifications = 0;
-    state.addListener(() => appNotifications++);
-    state.childState.addListener(() => childNotifications++);
-    state.todoState.addListener(() => todoNotifications++);
-    state.documentState.addListener(() => documentNotifications++);
+  test(
+    'child changes notify ChildState and the compatibility AppState listener',
+    () async {
+      final state = await createState();
+      var appNotifications = 0;
+      var childNotifications = 0;
+      var todoNotifications = 0;
+      var documentNotifications = 0;
+      state.addListener(() => appNotifications++);
+      state.childState.addListener(() => childNotifications++);
+      state.todoState.addListener(() => todoNotifications++);
+      state.documentState.addListener(() => documentNotifications++);
 
-    await state.addChild('長女');
+      await state.addChild('長女');
 
-    expect(childNotifications, 1);
-    expect(appNotifications, 1);
-    expect(todoNotifications, 0);
-    expect(documentNotifications, 0);
-  });
+      expect(childNotifications, 1);
+      expect(appNotifications, 1);
+      expect(todoNotifications, 0);
+      expect(documentNotifications, 0);
+    },
+  );
 }

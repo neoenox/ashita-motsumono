@@ -1,81 +1,29 @@
 // lib/main.dart
-// アプリのエントリポイント。状態領域ごとのProviderを登録してMaterialAppを起動する。
+// 公開名称「あしたもつもの」のエントリポイント。
+// 初期化失敗をUIで復旧できるBootstrapAppを起動する。
 
-import 'dart:async';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'src/app_state.dart';
-import 'src/repositories/drift_store.dart';
-import 'src/screens/home_screen_scope.dart';
-import 'src/services/ad_service.dart';
-import 'src/services/app_settings.dart';
+import 'src/bootstrap_app.dart';
 import 'src/services/crash_reporter.dart';
-import 'src/services/notification_service.dart';
-import 'src/services/purchase_provider.dart';
-import 'src/state/app_data_notifiers.dart';
-import 'src/theme/app_theme.dart';
+
+export 'src/bootstrap_app.dart' show AshitaMotsumonoApp, BootstrapApp;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await CrashReporter.init();
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  final prefs = await SharedPreferences.getInstance();
-  final settings = AppSettings(prefs);
-  final store = await DriftStore.create();
-  final notifications = NotificationService(settings: settings);
-  final appState = AppState(store: store, notifications: notifications);
-  await appState.load();
-  unawaited(appState.rescheduleAllNotifications());
-  unawaited(AdService.initialize());
-  runApp(
-    AshitaMotsumonoApp(
-      appState: appState,
-      settings: settings,
-      purchaseProvider: AppPurchaseProvider(settings),
-    ),
-  );
-}
-
-class AshitaMotsumonoApp extends StatelessWidget {
-  const AshitaMotsumonoApp({
-    super.key,
-    required this.appState,
-    required this.settings,
-    required this.purchaseProvider,
-  });
-
-  final AppState appState;
-  final AppSettings settings;
-  final PurchaseProvider purchaseProvider;
-
-  @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: appState),
-        ChangeNotifierProvider<ChildState>.value(value: appState.childState),
-        ChangeNotifierProvider<TodoState>.value(value: appState.todoState),
-        ChangeNotifierProvider<DocumentState>.value(
-          value: appState.documentState,
-        ),
-        ChangeNotifierProvider.value(value: settings),
-        ChangeNotifierProvider.value(value: purchaseProvider),
-      ],
-      builder: (context, _) {
-        final currentSettings = context.watch<AppSettings>();
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: 'あしたもつもの',
-          theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
-          themeMode: currentSettings.themeMode,
-          home: HomeScreenScope(settings: settings),
-        );
-      },
-    );
+  try {
+    await CrashReporter.init();
+  } on Object catch (error, stackTrace) {
+    if (kDebugMode) {
+      debugPrint('CrashReporter initialization failed: $error\n$stackTrace');
+    }
   }
+  try {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  } on Object catch (error) {
+    if (kDebugMode) debugPrint('System UI initialization failed: $error');
+  }
+  runApp(const BootstrapApp());
 }

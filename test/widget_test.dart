@@ -29,6 +29,23 @@ Future<AppSettings> _createSettings() async {
   return AppSettings(prefs);
 }
 
+/// テスト用の NotificationService（実プラグインへ到達しない）。
+class _FakeNotificationService extends NotificationService {
+  _FakeNotificationService() : super(timezoneName: 'Asia/Tokyo');
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> requestPermissions() async {}
+
+  @override
+  Future<void> scheduleTodo(AppTodo todo) async {}
+
+  @override
+  Future<void> cancelTodo(String todoId) async {}
+}
+
 /// テスト用の PurchaseProvider（実際の課金処理は行わない）。
 class _TestPurchaseProvider extends PurchaseProvider {
   _TestPurchaseProvider({
@@ -82,7 +99,7 @@ Future<AppState> _createAppState() async {
   final store = await DriftStore.createInMemory();
   final appState = AppState(
     store: store,
-    notifications: NotificationService(timezoneName: 'Asia/Tokyo'),
+    notifications: _FakeNotificationService(),
   );
   await appState.load();
   return appState;
@@ -99,7 +116,7 @@ void main() {
       final store = await DriftStore.createInMemory();
       final appState = AppState(
         store: store,
-        notifications: NotificationService(timezoneName: 'Asia/Tokyo'),
+        notifications: _FakeNotificationService(),
       );
       await appState.load();
 

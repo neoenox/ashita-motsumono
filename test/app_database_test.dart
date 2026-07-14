@@ -2,11 +2,13 @@
 // AppDatabase（Drift SQLite）のCRUD操作とスキーマをテストする。
 // 関連: lib/src/repositories/app_database.dart, lib/src/models/entities.dart
 
+import 'dart:io';
+
+import 'package:ashita_motsumono/src/models/entities.dart';
+import 'package:ashita_motsumono/src/repositories/app_database.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:ashita_motsumono/src/models/entities.dart';
-import 'package:ashita_motsumono/src/repositories/app_database.dart';
 
 void main() {
   late AppDatabase db;
@@ -20,8 +22,8 @@ void main() {
     await db.close();
   });
 
-  test('schema version is 1', () {
-    expect(db.schemaVersion, 1);
+  test('schema version is 2', () {
+    expect(db.schemaVersion, 2);
   });
 
   test('saves and loads a child', () async {
@@ -101,6 +103,53 @@ void main() {
     expect(await db.backupDatabaseFile(), isNull);
   });
 
+  test(
+    'database file deletion attempts every file before reporting failure',
+    () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'ashita_database_delete_',
+      );
+      addTearDown(() async {
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      final path =
+          '${tempDir.path}${Platform.pathSeparator}ashita_motsumono.db';
+      final files = [
+        File(path),
+        File('$path-wal'),
+        File('$path-shm'),
+        File('$path-journal'),
+      ];
+      for (final file in files) {
+        await file.writeAsString(file.path);
+      }
+
+      final attempted = <String>[];
+      await expectLater(
+        AppDatabase.deleteDatabaseFilesAtPath(
+          path,
+          deleteFile: (file) async {
+            attempted.add(file.path);
+            if (file.path == path) {
+              throw const FileSystemException('injected delete failure');
+            }
+            await file.delete();
+          },
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
+
+      expect(attempted, files.map((file) => file.path).toList());
+      expect(await File(path).exists(), isTrue);
+      expect(await File('$path-wal').exists(), isFalse);
+      expect(await File('$path-shm').exists(), isFalse);
+      expect(await File('$path-journal').exists(), isFalse);
+    },
+  );
+
   group('legacy migration safety', () {
     test('migrates valid legacy snapshot', () async {
       SharedPreferences.setMockInitialValues({
@@ -130,12 +179,20 @@ void main() {
       expect(ok, isTrue);
     });
 
-    test('preserves legacy childId through database migration', () async {
+    test('preserves valid legacy childId through database migration', () async {
       SharedPreferences.setMockInitialValues({
         'ashita_motsumono_snapshot_v1': '''
         {
           "version": 1,
-          "children": [],
+          "children": [
+            {
+              "id": "child-legacy",
+              "name": "長女",
+              "colorValue": 4280391411,
+              "createdAt": "2026-01-01T00:00:00.000",
+              "updatedAt": "2026-01-01T00:00:00.000"
+            }
+          ],
           "todos": [
             {
               "id": "todo-legacy-child",
@@ -171,7 +228,22 @@ void main() {
         'ashita_motsumono_snapshot_v1': '''
         {
           "version": 1,
-          "children": [],
+          "children": [
+            {
+              "id": "person-current",
+              "name": "長男",
+              "colorValue": 4280391411,
+              "createdAt": "2026-01-01T00:00:00.000",
+              "updatedAt": "2026-01-01T00:00:00.000"
+            },
+            {
+              "id": "child-legacy",
+              "name": "旧参照",
+              "colorValue": 4280391412,
+              "createdAt": "2026-01-01T00:00:00.000",
+              "updatedAt": "2026-01-01T00:00:00.000"
+            }
+          ],
           "todos": [
             {
               "id": "todo-current-person",

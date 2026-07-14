@@ -1,0 +1,38 @@
+Superseded evidence notice
+==========================
+
+The previous version of this file was a local test log captured before the
+FakeNotificationService correction. It contained a caught notification plugin
+initialization error and therefore did not represent the final implementation.
+It has been removed from the authoritative evidence set.
+
+Authoritative automated validation
+----------------------------------
+
+Repository: kaenozu/ashita-motsumono
+Pull request: #111
+Branch: agent/full-review-hardening
+CI-validated PR HEAD: d40f591745051ad6feab82a86221eb0d648d7ead
+CI-tested pull-request merge commit: bd261d53e13e2585f1cfb3e521589666e2f3051f
+Workflow: Flutter CI #754
+Run id: 29298500627
+Job: analyze-and-test: SUCCESS
+Analyze step: SUCCESS
+Test step: SUCCESS
+Reported test count: 263 passed
+
+Implementation isolation
+------------------------
+
+The final tests in app_state_notifier_scope_test.dart and widget_test.dart use
+a FakeNotificationService. The fake overrides notification initialization,
+permission requests, scheduling, and cancellation so those tests do not reach
+the platform notification plugin.
+
+Evidence limits
+---------------
+
+This file is a normalized evidence summary, not a copy of the complete GitHub
+Actions raw log. Android runtime notification delivery was not exercised because
+no Android device or Emulator was connected. Normal, reboot, and install-r
+notification acceptance therefore remain NOT EXECUTED.
