@@ -3,6 +3,7 @@
 // 関連: lib/src/background_task_runner.dart, lib/src/bootstrap_app.dart, Issue #113
 
 import 'package:ashita_motsumono/src/background_task_runner.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
