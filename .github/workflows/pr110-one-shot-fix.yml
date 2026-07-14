@@ -1,0 +1,130 @@
+name: PR 110 one-shot review fixes
+
+on:
+  push:
+    branches:
+      - agent/release-validation-hardening
+    paths:
+      - '.github/workflows/pr110-one-shot-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fixes:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/release-validation-hardening
+          fetch-depth: 0
+
+      - name: Apply verified replacements
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one match, found {count}: {old!r}')
+              file.write_text(text.replace(old, new, 1), encoding='utf-8', newline='\n')
+
+          alarm = 'tool/issue60_alarm_time_evidence.ps1'
+          replace_once(
+              alarm,
+              '''      $normalized = "$normalized$offsetText"\n    }\n    $parsed = [DateTimeOffset]::MinValue''',
+              '''      $normalized = "$normalized$offsetText"\n    }\n    elseif ($normalized -match '([+-]\\d{2})(\\d{2})$') {\n      $normalized = $normalized -replace '([+-]\\d{2})(\\d{2})$', '$1:$2'\n    }\n    $parsed = [DateTimeOffset]::MinValue''',
+          )
+          replace_once(
+              alarm,
+              'if (-not (Test-Path $Path))',
+              'if (-not (Test-Path -LiteralPath $Path))',
+          )
+          replace_once(
+              alarm,
+              '$lines = @(Get-Content -Encoding utf8 $Path)',
+              '$lines = @(Get-Content -Encoding utf8 -LiteralPath $Path)',
+          )
+          replace_once(
+              alarm,
+              'if (-not (Test-Path $beforePath))',
+              'if (-not (Test-Path -LiteralPath $beforePath))',
+          )
+          replace_once(
+              alarm,
+              'if (-not (Test-Path $afterPath))',
+              'if (-not (Test-Path -LiteralPath $afterPath))',
+          )
+
+          control = 'tool/release_validation_control.ps1'
+          replace_once(
+              control,
+              "$RepoRoot = (Resolve-Path (Join-Path $ScriptDirectory '..')).Path",
+              "$RepoRoot = (Resolve-Path -LiteralPath (Join-Path $ScriptDirectory '..')).Path",
+          )
+          replace_once(
+              control,
+              'if (-not (Test-Path $fullPath))',
+              'if (-not (Test-Path -LiteralPath $fullPath))',
+          )
+          replace_once(
+              control,
+              'if (-not (Test-Path $Path))',
+              'if (-not (Test-Path -LiteralPath $Path))',
+          )
+
+          contract = 'test/issue60_emulator_evidence_contract_test.dart'
+          replace_once(
+              contract,
+              '''    expect(\n      text,\n      contains(r"$i.Verdict -eq 'PASS' -and $i.InstallBroadcastVerified"),\n    );''',
+              '''    expect(text, contains(r'$installEligible'));\n    expect(\n      text,\n      contains(r"$install.Verdict -eq 'PASS' -and"),\n    );\n    expect(text, contains(r'$install.InstallBroadcastVerified'));\n    expect(\n      text,\n      contains(r"$install.Verdict -eq 'INCONCLUSIVE' -and"),\n    );\n    expect(text, contains(r'$install.InstallBroadcastUnverified'));''',
+          )
+
+          hardening = 'test/release_validation_hardening_contract_test.dart'
+          replace_once(
+              hardening,
+              '''    expect(text, contains(r'$ToleranceMinutes * 60 * 1000'));\n  });''',
+              '''    expect(text, contains(r'$ToleranceMinutes * 60 * 1000'));\n    expect(\n      text,\n      contains(r"elseif ($normalized -match '([+-]\\d{2})(\\d{2})$')"),\n    );\n    expect(\n      text,\n      contains(r"-replace '([+-]\\d{2})(\\d{2})$', '$1:$2'"),\n    );\n    expect(text, contains('Test-Path -LiteralPath'));\n    expect(text, contains('Get-Content -Encoding utf8 -LiteralPath'));\n  });''',
+          )
+          replace_once(
+              hardening,
+              '''    for (final token in <String>[\n      'release_validation_session.ps1',''',
+              '''    expect(text, contains('Resolve-Path -LiteralPath'));\n    expect(text, contains('Test-Path -LiteralPath'));\n    for (final token in <String>[\n      'release_validation_session.ps1',''',
+          )
+
+          workflow = '.github/workflows/release-validation-windows-powershell51.yml'
+          replace_once(
+              workflow,
+              "$root = Join-Path $env:RUNNER_TEMP 'alarm-time-contract'",
+              "$root = Join-Path $env:RUNNER_TEMP 'alarm-time-contract[literal]'",
+          )
+          replace_once(
+              workflow,
+              'when=2026-07-13 18:30:00+09:00',
+              'when=2026-07-13 18:30:00+0900',
+          )
+          replace_once(
+              workflow,
+              "$root = Join-Path $env:RUNNER_TEMP 'archive-contract'",
+              "$root = Join-Path $env:RUNNER_TEMP 'archive-contract[literal]'",
+          )
+
+          Path('.github/workflows/pr110-one-shot-fix.yml').unlink()
+          PY
+
+      - name: Commit fixes to PR branch
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m 'fix: address PR 110 review and contract failures'
+          git push origin HEAD:agent/release-validation-hardening
