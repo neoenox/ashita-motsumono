@@ -27,6 +27,10 @@ void main() {
     final text = control.readAsStringSync();
     expect(text, contains('Resolve-Path -LiteralPath'));
     expect(text, contains('Test-Path -LiteralPath'));
+    expect(
+      RegExp(r'Test-Path\s+(?!-LiteralPath\b)').hasMatch(text),
+      isFalse,
+    );
     for (final token in <String>[
       'release_validation_session.ps1',
       'issue60_alarm_time_evidence.ps1',

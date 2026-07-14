@@ -237,7 +237,7 @@ function Get-BackendArguments {
 }
 
 function Invoke-Backend {
-  if (-not (Test-Path $Backend)) {
+  if (-not (Test-Path -LiteralPath $Backend)) {
     throw "missing backend: $Backend"
   }
   $arguments = Get-BackendArguments
@@ -245,7 +245,7 @@ function Invoke-Backend {
 }
 
 function Get-State {
-  if (-not (Test-Path $StatePath)) {
+  if (-not (Test-Path -LiteralPath $StatePath)) {
     return [pscustomobject][ordered]@{
       sessionStarted = $false
       sourceSha = ''
@@ -363,7 +363,7 @@ function Enhance-AlarmTimingEvidence {
   Write-JsonFile $registration $registrationPath
 
   $metadataPath = Join-Path $caseDirectory 'case-metadata.json'
-  if (Test-Path $metadataPath) {
+  if (Test-Path -LiteralPath $metadataPath) {
     $metadata = Read-JsonFile $metadataPath
     $metadata |
       Add-Member `
@@ -394,7 +394,7 @@ function Assert-AlarmTimingGate {
 
 function Archive-Session {
   $root = Get-FullPath $EvidenceRoot
-  if (-not (Test-Path $root)) {
+  if (-not (Test-Path -LiteralPath $root)) {
     return [pscustomobject][ordered]@{
       result = 'NO_EVIDENCE'
       source = $root
@@ -421,7 +421,7 @@ function Archive-Session {
   ) 'issue60-summary.json'
   $active = (
     $null -ne $session -and
-    -not (Test-Path $summaryPath)
+    -not (Test-Path -LiteralPath $summaryPath)
   )
   if ($active -and -not $ForceArchiveActive) {
     throw (
@@ -438,7 +438,7 @@ function Archive-Session {
   $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
   $destination = Join-Path $parent "$leaf-archive-$stamp"
   $suffix = 1
-  while (Test-Path $destination) {
+  while (Test-Path -LiteralPath $destination) {
     $destination = Join-Path $parent "$leaf-archive-$stamp-$suffix"
     $suffix++
   }
@@ -510,7 +510,7 @@ function Get-CaseDiagnostic {
       $timingPath,
       $waitPath,
       $resultPath
-    ) | Where-Object { Test-Path $_ }
+    ) | Where-Object { Test-Path -LiteralPath $_ }
   }
 }
 
@@ -675,7 +675,7 @@ function Show-Status {
       $StatePath,
       $SessionPath,
       $ReadinessPath
-    ) | Where-Object { Test-Path $_ }
+    ) | Where-Object { Test-Path -LiteralPath $_ }
   }
   Write-JsonFile $status $StatusPath
   $status
