@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_state.dart';
+import 'background_task_runner.dart';
 import 'repositories/drift_store.dart';
 import 'repositories/store.dart';
 import 'screens/home_screen_scope.dart';
@@ -23,7 +24,12 @@ import 'theme/app_theme.dart';
 enum _BootstrapPhase { loading, ready, recoverableFailure, fatalFailure }
 
 class BootstrapApp extends StatefulWidget {
-  const BootstrapApp({super.key});
+  const BootstrapApp({
+    super.key,
+    @visibleForTesting BackgroundTaskRunner? taskRunner,
+  }) : _taskRunner = taskRunner ?? const BackgroundTaskRunner();
+
+  final BackgroundTaskRunner _taskRunner;
 
   @override
   State<BootstrapApp> createState() => _BootstrapAppState();
@@ -203,8 +209,19 @@ class _BootstrapAppState extends State<BootstrapApp> {
       _loadFailure = null;
       _fatalError = null;
     });
-    unawaited(appState.rescheduleAllNotifications());
-    unawaited(AdService.initialize());
+    final runner = widget._taskRunner;
+    unawaited(
+      runner.run(
+        name: 'notification rescheduling',
+        action: appState.rescheduleAllNotifications,
+      ),
+    );
+    unawaited(
+      runner.run(
+        name: 'ad service initialization',
+        action: AdService.initialize,
+      ),
+    );
   }
 
   void _clearDependencies() {
