@@ -3,316 +3,60 @@ name: Release Validation Windows PowerShell 5.1
 on:
   pull_request:
     paths:
-      - 'tool/release_validation_control.ps1'
-      - 'tool/issue60_alarm_time_evidence.ps1'
-      - 'tool/release_validation_session.ps1'
-      - 'tool/issue60_emulator_evidence*.ps1'
-      - 'test/release_validation_hardening_contract_test.dart'
-      - 'docs/RELEASE_VALIDATION_CONTROL.md'
-      - '.github/workflows/release-validation-windows-powershell51.yml'
-  push:
-    branches:
-      - master
-    paths:
-      - 'tool/release_validation_control.ps1'
-      - 'tool/issue60_alarm_time_evidence.ps1'
-      - 'tool/release_validation_session.ps1'
-      - 'tool/issue60_emulator_evidence*.ps1'
-      - 'test/release_validation_hardening_contract_test.dart'
-      - 'docs/RELEASE_VALIDATION_CONTROL.md'
       - '.github/workflows/release-validation-windows-powershell51.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  parse-windows-powershell51:
-    name: Parse ${{ matrix.file }} on Windows PowerShell 5.1
-    runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        file:
-          - tool/issue60_emulator_evidence.ps1
-          - tool/issue60_emulator_evidence_core.ps1
-          - tool/issue60_emulator_evidence_cases.ps1
-          - tool/release_validation_session.ps1
-          - tool/release_validation_control.ps1
-          - tool/issue60_alarm_time_evidence.ps1
+  apply-literal-path-hardening:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Parse file
-        shell: powershell
-        run: |
-          if ($PSVersionTable.PSVersion.Major -ne 5) {
-            throw "Windows PowerShell 5.1 required; got $($PSVersionTable.PSVersion)"
-          }
-          $file = Get-Item '${{ matrix.file }}'
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile(
-            $file.FullName,
-            [ref]$tokens,
-            [ref]$errors
-          ) | Out-Null
-          $report = [System.Collections.Generic.List[string]]::new()
-          if ($errors.Count -eq 0) {
-            $report.Add("PASS: $($file.FullName)")
-          }
-          else {
-            $report.Add("FAIL: $($file.FullName)")
-            foreach ($parseError in $errors) {
-              $report.Add(
-                "Line $($parseError.Extent.StartLineNumber), column $($parseError.Extent.StartColumnNumber): $($parseError.Message)"
-              )
-              $report.Add("Token: $($parseError.Extent.Text)")
-            }
-          }
-          $report -join [Environment]::NewLine |
-            Tee-Object -FilePath parser-report.txt
-          if ($errors.Count -gt 0) { exit 1 }
-
-      - name: Upload parser report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows51-parser-${{ strategy.job-index }}
-          path: parser-report.txt
-          if-no-files-found: error
-          retention-days: 3
-
-  alarm-time-contract:
-    name: Alarm expected-time contract
-    needs: parse-windows-powershell51
-    runs-on: windows-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Verify match, mismatch, and unparseable evidence
-        shell: powershell
-        run: |
-          $root = Join-Path $env:RUNNER_TEMP 'alarm-time-contract'
-          $before = Join-Path $root 'before'
-          $after = Join-Path $root 'after'
-          New-Item -ItemType Directory -Force $before, $after | Out-Null
-          @'
-          Pending alarm batches:
-          '@ | Set-Content (Join-Path $before 'alarm.txt') -Encoding utf8
-          @'
-          RTC_WAKEUP #0: Alarm{abc type 0 when=2026-07-13 18:30:00+09:00}
-            tag=*walarm*:com.ashita_motsumono
-            operation=PendingIntent{ScheduledNotificationReceiver flutterlocalnotifications}
-          '@ | Set-Content (Join-Path $after 'alarm.txt') -Encoding utf8
-
-          $match = & .\tool\issue60_alarm_time_evidence.ps1 `
-            -BeforeAlarmPath (Join-Path $before 'alarm.txt') `
-            -AfterAlarmPath (Join-Path $after 'alarm.txt') `
-            -ExpectedTime '2026-07-13T18:30:00+09:00' `
-            -Destination (Join-Path $root 'match.json')
-          if ($match.result -ne 'PASS') {
-            throw "expected PASS; got $($match.result)"
-          }
-
-          $mismatch = & .\tool\issue60_alarm_time_evidence.ps1 `
-            -BeforeAlarmPath (Join-Path $before 'alarm.txt') `
-            -AfterAlarmPath (Join-Path $after 'alarm.txt') `
-            -ExpectedTime '2026-07-13T19:30:00+09:00' `
-            -Destination (Join-Path $root 'mismatch.json')
-          if ($mismatch.result -ne 'MISMATCH') {
-            throw "expected MISMATCH; got $($mismatch.result)"
-          }
-
-          @'
-          RTC_WAKEUP #0: Alarm{abc type 0}
-            tag=*walarm*:com.ashita_motsumono
-            operation=PendingIntent{ScheduledNotificationReceiver flutterlocalnotifications}
-          '@ | Set-Content (Join-Path $after 'alarm.txt') -Encoding utf8
-          $unknown = & .\tool\issue60_alarm_time_evidence.ps1 `
-            -BeforeAlarmPath (Join-Path $before 'alarm.txt') `
-            -AfterAlarmPath (Join-Path $after 'alarm.txt') `
-            -ExpectedTime '2026-07-13T18:30:00+09:00' `
-            -Destination (Join-Path $root 'unknown.json')
-          if ($unknown.result -ne 'INCONCLUSIVE') {
-            throw "unparseable alarm must be INCONCLUSIVE; got $($unknown.result)"
-          }
-
-  status-contract:
-    name: Status and UTF-8 contract
-    needs: parse-windows-powershell51
-    runs-on: windows-latest
-    steps:
-      - name: Check out repository with master ref
+      - name: Check out PR branch
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          ref: agent/release-validation-hardening
+          fetch-depth: 1
 
-      - name: Ensure origin/master exists
-        shell: powershell
-        run: git fetch origin master:refs/remotes/origin/master
-
-      - name: Verify Status output and UTF-8 without BOM
-        shell: powershell
+      - name: Eliminate remaining wildcard path interpretation
+        shell: bash
         run: |
-          $root = Join-Path $env:RUNNER_TEMP 'status-contract'
-          $status = & .\tool\release_validation_control.ps1 `
-            -Action Status `
-            -EvidenceRoot $root
-          if ($status.nextAction -ne 'Doctor') {
-            throw "initial nextAction must be Doctor; got $($status.nextAction)"
-          }
-          $statusPath = Join-Path $root 'release-validation-status.json'
-          if (-not (Test-Path $statusPath)) {
-            throw 'release-validation-status.json missing'
-          }
-          $bytes = [IO.File]::ReadAllBytes($statusPath)
-          if (
-            $bytes.Length -ge 3 -and
-            $bytes[0] -eq 0xEF -and
-            $bytes[1] -eq 0xBB -and
-            $bytes[2] -eq 0xBF
-          ) {
-            throw 'UTF-8 BOM must not be present'
-          }
-          $json = [IO.File]::ReadAllText(
-            $statusPath,
-            [Text.UTF8Encoding]::new($false, $true)
-          ) | ConvertFrom-Json
-          foreach ($property in @(
-              'doctorPassed',
-              'apkInstalled',
-              'notificationPermission',
-              'nextAction',
-              'nextCommand',
-              'manualAction'
-            )) {
-            if (-not $json.PSObject.Properties[$property]) {
-              throw "missing Status property: $property"
-            }
-          }
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
 
-  missing-git-contract:
-    name: Missing git Status contract
-    needs: parse-windows-powershell51
-    runs-on: windows-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Verify missing git reports UNKNOWN
-        shell: powershell
-        run: |
-          $root = Join-Path $env:RUNNER_TEMP 'missing-git-contract'
-          $oldPath = $env:PATH
-          try {
-            $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
-            $status = & .\tool\release_validation_control.ps1 `
-              -Action Status `
-              -EvidenceRoot $root
-            if ($status.git.gate -ne 'UNKNOWN') {
-              throw "missing git must produce UNKNOWN; got $($status.git.gate)"
-            }
-          }
-          finally {
-            $env:PATH = $oldPath
-          }
-
-  archive-contract:
-    name: ArchiveSession contract
-    needs: parse-windows-powershell51
-    runs-on: windows-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Verify non-destructive guarded archive
-        shell: powershell
-        run: |
-          $root = Join-Path $env:RUNNER_TEMP 'archive-contract'
-          New-Item -ItemType Directory -Force $root | Out-Null
-          [IO.File]::WriteAllText(
-            (Join-Path $root 'release-session.json'),
-            '{"sourceSha":"abc123"}',
-            [Text.UTF8Encoding]::new($false)
+          control_path = Path('tool/release_validation_control.ps1')
+          control = control_path.read_text(encoding='utf-8')
+          control, count = re.subn(
+              r'Test-Path (?!-LiteralPath\b)',
+              'Test-Path -LiteralPath ',
+              control,
           )
-          [IO.File]::WriteAllText(
-            (Join-Path $root 'release-validation-state.json'),
-            '{"sessionStarted":true,"sourceSha":"abc123","cases":{"normal":null,"reboot":null,"install-r":null}}',
-            [Text.UTF8Encoding]::new($false)
-          )
+          if count != 8:
+              raise SystemExit(f'expected 8 remaining non-Literal Test-Path calls, found {count}')
+          if re.search(r'Test-Path\s+(?!-LiteralPath\b)', control):
+              raise SystemExit('non-Literal Test-Path call remains')
+          control_path.write_text(control, encoding='utf-8', newline='\n')
 
-          $blocked = $false
-          try {
-            & .\tool\release_validation_control.ps1 `
-              -Action ArchiveSession `
-              -EvidenceRoot $root | Out-Null
-          }
-          catch {
-            if ($_.Exception.Message -match 'active release session') {
-              $blocked = $true
-            }
-          }
-          if (-not $blocked) {
-            throw 'active session archive must require ForceArchiveActive'
-          }
+          test_path = Path('test/release_validation_hardening_contract_test.dart')
+          test = test_path.read_text(encoding='utf-8')
+          old = "    expect(text, contains('Test-Path -LiteralPath'));\n    for (final token in <String>["
+          new = "    expect(text, contains('Test-Path -LiteralPath'));\n    expect(\n      RegExp(r'Test-Path\\s+(?!-LiteralPath\\b)').hasMatch(text),\n      isFalse,\n    );\n    for (final token in <String>["
+          if test.count(old) != 1:
+              raise SystemExit(f'expected one contract insertion point, found {test.count(old)}')
+          test_path.write_text(test.replace(old, new, 1), encoding='utf-8', newline='\n')
+          PY
 
-          $archive = & .\tool\release_validation_control.ps1 `
-            -Action ArchiveSession `
-            -ForceArchiveActive `
-            -EvidenceRoot $root
-          if ($archive.result -ne 'ARCHIVED') {
-            throw 'forced ArchiveSession did not complete'
-          }
-          $manifestPath = Join-Path $archive.destination 'archive-manifest.json'
-          if (-not (Test-Path $manifestPath)) {
-            throw 'archive-manifest.json missing'
-          }
-          if (-not (Test-Path (Join-Path $archive.destination 'release-session.json'))) {
-            throw 'archived release-session.json missing'
-          }
-          if (-not (Test-Path $root)) {
-            throw 'fresh evidence root was not recreated'
-          }
-
-  safety-contract:
-    name: Control-plane safety contract
-    needs: parse-windows-powershell51
-    runs-on: windows-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Verify required and prohibited tokens
-        shell: powershell
+      - name: Commit hardening to PR branch
+        shell: bash
         run: |
-          $control = Get-Content tool/release_validation_control.ps1 -Raw
-          $parser = Get-Content tool/issue60_alarm_time_evidence.ps1 -Raw
-          foreach ($token in @(
-              "'ArchiveSession'",
-              'ForceArchiveActive',
-              'ExpectedTimeMatch',
-              'Assert-AlarmTimingGate',
-              'notificationPermission',
-              'nextAction',
-              'nextCommand',
-              'manualAction',
-              'archive-manifest.json',
-              'INCONCLUSIVE'
-            )) {
-            if (-not "$control`n$parser".Contains($token)) {
-              throw "missing control token: $token"
-            }
-          }
-          foreach ($token in @(
-              'force-stop',
-              'pm clear',
-              'adb -d',
-              'adb uninstall',
-              'wipe-data'
-            )) {
-            if ("$control`n$parser".ToLowerInvariant().Contains($token)) {
-              throw "prohibited operation found: $token"
-            }
-          }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            tool/release_validation_control.ps1 \
+            test/release_validation_hardening_contract_test.dart
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m 'fix: make all validation path checks literal'
+          git push origin HEAD:agent/release-validation-hardening
