@@ -128,6 +128,9 @@ function Convert-TimeCandidate {
       )
       $normalized = "$normalized$offsetText"
     }
+    elseif ($normalized -match '([+-]\d{2})(\d{2})$') {
+      $normalized = $normalized -replace '([+-]\d{2})(\d{2})$', '$1:$2'
+    }
     $parsed = [DateTimeOffset]::MinValue
     if ([DateTimeOffset]::TryParse(
         $normalized,
@@ -153,10 +156,10 @@ function Get-TimeCandidates {
     [Parameter(Mandatory)][string]$Path,
     [Parameter(Mandatory)][DateTimeOffset]$Expected
   )
-  if (-not (Test-Path $Path)) {
+  if (-not (Test-Path -LiteralPath $Path)) {
     return @()
   }
-  $lines = @(Get-Content -Encoding utf8 $Path)
+  $lines = @(Get-Content -Encoding utf8 -LiteralPath $Path)
   $relevantIndices = [System.Collections.Generic.List[int]]::new()
   for ($index = 0; $index -lt $lines.Count; $index++) {
     $line = [string]$lines[$index]
@@ -210,10 +213,10 @@ function Get-TimeCandidates {
 
 $beforePath = Get-FullPath $BeforeAlarmPath
 $afterPath = Get-FullPath $AfterAlarmPath
-if (-not (Test-Path $beforePath)) {
+if (-not (Test-Path -LiteralPath $beforePath)) {
   throw "missing before alarm dump: $beforePath"
 }
-if (-not (Test-Path $afterPath)) {
+if (-not (Test-Path -LiteralPath $afterPath)) {
   throw "missing after alarm dump: $afterPath"
 }
 

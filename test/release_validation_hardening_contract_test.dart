@@ -25,6 +25,8 @@ void main() {
 
   test('control delegates existing session behavior and adds safe actions', () {
     final text = control.readAsStringSync();
+    expect(text, contains('Resolve-Path -LiteralPath'));
+    expect(text, contains('Test-Path -LiteralPath'));
     for (final token in <String>[
       'release_validation_session.ps1',
       'issue60_alarm_time_evidence.ps1',
@@ -87,6 +89,16 @@ void main() {
       expect(text, contains(token), reason: token);
     }
     expect(text, contains(r'$ToleranceMinutes * 60 * 1000'));
+    expect(
+      text,
+      contains(r"elseif ($normalized -match '([+-]\d{2})(\d{2})$')"),
+    );
+    expect(
+      text,
+      contains(r"-replace '([+-]\d{2})(\d{2})$', '$1:$2'"),
+    );
+    expect(text, contains('Test-Path -LiteralPath'));
+    expect(text, contains('Get-Content -Encoding utf8 -LiteralPath'));
   });
 
   test('Windows PowerShell 5.1 CI validates runtime behavior', () {

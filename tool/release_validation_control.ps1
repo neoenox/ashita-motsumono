@@ -61,7 +61,7 @@ if ($InstallBroadcastVerified -and $InstallBroadcastUnverified) {
 
 $ScriptPath = $MyInvocation.MyCommand.Path
 $ScriptDirectory = Split-Path -Parent $ScriptPath
-$RepoRoot = (Resolve-Path (Join-Path $ScriptDirectory '..')).Path
+$RepoRoot = (Resolve-Path -LiteralPath (Join-Path $ScriptDirectory '..')).Path
 $Backend = Join-Path $ScriptDirectory 'release_validation_session.ps1'
 $AlarmParser = Join-Path $ScriptDirectory 'issue60_alarm_time_evidence.ps1'
 $StatePath = Join-Path $EvidenceRoot 'release-validation-state.json'
@@ -103,7 +103,7 @@ function Write-JsonFile {
 function Read-JsonFile {
   param([Parameter(Mandatory)][string]$Path)
   $fullPath = Get-FullPath $Path
-  if (-not (Test-Path $fullPath)) {
+  if (-not (Test-Path -LiteralPath $fullPath)) {
     throw "missing file: $fullPath"
   }
   [IO.File]::ReadAllText(
@@ -114,7 +114,7 @@ function Read-JsonFile {
 
 function Read-OptionalJson {
   param([Parameter(Mandatory)][string]$Path)
-  if (-not (Test-Path $Path)) {
+  if (-not (Test-Path -LiteralPath $Path)) {
     return $null
   }
   try {
