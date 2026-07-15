@@ -68,17 +68,23 @@ if ($PollSeconds -lt 5 -or $PollSeconds -gt 60) {
 if ($InstallBroadcastVerified -and $InstallBroadcastUnverified) {
   throw 'broadcast cannot be both verified and unverified'
 }
-if (
-  $Action -ne 'Aggregate' -and
-  -not (Get-Command adb -ErrorAction SilentlyContinue)
-) {
-  throw 'adb not found'
+
+$ScriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $ScriptDirectory 'issue60_portable_paths.ps1')
+$RepoRoot = Resolve-Issue60RepositoryRoot `
+  -ScriptDirectory $ScriptDirectory
+
+$script:Issue60AdbExecutable = $null
+if ($Action -ne 'Aggregate') {
+  $script:Issue60AdbExecutable = Resolve-Issue60AdbExecutable
+  function adb {
+    & $script:Issue60AdbExecutable @args
+  }
 }
 
 $CaseDirectory = Join-Path $OutputRoot $CaseName
 New-Item -ItemType Directory -Force $CaseDirectory | Out-Null
 
-$ScriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $ScriptDirectory 'issue60_emulator_evidence_core.ps1')
 . (Join-Path $ScriptDirectory 'issue60_emulator_evidence_cases.ps1')
 
@@ -192,7 +198,10 @@ switch ($Action) {
     else {
       RequirePreflight | Out-Null
     }
-    $apk = (Resolve-Path $ApkPath).Path
+    $resolvedApk = Resolve-Issue60RepositoryPath `
+      -Path $ApkPath `
+      -RepositoryRoot $RepoRoot
+    $apk = (Resolve-Path $resolvedApk).Path
     $before = Snapshot 'before-install'
     $old = LastUpdate
     $hash = (
