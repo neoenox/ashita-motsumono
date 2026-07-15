@@ -78,7 +78,7 @@ void main() {
     // printでホスト側に合図を出す。
     print('CASE1_DONE');
 
-    await state.deleteTodo(todo.id);
+    // 通知証跡をホスト側で取得できるよう、ここではTodoを削除しない。
   });
 
   testWidgets('Case2 Reboot - Todo追加に成功し再起動前通知がスケジュールされる', (tester) async {
