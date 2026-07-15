@@ -1,7 +1,9 @@
 # Apple App Privacy 回答案
 
-基準日: 2026年7月14日  
-対象基準commit: `cc420074efb9f61d5d314885481f10f9c694c3ea`
+基準日: 2026年7月15日  
+対象基準commit: PR #115 最新HEAD
+
+プライバシーポリシー正本: [`../privacy_policy.md`](../privacy_policy.md)
 
 > **提出状態: 下書き / iOS正式成果物未確認**
 >
@@ -15,9 +17,8 @@
 
 - AdMobを有効にしたiOS版では、広告SDKが識別子、広告/アプリ操作、診断情報、IPアドレス等を処理する可能性がある。
 - 任意のAI画像解析で、利用者の同意後に写真、MIME形式、基準日、タイムゾーンをCloudflare Workers経由でGoogle Gemini APIへ送信する。
-- アプリ内課金で購入情報を処理する。
 
-端末上だけに保存する人物、Todo、通常OCR画像、通常OCR結果、端末内クラッシュログは、Appleの「Collected」の対象外として扱う案です。
+端末上だけに保存する人物、Todo、通常OCR画像、通常OCR結果、端末内クラッシュログおよび購入済みフラグは、Appleの「Collected」の対象外として扱います。Apple自身がApp Store取引として処理する情報は、アプリまたは統合した第三者パートナーによる収集とは分けて判断します。
 
 ## 2. データタイプ別回答案
 
@@ -50,13 +51,13 @@ Appleの定義では、送信データがリアルタイムのリクエスト処
 
 | 項目 | 回答案 |
 |---|---|
-| Collected | **Yes候補** |
-| Purpose | App Functionality |
-| Linked to User | **Yes候補**（Apple ID/ストア取引に関連し得る） |
-| Used for Tracking | **No** |
-| 根拠 | 広告除去とAI分析の非消費型商品について、商品情報、購入、復元、購入状態を処理 |
+| Collected | **No** |
+| Purpose | — |
+| Linked to User | — |
+| Used for Tracking | — |
+| 根拠 | 広告除去・AI利用権の購入状態は端末内のSharedPreferencesにのみ保存され、開発者の独自サーバーまたは第三者サーバーへ送信されない。Apple自身が処理するApp Store取引は、アプリまたは統合した第三者パートナーによる収集とは区別する |
 
-Apple自身がApp Store取引として収集する情報と、アプリ/第三者パートナーが収集する情報の境界をApp Store Connectで確認します。アプリはカード番号等のPayment Infoを直接取得しないため、Payment Infoは**No**案です。
+本アプリは、ストアから返される商品情報、価格表示、購入・復元状態を端末内の機能制御に利用します。カード番号等のPayment Infoを直接取得しないため、Payment Infoも**No**案です。将来、レシート、取引IDまたは購入履歴を開発者サーバーへ送信して検証・保存する実装を追加した場合は、Purchase Historyの申告を再評価します。
 
 ### 2.4 Identifiers → Device ID
 
@@ -125,7 +126,7 @@ ATTを表示しない、IDFAを取得しない、追跡を行わない構成を�
 
 ## 3. 「Data Not Collected」扱いの端末内処理
 
-次は現実装では端末外へ送信しないため、App PrivacyではCollectedに含めない案です。
+次は現実装では端末外へ送信しないため、App PrivacyではCollectedに含めません。
 
 - 人物名・人物ID
 - Todoのタイトル、期限、カテゴリ、持ち物、金額、メモ、完了状態、通知設定
@@ -134,7 +135,7 @@ ATTを表示しない、IDFAを取得しない、追跡を行わない構成を�
 - 読み取り文書とローカル画像パス
 - 学習済み持ち物候補
 - 通知時刻、通知ID、再試行キュー
-- 広告除去/AI利用権の端末内フラグそのもの
+- 広告除去/AI利用権の端末内フラグ
 - 端末内 `crash.log`
 - DB破損時の退避ファイル
 
@@ -147,6 +148,7 @@ ATTを表示しない、IDFAを取得しない、追跡を行わない構成を�
 - Contact Info: Email Address、Phone Number、Physical Address、Other User Contact Info
 - Health & Fitness
 - Financial Info: Payment Info、Credit Info、Other Financial Info
+- Purchases: Purchase History（端末内購入状態のみ。開発者サーバーへの送信なし）
 - Sensitive Info
 - Contacts
 - Browsing History
@@ -175,7 +177,11 @@ ATTを表示しない、IDFAを取得しない、追跡を行わない構成を�
 
 ## 6. Privacy Policy / Privacy Choices URL
 
-Privacy Policy:
+Privacy Policy正本:
+
+[`../privacy_policy.md`](../privacy_policy.md)
+
+公開予定URL:
 
 `https://lp-5t7.pages.dev/apps/ashita-motsumono/privacy`
 
@@ -204,7 +210,9 @@ Privacy Choices URLには、少なくとも次を掲載します。
 - [ ] AI解析の同意、キャンセル、送信内容、HTTPS通信を確認
 - [ ] Workers/Geminiの保持期間、ログ、モデル改善利用を確認
 - [ ] Apple IAPの商品ID、価格、購入、復元をTestFlight実機で確認
-- [ ] Privacy PolicyとPrivacy Choices URLを公開
+- [ ] 購入状態・レシート・取引IDが開発者サーバーへ送信されないことを確認
+- [ ] Privacy Policy正本 `docs/privacy_policy.md` と公開URLの本文を一致させる
+- [ ] Privacy Choices URLを公開
 - [ ] App Store Connectの最終回答スクリーンショットまたはエクスポートを保存
 - [ ] `store-disclosure-consistency-checklist.md`を全項目確認
 
@@ -213,6 +221,5 @@ Privacy Choices URLには、少なくとも次を掲載します。
 - iOS版の正式な権限宣言とPrivacy Manifest
 - App Tracking TransparencyとIDFA
 - iOS版AdMobの実データ処理
-- Apple IAPがApp Privacy質問上どの範囲でアプリのCollected dataとなるか
 - Cloudflare/Geminiの保持がAppleのリアルタイム処理例外を満たすか
 - App Store Connectの提出時点の最新質問・カテゴリ
