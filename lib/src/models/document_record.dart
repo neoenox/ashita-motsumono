@@ -35,9 +35,7 @@ class DocumentRecord {
     return DocumentRecord(
       id: id ?? this.id,
       sourceType: sourceType ?? this.sourceType,
-      localImagePath: clearLocalImagePath
-          ? null
-          : localImagePath ?? this.localImagePath,
+      localImagePath: clearLocalImagePath ? null : localImagePath ?? this.localImagePath,
       ocrText: ocrText ?? this.ocrText,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -45,22 +43,20 @@ class DocumentRecord {
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'sourceType': sourceType,
-    'localImagePath': localImagePath,
-    'ocrText': ocrText,
-    'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt.toIso8601String(),
-  };
+        'id': id,
+        'sourceType': sourceType,
+        'localImagePath': localImagePath,
+        'ocrText': ocrText,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+      };
 
   factory DocumentRecord.fromJson(Map<String, dynamic> json) => DocumentRecord(
-    id: (json['id'] as String?) ?? '',
-    sourceType: (json['sourceType'] as String?) ?? '',
-    localImagePath: json['localImagePath'] as String?,
-    ocrText: json['ocrText'] as String?,
-    createdAt:
-        DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
-    updatedAt:
-        DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
-  );
+        id: (json['id'] as String?) ?? '',
+        sourceType: (json['sourceType'] as String?) ?? '',
+        localImagePath: json['localImagePath'] as String?,
+        ocrText: json['ocrText'] as String?,
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
+      );
 }

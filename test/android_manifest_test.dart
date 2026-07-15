@@ -37,9 +37,10 @@ void main() {
   );
 
   test('structural Android manifest verifier passes', () {
-    final result = Process.runSync(_pythonExecutable(), [
-      'tool/verify_android_manifest.py',
-    ]);
+    final result = Process.runSync(
+      _pythonExecutable(),
+      ['tool/verify_android_manifest.py'],
+    );
 
     expect(
       result.exitCode,
@@ -54,10 +55,7 @@ void main() {
     expect(py, contains('android.permission.POST_NOTIFICATIONS'));
     expect(py, contains('android.permission.INTERNET'));
     expect(py, contains('android.permission.RECEIVE_BOOT_COMPLETED'));
-    expect(
-      py,
-      contains('DEFAULT_ROOT = Path(__file__).resolve().parent.parent'),
-    );
+    expect(py, contains('DEFAULT_ROOT = Path(__file__).resolve().parent.parent'));
     expect(py, contains('OCR_DEP_GROOVY'));
     expect(py, contains('DESUGAR_DEP_GROOVY'));
   });

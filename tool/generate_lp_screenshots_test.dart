@@ -124,10 +124,16 @@ void _configureViewport(WidgetTester tester) {
 }
 
 Widget _captureBoundary(Widget child) {
-  return RepaintBoundary(key: _captureKey, child: child);
+  return RepaintBoundary(
+    key: _captureKey,
+    child: child,
+  );
 }
 
-Future<void> _writeScreenshot(WidgetTester tester, String filename) async {
+Future<void> _writeScreenshot(
+  WidgetTester tester,
+  String filename,
+) async {
   await tester.pumpAndSettle();
   final boundary = tester.renderObject<RenderRepaintBoundary>(
     find.byKey(_captureKey),

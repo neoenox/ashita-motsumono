@@ -123,9 +123,15 @@ void main() {
       contains(r'if(-not $notificationComplete -or -not $installResult'),
     );
     expect(text, contains(r'$installEligible'));
-    expect(text, contains(r"$install.Verdict -eq 'PASS' -and"));
+    expect(
+      text,
+      contains(r"$install.Verdict -eq 'PASS' -and"),
+    );
     expect(text, contains(r'$install.InstallBroadcastVerified'));
-    expect(text, contains(r"$install.Verdict -eq 'INCONCLUSIVE' -and"));
+    expect(
+      text,
+      contains(r"$install.Verdict -eq 'INCONCLUSIVE' -and"),
+    );
     expect(text, contains(r'$install.InstallBroadcastUnverified'));
     expect(text, contains(r'$sourceConsistent'));
     expect(text, contains(r'$currentSourceMatches'));
@@ -191,12 +197,15 @@ void main() {
       if (Platform.isWindows) 'powershell',
     ]) {
       try {
-        final probe = Process.runSync(candidate, <String>[
-          '-NoLogo',
-          '-NoProfile',
-          '-Command',
-          r'$PSVersionTable.PSVersion.ToString()',
-        ]);
+        final probe = Process.runSync(
+          candidate,
+          <String>[
+            '-NoLogo',
+            '-NoProfile',
+            '-Command',
+            r'$PSVersionTable.PSVersion.ToString()',
+          ],
+        );
         if (probe.exitCode == 0) {
           shell = candidate;
           break;
@@ -236,14 +245,16 @@ $files | ForEach-Object {
 }
 if ($failed) { exit 1 }
 ''';
-    final result = Process.runSync(shell, <String>[
-      '-NoLogo',
-      '-NoProfile',
-      '-Command',
-      parserScript,
-    ]);
+    final result = Process.runSync(
+      shell,
+      <String>['-NoLogo', '-NoProfile', '-Command', parserScript],
+    );
 
-    expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
+    expect(
+      result.exitCode,
+      0,
+      reason: '${result.stdout}\n${result.stderr}',
+    );
   });
 
   test('runbooks preserve session and acceptance order', () {

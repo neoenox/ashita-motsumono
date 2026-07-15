@@ -27,7 +27,10 @@ void main() {
     final text = control.readAsStringSync();
     expect(text, contains('Resolve-Path -LiteralPath'));
     expect(text, contains('Test-Path -LiteralPath'));
-    expect(RegExp(r'Test-Path\s+(?!-LiteralPath\b)').hasMatch(text), isFalse);
+    expect(
+      RegExp(r'Test-Path\s+(?!-LiteralPath\b)').hasMatch(text),
+      isFalse,
+    );
     for (final token in <String>[
       'release_validation_session.ps1',
       'issue60_alarm_time_evidence.ps1',
@@ -94,7 +97,10 @@ void main() {
       text,
       contains(r"elseif ($normalized -match '([+-]\d{2})(\d{2})$')"),
     );
-    expect(text, contains(r"-replace '([+-]\d{2})(\d{2})$', '$1:$2'"));
+    expect(
+      text,
+      contains(r"-replace '([+-]\d{2})(\d{2})$', '$1:$2'"),
+    );
     expect(text, contains('Test-Path -LiteralPath'));
     expect(text, contains('Get-Content -Encoding utf8 -LiteralPath'));
   });
@@ -118,10 +124,8 @@ void main() {
   });
 
   test('control plane preserves fixed target and prohibited operations', () {
-    final text =
-        '${control.readAsStringSync()}\n'
-                '${alarmParser.readAsStringSync()}'
-            .toLowerCase();
+    final text = '${control.readAsStringSync()}\n'
+        '${alarmParser.readAsStringSync()}'.toLowerCase();
     expect(text, contains('emulator-5554'));
     expect(text, contains('com.ashita_motsumono'));
     for (final token in <String>[

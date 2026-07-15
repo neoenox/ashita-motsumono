@@ -22,14 +22,14 @@ class ChildDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String?>(
       initialValue: value,
-      decoration: const InputDecoration(labelText: '対象', hintText: '未指定'),
+      decoration: const InputDecoration(
+        labelText: '対象',
+        hintText: '未指定',
+      ),
       items: [
         const DropdownMenuItem<String?>(value: null, child: Text('未指定')),
         ...children.map(
-          (child) => DropdownMenuItem<String?>(
-            value: child.id,
-            child: Text(child.name),
-          ),
+          (child) => DropdownMenuItem<String?>(value: child.id, child: Text(child.name)),
         ),
       ],
       onChanged: onChanged,

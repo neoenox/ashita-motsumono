@@ -98,10 +98,7 @@ class OcrPickService {
   /// 戻り値は [pickAndProcess] と同様。
   Future<OcrPickResult?> pickAndProcessWithAi(String proxyUrl) async {
     final gemini = _geminiService ?? GeminiApiService(proxyUrl: proxyUrl);
-    final picked = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 92,
-    );
+    final picked = await _picker.pickImage(source: ImageSource.camera, imageQuality: 92);
     if (picked == null) return null;
 
     final imageFile = await _imageFileService.copyFromXFile(picked);

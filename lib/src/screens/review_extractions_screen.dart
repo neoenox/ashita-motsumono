@@ -193,7 +193,9 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
         personId: _personId,
         documentId: widget.documentId,
       );
-      await settings.addLearnedItemLabels(_reviewState.selectedItemLabels);
+      await settings.addLearnedItemLabels(
+        _reviewState.selectedItemLabels,
+      );
       _saved = true;
       if (!mounted) return;
       navigator.popUntil((route) => route.isFirst);

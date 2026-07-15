@@ -51,7 +51,10 @@ class ItemExtractor {
     '鍵盤ハーモニカ',
   ];
 
-  static List<String> extract(String text, Iterable<String> learnedItemLabels) {
+  static List<String> extract(
+    String text,
+    Iterable<String> learnedItemLabels,
+  ) {
     final itemCandidates = _itemCandidates(learnedItemLabels);
     final selectedPositions = <String, int>{};
     final coveredSpans = <_MatchSpan>[];

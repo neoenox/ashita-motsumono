@@ -84,22 +84,22 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) async {
-      await m.createAll();
-      await _createAuxiliarySchema();
-    },
-    onUpgrade: (m, from, to) async {
-      if (from < 2) {
-        await _repairLegacyReferences();
-        await _createAuxiliarySchema();
-      }
-    },
-    beforeOpen: (details) async {
-      // Drift公式推奨どおり、マイグレーション完了後に毎回有効化する。
-      await customStatement('PRAGMA foreign_keys = ON');
-      await _createAuxiliarySchema();
-    },
-  );
+        onCreate: (m) async {
+          await m.createAll();
+          await _createAuxiliarySchema();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await _repairLegacyReferences();
+            await _createAuxiliarySchema();
+          }
+        },
+        beforeOpen: (details) async {
+          // Drift公式推奨どおり、マイグレーション完了後に毎回有効化する。
+          await customStatement('PRAGMA foreign_keys = ON');
+          await _createAuxiliarySchema();
+        },
+      );
 
   static Future<AppDatabase> createWithMigration({
     bool skipLegacyMigration = false,
@@ -184,12 +184,8 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> _backupRawSnapshot(String rawJson) async {
     try {
-      final dir =
-          databaseFile?.parent ?? await getApplicationDocumentsDirectory();
-      final stamp = DateTime.now().toIso8601String().replaceAll(
-        RegExp(r'[:.]'),
-        '-',
-      );
+      final dir = databaseFile?.parent ?? await getApplicationDocumentsDirectory();
+      final stamp = DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
       final backup = File(
         p.join(dir.path, 'ashita_motsumono_legacy_backup_$stamp.json'),
       );
@@ -232,10 +228,7 @@ class AppDatabase extends _$AppDatabase {
       // 破損時はcheckpointできない場合があるため、現存ファイルの退避を続行する。
     }
 
-    final stamp = DateTime.now().toIso8601String().replaceAll(
-      RegExp(r'[:.]'),
-      '-',
-    );
+    final stamp = DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
     final backup = File(
       p.join(source.parent.path, 'ashita_motsumono_corrupt_$stamp.db'),
     );
@@ -343,9 +336,9 @@ class AppDatabase extends _$AppDatabase {
     if (checklistItemIds.isEmpty) {
       await delete(dbChecklistItem).go();
     } else {
-      await (delete(
-        dbChecklistItem,
-      )..where((row) => row.id.isNotIn(checklistItemIds))).go();
+      await (delete(dbChecklistItem)
+            ..where((row) => row.id.isNotIn(checklistItemIds)))
+          .go();
     }
 
     final todoIds = snapshot.todos.map((todo) => todo.id).toList();
@@ -362,15 +355,11 @@ class AppDatabase extends _$AppDatabase {
       await (delete(dbChild)..where((row) => row.id.isNotIn(childIds))).go();
     }
 
-    final documentIds = snapshot.documents
-        .map((document) => document.id)
-        .toList();
+    final documentIds = snapshot.documents.map((document) => document.id).toList();
     if (documentIds.isEmpty) {
       await delete(dbDocument).go();
     } else {
-      await (delete(
-        dbDocument,
-      )..where((row) => row.id.isNotIn(documentIds))).go();
+      await (delete(dbDocument)..where((row) => row.id.isNotIn(documentIds))).go();
     }
   }
 
@@ -382,7 +371,10 @@ class AppDatabase extends _$AppDatabase {
         row.updatedAt == child.updatedAt;
   }
 
-  bool _matchesDocumentRecord(DbDocumentData? row, DocumentRecord document) {
+  bool _matchesDocumentRecord(
+    DbDocumentData? row,
+    DocumentRecord document,
+  ) {
     return row != null &&
         row.sourceType == document.sourceType &&
         row.localImagePath == document.localImagePath &&
@@ -504,10 +496,16 @@ class AppDatabase extends _$AppDatabase {
     final rows = await customSelect(
       'SELECT notification_id FROM notification_id_map',
     ).get();
-    return rows.map((row) => row.read<int>('notification_id')).toSet();
+    return rows
+        .map((row) => row.read<int>('notification_id'))
+        .toSet();
   }
 
-  int _allocateNotificationId(String todoId, int kind, Set<int> usedIds) {
+  int _allocateNotificationId(
+    String todoId,
+    int kind,
+    Set<int> usedIds,
+  ) {
     var candidate = _notificationSeed(todoId, kind);
     // 使用済みIDがN件なら、N+1個の連続候補のどこかは必ず空いている。
     final maxAttempts = usedIds.length + 1;
@@ -528,9 +526,10 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> releaseNotificationIds(String todoId) async {
-    await customStatement('DELETE FROM notification_id_map WHERE todo_id = ?', [
-      todoId,
-    ]);
+    await customStatement(
+      'DELETE FROM notification_id_map WHERE todo_id = ?',
+      [todoId],
+    );
   }
 
   Future<void> queueNotificationSync(
@@ -573,8 +572,7 @@ class AppDatabase extends _$AppDatabase {
             operation: NotificationSyncOperation.fromName(
               row.read<String>('operation'),
             ),
-            updatedAt:
-                DateTime.tryParse(row.read<String>('updated_at')) ??
+            updatedAt: DateTime.tryParse(row.read<String>('updated_at')) ??
                 DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
             lastError: row.data['last_error'] as String?,
           ),
@@ -622,16 +620,21 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> markFileCleanupComplete(String path) async {
-    await customStatement('DELETE FROM pending_file_cleanup WHERE path = ?', [
-      path,
-    ]);
+    await customStatement(
+      'DELETE FROM pending_file_cleanup WHERE path = ?',
+      [path],
+    );
   }
 
   Future<void> markFileCleanupFailed(String path, Object error) async {
     await customStatement(
       'UPDATE pending_file_cleanup SET updated_at = ?, last_error = ? '
       'WHERE path = ?',
-      [DateTime.now().toUtc().toIso8601String(), error.toString(), path],
+      [
+        DateTime.now().toUtc().toIso8601String(),
+        error.toString(),
+        path,
+      ],
     );
   }
 
@@ -754,23 +757,25 @@ class AppDatabase extends _$AppDatabase {
   }
 
   PersonProfile _toPersonProfile(DbChildData child) => PersonProfile(
-    id: child.id,
-    name: child.name,
-    colorValue: child.colorValue,
-    createdAt: child.createdAt,
-    updatedAt: child.updatedAt,
-  );
+        id: child.id,
+        name: child.name,
+        colorValue: child.colorValue,
+        createdAt: child.createdAt,
+        updatedAt: child.updatedAt,
+      );
 
   DbChildCompanion _fromPersonProfile(PersonProfile child) => DbChildCompanion(
-    id: Value(child.id),
-    name: Value(child.name),
-    colorValue: Value(child.colorValue),
-    createdAt: Value(child.createdAt),
-    updatedAt: Value(child.updatedAt),
-  );
+        id: Value(child.id),
+        name: Value(child.name),
+        colorValue: Value(child.colorValue),
+        createdAt: Value(child.createdAt),
+        updatedAt: Value(child.updatedAt),
+      );
 
-  AppTodo _toAppTodo(DbTodoData row, List<DbChecklistItemData> items) =>
-      AppTodo(
+  AppTodo _toAppTodo(
+    DbTodoData row,
+    List<DbChecklistItemData> items,
+  ) => AppTodo(
         id: row.id,
         title: row.title,
         personId: row.childId,
@@ -796,39 +801,39 @@ class AppDatabase extends _$AppDatabase {
       );
 
   DbTodoCompanion _fromAppTodo(AppTodo todo) => DbTodoCompanion(
-    id: Value(todo.id),
-    title: Value(todo.title),
-    childId: Value(todo.personId),
-    documentId: Value(todo.documentId),
-    dueDate: Value(todo.dueDate),
-    category: Value(todo.category.name),
-    amount: Value(todo.amount),
-    note: Value(todo.note),
-    status: Value(todo.status.name),
-    notifyPreviousNight: Value(todo.notifyPreviousNight),
-    notifySameMorning: Value(todo.notifySameMorning),
-    createdAt: Value(todo.createdAt),
-    updatedAt: Value(todo.updatedAt),
-  );
+        id: Value(todo.id),
+        title: Value(todo.title),
+        childId: Value(todo.personId),
+        documentId: Value(todo.documentId),
+        dueDate: Value(todo.dueDate),
+        category: Value(todo.category.name),
+        amount: Value(todo.amount),
+        note: Value(todo.note),
+        status: Value(todo.status.name),
+        notifyPreviousNight: Value(todo.notifyPreviousNight),
+        notifySameMorning: Value(todo.notifySameMorning),
+        createdAt: Value(todo.createdAt),
+        updatedAt: Value(todo.updatedAt),
+      );
 
   DbChecklistItemCompanion _fromChecklistItem(
     String todoId,
     ChecklistItem item,
   ) => DbChecklistItemCompanion(
-    id: Value(item.id),
-    todoId: Value(todoId),
-    label: Value(item.label),
-    isChecked: Value(item.isChecked),
-  );
+        id: Value(item.id),
+        todoId: Value(todoId),
+        label: Value(item.label),
+        isChecked: Value(item.isChecked),
+      );
 
   DocumentRecord _toDocumentRecord(DbDocumentData document) => DocumentRecord(
-    id: document.id,
-    sourceType: document.sourceType,
-    localImagePath: document.localImagePath,
-    ocrText: document.ocrText,
-    createdAt: document.createdAt,
-    updatedAt: document.updatedAt,
-  );
+        id: document.id,
+        sourceType: document.sourceType,
+        localImagePath: document.localImagePath,
+        ocrText: document.ocrText,
+        createdAt: document.createdAt,
+        updatedAt: document.updatedAt,
+      );
 
   DbDocumentCompanion _fromDocumentRecord(DocumentRecord document) =>
       DbDocumentCompanion(

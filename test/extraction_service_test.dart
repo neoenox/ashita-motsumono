@@ -74,14 +74,11 @@ void main() {
       expect(draft.category, TodoCategory.payment);
     });
 
-    test(
-      'returns null dueDate for past month/day date and flags confirmation',
-      () {
-        final draft = ExtractionService.extract('1月10日 体操着を持参', now: now);
-        expect(draft.dueDate, isNull);
-        expect(draft.title, contains('期限確認'));
-      },
-    );
+    test('returns null dueDate for past month/day date and flags confirmation', () {
+      final draft = ExtractionService.extract('1月10日 体操着を持参', now: now);
+      expect(draft.dueDate, isNull);
+      expect(draft.title, contains('期限確認'));
+    });
 
     test('normalizes full-width digits', () {
       final draft = ExtractionService.extract('７月１０日までに￥５００を提出', now: now);

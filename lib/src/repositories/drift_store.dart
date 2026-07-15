@@ -83,9 +83,7 @@ class DriftStore implements Store {
     final documentIds = <String>{};
     for (final document in snapshot.documents) {
       if (document.id.trim().isEmpty || !documentIds.add(document.id)) {
-        throw StateError(
-          'Snapshot contains an empty or duplicate document ID.',
-        );
+        throw StateError('Snapshot contains an empty or duplicate document ID.');
       }
     }
 
@@ -97,7 +95,9 @@ class DriftStore implements Store {
       }
       final personId = todo.personId;
       if (personId != null && !childIds.contains(personId)) {
-        throw StateError('Todo ${todo.id} references missing child $personId.');
+        throw StateError(
+          'Todo ${todo.id} references missing child $personId.',
+        );
       }
       final documentId = todo.documentId;
       if (documentId != null && !documentIds.contains(documentId)) {
@@ -197,7 +197,11 @@ class DriftStore implements Store {
     String? lastError,
   }) async {
     _ensureWritable();
-    await _db.queueNotificationSync(todoId, operation, lastError: lastError);
+    await _db.queueNotificationSync(
+      todoId,
+      operation,
+      lastError: lastError,
+    );
   }
 
   @override

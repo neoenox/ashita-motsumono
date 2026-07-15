@@ -50,51 +50,48 @@ void main() {
     updatedAt: now,
   );
 
-  test(
-    'second save completely replaces previous children, todos, items and documents',
-    () async {
-      final store = await DriftStore.createInMemory();
-      final first = AppSnapshot(
-        children: [child('child-old', '旧データ')],
-        documents: [document('doc-old')],
-        todos: [
-          todo(
-            id: 'todo-old',
-            childId: 'child-old',
-            documentId: 'doc-old',
-            items: const [
-              ChecklistItem(id: 'item-old-1', label: '水筒'),
-              ChecklistItem(id: 'item-old-2', label: '体操着'),
-            ],
-          ),
-        ],
-      );
-      await store.save(first);
+  test('second save completely replaces previous children, todos, items and documents', () async {
+    final store = await DriftStore.createInMemory();
+    final first = AppSnapshot(
+      children: [child('child-old', '旧データ')],
+      documents: [document('doc-old')],
+      todos: [
+        todo(
+          id: 'todo-old',
+          childId: 'child-old',
+          documentId: 'doc-old',
+          items: const [
+            ChecklistItem(id: 'item-old-1', label: '水筒'),
+            ChecklistItem(id: 'item-old-2', label: '体操着'),
+          ],
+        ),
+      ],
+    );
+    await store.save(first);
 
-      final replacement = AppSnapshot(
-        children: [child('child-new', '新データ')],
-        documents: [document('doc-new')],
-        todos: [
-          todo(
-            id: 'todo-new',
-            childId: 'child-new',
-            documentId: 'doc-new',
-            items: const [
-              ChecklistItem(id: 'item-new', label: '上履き袋', isChecked: true),
-            ],
-          ),
-        ],
-      );
-      await store.save(replacement);
+    final replacement = AppSnapshot(
+      children: [child('child-new', '新データ')],
+      documents: [document('doc-new')],
+      todos: [
+        todo(
+          id: 'todo-new',
+          childId: 'child-new',
+          documentId: 'doc-new',
+          items: const [
+            ChecklistItem(id: 'item-new', label: '上履き袋', isChecked: true),
+          ],
+        ),
+      ],
+    );
+    await store.save(replacement);
 
-      final loaded = await store.load();
-      expect(loaded.children.map((value) => value.id), ['child-new']);
-      expect(loaded.documents.map((value) => value.id), ['doc-new']);
-      expect(loaded.todos.map((value) => value.id), ['todo-new']);
-      expect(loaded.todos.single.items.map((value) => value.id), ['item-new']);
-      expect(loaded.todos.single.items.single.isChecked, isTrue);
-    },
-  );
+    final loaded = await store.load();
+    expect(loaded.children.map((value) => value.id), ['child-new']);
+    expect(loaded.documents.map((value) => value.id), ['doc-new']);
+    expect(loaded.todos.map((value) => value.id), ['todo-new']);
+    expect(loaded.todos.single.items.map((value) => value.id), ['item-new']);
+    expect(loaded.todos.single.items.single.isChecked, isTrue);
+  });
 
   test('saving an empty snapshot clears every table', () async {
     final store = await DriftStore.createInMemory();

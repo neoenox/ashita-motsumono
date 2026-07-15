@@ -23,9 +23,8 @@ class ImageFileService {
     if (!await imageDir.exists()) {
       await imageDir.create(recursive: true);
     }
-    final extension = p.extension(source.path).isEmpty
-        ? '.jpg'
-        : p.extension(source.path);
+    final extension =
+        p.extension(source.path).isEmpty ? '.jpg' : p.extension(source.path);
     final dest = File(p.join(imageDir.path, '${_uuid.v4()}$extension'));
     final bytes = await source.readAsBytes();
     await dest.writeAsBytes(bytes);

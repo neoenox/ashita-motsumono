@@ -36,9 +36,7 @@ class AppSnapshot {
       migrated = AppSnapshot(
         children: migrated.children,
         todos: migrated.todos,
-        documents: migrated.documents
-            .where((d) => activeDocIds.contains(d.id))
-            .toList(),
+        documents: migrated.documents.where((d) => activeDocIds.contains(d.id)).toList(),
         version: 1,
       );
     }
@@ -46,22 +44,22 @@ class AppSnapshot {
   }
 
   Map<String, dynamic> toJson() => {
-    'version': currentVersion,
-    'children': children.map((e) => e.toJson()).toList(),
-    'todos': todos.map((e) => e.toJson()).toList(),
-    'documents': documents.map((e) => e.toJson()).toList(),
-  };
+        'version': currentVersion,
+        'children': children.map((e) => e.toJson()).toList(),
+        'todos': todos.map((e) => e.toJson()).toList(),
+        'documents': documents.map((e) => e.toJson()).toList(),
+      };
 
   factory AppSnapshot.fromJson(Map<String, dynamic> json) => AppSnapshot(
-    version: json['version'] as int? ?? 0,
-    children: (json['children'] as List<dynamic>? ?? const [])
-        .map((e) => PersonProfile.fromJson(e as Map<String, dynamic>))
-        .toList(),
-    todos: (json['todos'] as List<dynamic>? ?? const [])
-        .map((e) => AppTodo.fromJson(e as Map<String, dynamic>))
-        .toList(),
-    documents: (json['documents'] as List<dynamic>? ?? const [])
-        .map((e) => DocumentRecord.fromJson(e as Map<String, dynamic>))
-        .toList(),
-  );
+        version: json['version'] as int? ?? 0,
+        children: (json['children'] as List<dynamic>? ?? const [])
+            .map((e) => PersonProfile.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        todos: (json['todos'] as List<dynamic>? ?? const [])
+            .map((e) => AppTodo.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        documents: (json['documents'] as List<dynamic>? ?? const [])
+            .map((e) => DocumentRecord.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 }

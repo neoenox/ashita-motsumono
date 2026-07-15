@@ -29,8 +29,7 @@ class _GeminiDraft {
       category: json['category'] as String? ?? 'other',
       dueDate: json['dueDate'] as String?,
       amount: (json['amount'] as num?)?.toInt(),
-      items:
-          (json['items'] as List<dynamic>?)
+      items: (json['items'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
@@ -144,18 +143,16 @@ class GeminiApiService {
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       const timezone = 'Asia/Tokyo';
 
-      final response = await http
-          .post(
-            Uri.parse(url),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'imageBase64': base64Data,
-              'mimeType': mimeType,
-              'today': todayStr,
-              'timezone': timezone,
-            }),
-          )
-          .timeout(const Duration(seconds: 60));
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'imageBase64': base64Data,
+          'mimeType': mimeType,
+          'today': todayStr,
+          'timezone': timezone,
+        }),
+      ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode != 200) {
         final detail = _extractError(response.body);
@@ -211,9 +208,7 @@ class GeminiApiService {
       }
 
       final drafts = draftsJson
-          .map(
-            (e) => _GeminiDraft.fromJson(e as Map<String, dynamic>).toDraft(),
-          )
+          .map((e) => _GeminiDraft.fromJson(e as Map<String, dynamic>).toDraft())
           .where((d) => d.title.isNotEmpty)
           .toList(growable: false);
 

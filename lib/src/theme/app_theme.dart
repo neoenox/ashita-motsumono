@@ -58,10 +58,7 @@ class AppTheme {
         bodyMedium: TextStyle(fontWeight: FontWeight.w400),
         bodySmall: TextStyle(fontWeight: FontWeight.w400),
         labelLarge: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.05),
-        labelMedium: TextStyle(
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.05,
-        ),
+        labelMedium: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.05),
       ),
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
@@ -110,10 +107,7 @@ class AppTheme {
         elevation: 2,
         backgroundColor: cs.primary,
         foregroundColor: cs.onPrimary,
-        extendedPadding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 14,
-        ),
+        extendedPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: cs.surface,
@@ -133,7 +127,9 @@ class AppTheme {
         ),
       ),
       chipTheme: ChipThemeData(
-        shape: StadiumBorder(side: BorderSide(color: cs.outlineVariant)),
+        shape: StadiumBorder(
+          side: BorderSide(color: cs.outlineVariant),
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         labelStyle: TextStyle(
           fontFamily: 'NotoSansJP',

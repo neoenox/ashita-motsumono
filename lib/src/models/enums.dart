@@ -11,12 +11,12 @@ enum TodoCategory {
   other;
 
   String get label => switch (this) {
-    TodoCategory.item => '持ち物',
-    TodoCategory.submit => '提出',
-    TodoCategory.payment => '集金',
-    TodoCategory.event => '予定',
-    TodoCategory.other => 'その他',
-  };
+        TodoCategory.item => '持ち物',
+        TodoCategory.submit => '提出',
+        TodoCategory.payment => '集金',
+        TodoCategory.event => '予定',
+        TodoCategory.other => 'その他',
+      };
 
   static TodoCategory fromName(String? value) {
     return TodoCategory.values.firstWhere(

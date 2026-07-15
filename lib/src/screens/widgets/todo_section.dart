@@ -21,8 +21,7 @@ class TodoSection extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: Spacing.sm),
-          child: Text(
-            title,
+          child: Text(title,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: Theme.of(context).colorScheme.primary,
             ),
@@ -42,27 +41,21 @@ class TodoSection extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.check_circle_outline,
+                        Icon(Icons.check_circle_outline,
                           size: 20,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: Spacing.sm),
-                        Text(
-                          'すべて完了',
+                        Text('すべて完了',
                           style: TextStyle(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
                     ),
                   )
                 : Column(
-                    children: todos
-                        .map((todo) => TodoTile(todo: todo))
-                        .toList(),
+                    children: todos.map((todo) => TodoTile(todo: todo)).toList(),
                   ),
           ),
         ),
@@ -85,8 +78,7 @@ class UpcomingSection extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: Spacing.sm),
-          child: Text(
-            '今後の予定',
+          child: Text('今後の予定',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: Theme.of(context).colorScheme.primary,
             ),
@@ -103,8 +95,7 @@ class UpcomingSection extends StatelessWidget {
                 ...shown.map((todo) => TodoTile(todo: todo, compact: true)),
                 if (todos.length > 10) ...[
                   const SizedBox(height: Spacing.sm),
-                  Text(
-                    '他 ${todos.length - 10} 件',
+                  Text('他 ${todos.length - 10} 件',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 13,

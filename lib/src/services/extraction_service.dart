@@ -26,8 +26,7 @@ class ExtractionService {
       category,
       items,
       amount,
-      needsDueDateConfirmation:
-          dueDate == null &&
+      needsDueDateConfirmation: dueDate == null &&
           (DateExtractor.hasAmbiguousDeadline(text) ||
               DateExtractor.hasPastMonthDayDate(text, current)),
     );
@@ -75,9 +74,7 @@ class ExtractionService {
 
     if (drafts.length < 2) {
       final fallback = extract(
-        text,
-        now: current,
-        learnedItemLabels: learnedItemLabels,
+        text, now: current, learnedItemLabels: learnedItemLabels,
       );
       return _isActionableDraft(fallback) ? [fallback] : [];
     }

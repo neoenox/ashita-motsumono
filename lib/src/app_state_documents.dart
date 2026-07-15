@@ -24,7 +24,9 @@ extension DocumentAppStateOperations on AppState {
   Future<bool> deleteDocument(String id) async {
     if (todos.any((todo) => todo.documentId == id)) return false;
 
-    final deleted = documents.where((document) => document.id == id).toList();
+    final deleted = documents
+        .where((document) => document.id == id)
+        .toList();
     if (deleted.isEmpty) return false;
 
     final nextDocuments = documents
