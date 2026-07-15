@@ -1,7 +1,9 @@
 # データインベントリ
 
-基準日: 2026年7月14日  
-基準commit: `cc420074efb9f61d5d314885481f10f9c694c3ea`
+基準日: 2026年7月15日  
+基準commit: PR #115 最新HEAD
+
+プライバシーポリシー正本: [`../privacy_policy.md`](../privacy_policy.md)
 
 本書は「あしたもつもの」のコード、権限、SDK、端末内保存、外部通信をストア開示へ対応付けるための内部管理資料です。
 
@@ -24,8 +26,8 @@
 | 画像ファイル | カメラ、画像選択 | アプリ専用ファイル領域 | OCR/AI解析、読み取り文書の参照 | AI解析を選び同意した場合のみ送信 | 孤立時削除、一括削除、失敗時再試行 | 確認済み: `lib/src/services/image_file_service.dart`, `lib/src/services/ocr_pick_service.dart` |
 | 学習済み持ち物候補 | 利用者が確定した候補 | SharedPreferences | 候補抽出の改善 | なし | 一括削除/設定処理 | 確認済み: `lib/src/services/app_settings.dart` |
 | 通知時刻設定 | 利用者設定 | SharedPreferences | 前日・当日通知の時刻決定 | なし | 設定変更、アプリ削除 | 確認済み |
-| 広告除去フラグ | ストア購入状態 | SharedPreferences | 広告表示の制御 | ストア購入確認は外部通信 | データ初期化またはアプリ削除。ただし復元可能 | 確認済み: `lib/src/services/purchase_provider.dart` |
-| AI利用権フラグ | ストア購入状態 | SharedPreferences | AI画像解析の利用可否 | ストア購入確認は外部通信 | データ初期化またはアプリ削除。ただし復元可能 | 確認済み |
+| 広告除去フラグ | ストア購入状態 | SharedPreferences | 広告表示の制御 | なし。ストア照会の結果を端末保存 | データ初期化またはアプリ削除。ただし復元可能 | 確認済み: `lib/src/services/purchase_provider.dart` |
+| AI利用権フラグ | ストア購入状態 | SharedPreferences | AI画像解析の利用可否 | なし。ストア照会の結果を端末保存 | データ初期化またはアプリ削除。ただし復元可能 | 確認済み |
 | 通知ID | アプリ生成 | SQLite/Drift | Todoごとの通知識別、衝突回避 | なし | Todo削除・一括削除後に解放 | 確認済み |
 | 通知同期キュー | アプリ生成 | SQLite/Drift | 予約・取消失敗の再試行 | OS通知APIのみ | 成功後削除 | 確認済み |
 | 画像削除キュー | アプリ生成 | SQLite/Drift | 画像削除失敗の再試行 | なし | 成功後削除 | 確認済み |
@@ -35,12 +37,16 @@
 
 ## 2. 外部通信データ
 
-| 機能/送信先 | データ | 必須/任意 | 目的 | 開発者サーバー保存 | ストア分類候補 | 状態・証跡 |
+| 機能/送信先 | アプリから送信するデータ | アプリが受信するデータ | 必須/任意 | 目的 | ストア分類候補 | 状態・証跡 |
 |---|---|---|---|---|---|---|
-| Cloudflare Workers → Google Gemini API | 解析画像、MIME形式、基準日、`Asia/Tokyo`、通信メタデータ | 任意。AI商品購入者が毎回同意して実行 | Todo候補生成 | Workerコードに永続保存処理なし。提供元ログ保持は不明 | Photos、Other User Content、Diagnostics/Device dataは管理画面・提供元仕様で再確認 | 確認済み: `lib/src/services/gemini_api_service.dart`, `workers/gemini-proxy/src/index.ts` |
-| Google Mobile Ads / AdMob | IPアドレス、広告ID/App Set ID等、アプリ・広告操作、診断情報 | 広告除去前。SDK設定・同意状態に依存 | 広告、測定、分析、不正防止 | Google側 | Approximate Location、App Interactions、Diagnostics、Device or Other IDs | コード確認済み: `lib/src/services/ad_service.dart`。本番SDK挙動・同意設定は要実機/管理画面確認 |
-| Google Play Billing / Apple IAP | 商品ID、価格、購入・復元状態、取引情報 | 購入・復元時 | 非消費型商品の販売・復元 | ストア側。アプリは購入済みフラグを端末保存 | Purchase History | 確認済み: `lib/src/services/purchase_provider.dart` |
-| プライバシー/サポートWeb | IP、User-Agent等の通常のWeb通信情報 | 利用者がリンクを開く場合 | 情報提供・問い合わせ | Webホスティング/フォーム提供元 | Web閲覧は開いた外部ブラウザの扱いも確認 | URLコード確認済み。アクセスログ/フォーム項目は要管理画面確認 |
+| Cloudflare Workers → Google Gemini API | 解析画像、MIME形式、基準日、`Asia/Tokyo`、通信メタデータ | 生成されたTodo候補の解析結果 | 任意。AI商品購入者が毎回同意して実行 | Todo候補生成 | Photos、Other User Content。Diagnostics/Device dataは管理画面・提供元仕様で再確認 | 確認済み: `lib/src/services/gemini_api_service.dart`, `workers/gemini-proxy/src/index.ts` |
+| Google Mobile Ads / AdMob | IPアドレス、広告ID/App Set ID等、アプリ・広告操作、診断情報 | 広告コンテンツ、配信結果 | 広告除去前。SDK設定・同意状態に依存 | 広告、測定、分析、不正防止 | Approximate Location、App Interactions、Diagnostics、Device or Other IDs | コード確認済み: `lib/src/services/ad_service.dart`。本番SDK挙動・同意設定は要実機/管理画面確認 |
+| Google Play Billing / Apple IAP | 商品照会、購入、復元のリクエスト | 商品ID、価格表示、購入・復元状態 | 購入・復元時 | 非消費型商品の販売・復元 | アプリによるPurchase History収集は対象外。購入状態は端末内のみ | 確認済み: `lib/src/services/purchase_provider.dart`。購入トークン等を開発者サーバーへ送信する実装なし |
+| プライバシー/サポートWeb | IP、User-Agent等の通常のWeb通信情報 | Webページ | 利用者がリンクを開く場合 | 情報提供・問い合わせ | Web閲覧は開いた外部ブラウザの扱いも確認 | URLコード確認済み。アクセスログ/フォーム項目は要管理画面確認 |
+
+Google Gemini APIの解析結果はAPI側で生成され、本アプリが受信する情報です。解析結果を、AI解析の入力として本アプリからAPIへ送信するものではありません。
+
+Google PlayまたはAppleがストア運営者として決済・購入管理のために処理する取引情報は、アプリまたは統合SDKが端末外へ送信するデータとは分けて評価します。将来、購入トークン、レシート、取引IDまたは購入履歴を開発者サーバーへ送信する場合は、Purchase Historyの分類を再評価します。
 
 ## 3. 権限・OS機能
 
@@ -61,7 +67,7 @@
 | SDK/サービス | 用途 | バージョン/設定元 | 開示上の注意 |
 |---|---|---|---|
 | `google_mobile_ads` | AdMobバナー広告 | `pubspec.yaml` | SDKの自動収集・共有を含める。本番広告ID・同意フロー確認必須 |
-| `in_app_purchase` | 広告除去・AI利用権 | `pubspec.yaml` | Purchase History、ストア側処理、復元を記載 |
+| `in_app_purchase` | 広告除去・AI利用権 | `pubspec.yaml` | 購入状態は端末内。外部サーバー検証を追加した場合はPurchase Historyを再評価 |
 | `google_mlkit_text_recognition` | iOS通常OCR | `pubspec.yaml` | 通常OCRは端末内処理。モデル配布方式とネットワーク挙動を実機確認 |
 | Android native ML Kit OCR | Android通常OCR | MethodChannel/Android依存 | 通常OCR画像を独自サーバーへ送信しない |
 | `image_picker` | カメラ・画像選択 | `pubspec.yaml` | 利用者が選んだ写真のみ |
@@ -69,16 +75,16 @@
 | `shared_preferences` | 設定・購入済みフラグ | `pubspec.yaml` | 端末内。暗号化ストレージではない |
 | Drift/SQLite | 主要データ永続化 | `lib/src/repositories/drift_store.dart` | 端末内。破損退避、削除、再試行キューを含む |
 | Cloudflare Workers | Gemini中継 | `workers/gemini-proxy` | IP/セキュリティログ等は提供元設定を確認 |
-| Google Gemini API | AI画像解析 | Workerの `gemini-2.5-flash` | 画像・プロンプト・応答の保持/学習設定を本番契約で確認 |
+| Google Gemini API | AI画像解析 | Workerの `gemini-2.5-flash` | 入力・出力の保持/学習設定を本番契約で確認 |
 | `url_launcher` | 外部ページ表示 | `pubspec.yaml` | 外部ブラウザへ遷移 |
 
 ## 5. ストア開示へ反映する確認済み事項
 
-- アプリが外部へデータを送信するため、Google Play Data safetyの「収集なし」回答は不適切。
+- アプリがAdMobおよび任意AI画像解析で外部へデータを送信するため、Google Play Data safetyの「収集なし」回答は不適切。
 - 通常OCRのみの画像処理は端末内であり、通常OCR画像を外部送信するデータとして扱わない。
 - AI画像解析の写真は任意収集で、アプリ機能目的。毎回の明示説明・同意後に送信する。
 - AdMob SDKのデータ処理を、開発者自身が直接利用しない場合も含めて申告する。
-- 購入履歴/取引情報はストア課金に伴うデータとして申告候補に含める。
+- 端末内の購入済みフラグはGoogle Play/Appleの収集対象外。ストア事業者自身の取引処理と、アプリによる端末外送信を区別する。
 - 端末内クラッシュログは自動送信されないため、現実装だけを根拠にストアのCrash Logs収集へ含めない。ただしAdMobのDiagnosticsは別途含める。
 - 位置情報権限はないが、AdMobがIPアドレスからおおよその地域を推定し得るため、Approximate Locationを申告候補に含める。
 
@@ -91,6 +97,7 @@
 - [ ] Cloudflare Workersのログ設定、Logpush、Analytics、保持期間
 - [ ] Google Gemini APIの本番契約、入力/出力ログ、保持、モデル改善利用の設定
 - [ ] Google Play Billing/App Storeの実商品ID、価格、商品状態
+- [ ] 購入トークン、レシート、取引IDが開発者サーバーへ送信されないことの正式成果物確認
 - [ ] サポートフォームの収集項目、メール配信、保持期間、削除手順
 - [ ] Android/iOSのOSバックアップに含まれる端末内データ範囲
 - [ ] 破損DB退避ファイルの自動削除・保持期限
@@ -98,7 +105,7 @@
 
 ## 7. 更新ルール
 
-次の変更を行うPRでは、本書、プライバシーポリシー、Google Play Data safety、Apple App Privacy、サポートページを同時に再確認します。
+次の変更を行うPRでは、本書、プライバシーポリシー正本、Google Play Data safety、Apple App Privacy、サポートページを同時に再確認します。
 
 - SDK追加・更新
 - 権限追加・削除
