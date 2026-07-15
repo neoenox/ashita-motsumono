@@ -1,8 +1,10 @@
 # Google Play Data safety 回答案
 
-基準日: 2026年7月14日  
+基準日: 2026年7月15日  
 対象Application ID: `com.ashita_motsumono`  
-対象基準commit: `cc420074efb9f61d5d314885481f10f9c694c3ea`
+対象基準commit: PR #115 最新HEAD
+
+プライバシーポリシー正本: [`../privacy_policy.md`](../privacy_policy.md)
 
 > **重要**
 > 本書はPlay Consoleへ転記するための保守的な回答案です。最終回答では、正式AAB、依存SDKの解決済みバージョン、AdMob/UMP設定、Play Billingの商品、Cloudflare Workers/Geminiの本番設定を実機・管理画面で確認してください。開発者が回答の正確性に責任を持ちます。
@@ -17,16 +19,15 @@
 
 - AdMob SDKがIPアドレス、端末・アカウント識別子、アプリ/広告操作、診断情報を外部送信する。
 - 任意のAI画像解析で、利用者が同意した場合に写真、MIME形式、基準日、タイムゾーンをCloudflare Workers経由でGoogle Gemini APIへ送信する。
-- アプリ内課金・購入復元でストア課金基盤と購入情報を処理する。
 
-端末内だけで処理・保存する人物、Todo、通常OCR画像、通常OCRテキスト、ローカル障害ログは、この質問の「収集」の根拠にはしません。
+端末内だけで処理・保存する人物、Todo、通常OCR画像、通常OCRテキスト、ローカル障害ログおよび購入済みフラグは、この質問の「収集」の根拠にはしません。Google Play自身が決済・購入管理のために処理するデータは、アプリまたは統合SDKが端末外へ送信するデータとは分けて判断します。
 
 ## 2. セキュリティに関する質問
 
 | 質問 | 回答案 | 根拠・条件 |
 |---|---|---|
-| 収集するすべてのデータは転送中に暗号化されますか | **はい（条件付き）** | Gemini URLは本番でHTTPS必須。AdMobはTLS。Play BillingはストアSDK。正式AABの通信先とWorkers URLがすべてHTTPSであることを確認してから確定 |
-| データ削除をリクエストする方法を提供しますか | **はい（説明要）** | 端末内データはアプリ内一括削除が可能。外部サービスに送信済みのログ・取引情報は直接削除できない。問い合わせURLを公開し、外部処理分の相談範囲を明記する |
+| 収集するすべてのデータは転送中に暗号化されますか | **はい（条件付き）** | Gemini URLは本番でHTTPS必須。AdMobはTLS。正式AABの通信先とWorkers URLがすべてHTTPSであることを確認してから確定 |
+| データ削除をリクエストする方法を提供しますか | **はい（説明要）** | 端末内データはアプリ内一括削除が可能。外部サービスに送信済みのログ等は直接削除できない。問い合わせURLを公開し、外部処理分の相談範囲を明記する |
 | 独立したセキュリティ審査 | **いいえ** | MASA等の完了証跡なし |
 | Families Policy準拠バッジ | **現時点では選択しない** | 対象年齢・子ども向け指定が未決定。子ども向け公開する場合は別途全面確認 |
 
@@ -111,11 +112,10 @@ Play Console上で「Files and docs」を併記するかは、AI解析対象が�
 | 項目 | 回答案 |
 |---|---|
 | データタイプ | Financial info → Purchase history |
-| 収集/共有 | **収集候補**。Google Play自身がストア運営者として処理する範囲との境界をConsoleで確認 |
-| 一時的処理 | **いいえ候補** |
-| 必須/任意 | **任意**。購入・復元を選択した場合のみ |
-| 目的 | App functionality、Fraud prevention, security, and compliance |
-| 根拠 | アプリは商品情報、商品ID、購入/復元状態を受け取り、広告除去/AI利用権を有効化する |
+| 収集/共有 | **対象外（申告不要）** |
+| 根拠 | 本アプリが保持する広告除去・AI利用権の購入状態は端末内のSharedPreferencesにのみ保存され、開発者の独自サーバーまたは第三者サーバーへ送信されない。Google Play自身が決済・購入管理のために処理するデータは、アプリによる端末外送信とは区別する |
+
+商品情報、価格表示、購入・復元状態はGoogle Play Billingからアプリへ返され、端末内の機能制御に使用します。将来、購入トークンや取引履歴を開発者サーバーへ送信して検証・保存する実装を追加した場合は、Purchase historyの申告を再評価します。
 
 アプリはカード番号、銀行口座等の決済手段情報を取得しません。「User payment info」は**選択しない**案です。
 
@@ -128,6 +128,7 @@ Play Console上で「Files and docs」を併記するかは、AI解析対象が�
 - Email address、User IDs、Address、Phone number
 - Race and ethnicity、Political or religious beliefs、Sexual orientation
 - Health info、Fitness info
+- Financial info → Purchase history（端末内購入状態のみ。開発者サーバーへの送信なし）
 - Emails、SMS or MMS、Other in-app messages
 - Videos、Audio files
 - Calendar events、Contacts
@@ -143,14 +144,14 @@ Play Console上で「Files and docs」を併記するかは、AI解析対象が�
 | AdMob SDK | 共有: **はい** | Google公式SDK開示、本番SDKバージョン、媒介広告SDKの有無 |
 | AI画像 → Cloudflare Workers | 共有: **いいえ候補** | Workersがサービスプロバイダーか、ログ/二次利用、契約 |
 | Workers → Gemini API | 共有: **いいえ候補** | Gemini APIの契約、データ保持・モデル改善、利用者同意の適合性 |
-| Play Billing | 共有: **いいえ候補** | Play Consoleのストア処理除外、アプリが外部事業者へ追加送信しないこと |
+| Play Billing | アプリによるPurchase history収集・共有: **対象外** | 購入状態が端末内のみで、購入トークン等を外部送信しないこと |
 | 外部ブラウザで開く公開ページ | アプリによる共有: **通常は対象外候補** | アプリ制御WebViewではなく外部ブラウザであること、問い合わせフォームの導線 |
 
 ## 6. 削除説明案
 
 ストア掲載用の説明:
 
-> アプリ内の設定から、人物、Todo、読み取り履歴、保存画像、学習済み候補等の端末内登録データを削除できます。アプリはログインアカウントや独自同期サーバーを使用していません。AI画像解析、広告、課金等で外部サービスへ送信・処理された情報には各提供元の保持・削除方針が適用されます。外部処理に関する相談はサポートページから受け付けます。
+> アプリ内の設定から、人物、Todo、読み取り履歴、保存画像、学習済み候補等の端末内登録データを削除できます。アプリはログインアカウントや独自同期サーバーを使用していません。AI画像解析、広告等で外部サービスへ送信・処理された情報には各提供元の保持・削除方針が適用されます。外部処理に関する相談はサポートページから受け付けます。
 
 削除URL欄が必要な場合の候補:
 
@@ -169,8 +170,9 @@ Play Console上で「Files and docs」を併記するかは、AI解析対象が�
 - [ ] 同意キャンセル時に画像選択もHTTP送信も行われない
 - [ ] Workers/Geminiの保持・ログ・二次利用条件を確認
 - [ ] Play Billingの商品ID `remove_ads` と `ai_analysis`（または本番上書き値）を確認
+- [ ] 購入状態・購入トークンが開発者サーバーへ送信されないことを確認
 - [ ] 端末内一括削除、孤立画像削除、アンインストール後の状態を確認
-- [ ] プライバシーポリシー公開URLと本文が本回答に一致
+- [ ] プライバシーポリシー正本 `docs/privacy_policy.md` と公開URLの本文が本回答に一致
 - [ ] サポート/削除相談URLが公開済み
 - [ ] Play Consoleプレビューを保存し、`store-disclosure-consistency-checklist.md`で承認
 
@@ -180,6 +182,5 @@ Play Console上で「Files and docs」を併記するかは、AI解析対象が�
 
 - AdMobの本番同意モード、パーソナライズ広告、年齢設定、Limited Ads
 - CloudflareおよびGemini APIの本番ログ保持・データ利用条件
-- Google PlayがPlay Billing処理をData safety上どこまで開発者アプリの収集として求めるか
-- Play Consoleの最新画面における各回答ラベルと選択肢
+- Play Consoleの提出時点の最新画面における各回答ラベルと選択肢
 - 本番AABに追加される間接SDKまたはManifest権限
