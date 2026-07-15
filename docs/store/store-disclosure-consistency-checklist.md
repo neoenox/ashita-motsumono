@@ -1,6 +1,8 @@
 # ストア開示整合性チェックリスト
 
-基準日: 2026年7月14日
+基準日: 2026年7月15日
+
+プライバシーポリシー正本: [`../privacy_policy.md`](../privacy_policy.md)
 
 本チェックリストは、アプリ実装、権限、SDK、プライバシーポリシー、サポートページ、Google Play Data safety、Apple App Privacyの矛盾を防ぐために使用します。
 
@@ -25,9 +27,12 @@
 - [ ] Android merged manifestを保存
 - [ ] iOS Info.plist、Privacy Manifest、entitlementsを保存
 
-## 2. ブランド・URL
+## 2. ブランド・URL・正本
 
 - [ ] アプリ内表示名、Google Play名、App Store名が「あしたもつもの」で一致
+- [ ] プライバシーポリシー本文の正本が `docs/privacy_policy.md` の1ファイルだけである
+- [ ] README、ストア提出資料、サポート文書が正本を参照する
+- [ ] `docs/store/privacy-policy-ja.md` に本文の複製がない
 - [ ] プライバシーポリシーURLがHTTPS、公開、ログイン不要
 - [ ] サポートURLがHTTPS、公開、ログイン不要
 - [ ] アプリ内リンクとストア登録URLが一致
@@ -39,7 +44,8 @@
 
 - [ ] 人物、Todo、チェックリスト、読み取り文書、画像、学習済み候補をインベントリへ記載
 - [ ] 通知ID、通知同期キュー、画像削除キューを記載
-- [ ] 購入済みフラグを記載
+- [ ] 購入済みフラグを端末内データとして記載
+- [ ] 購入済みフラグ、購入トークン、レシート、取引IDを開発者サーバーへ送信していない
 - [ ] `crash.log`が端末内のみで自動送信されない説明と実装が一致
 - [ ] DB破損退避ファイルの存在と削除/保持上の注意を記載
 - [ ] ログイン・独自同期・家族共有がない説明と実装が一致
@@ -61,6 +67,8 @@
 - [ ] 画像選択前に顕著な説明を表示
 - [ ] 送信内容として画像、MIME形式、基準日、タイムゾーンを表示
 - [ ] 送信先としてCloudflare Workers経由のGoogle Gemini APIを表示
+- [ ] Gemini APIが生成した解析結果はアプリが受信する情報として記載
+- [ ] 解析結果をAPIへの送信入力に含める誤解を招く表現がない
 - [ ] キャンセル時に画像選択・HTTP送信が発生しない
 - [ ] 同意後だけ送信する
 - [ ] 本番URLがHTTPSでlocalhostではない
@@ -100,8 +108,11 @@
 - [ ] 購入完了処理を確認
 - [ ] 広告除去とAI利用権が独立して動作
 - [ ] カード番号等をアプリが取得しない説明と一致
-- [ ] Purchase HistoryのPlay/Apple回答を確認
+- [ ] Google Play Purchase Historyは、端末内処理のみのため対象外と回答
+- [ ] Apple Purchase Historyは、端末内処理のみのためCollected: Noと回答
+- [ ] Google Play/Apple自身が処理するストア取引と、アプリの収集を区別
 - [ ] 端末内購入フラグとストア復元の関係を説明
+- [ ] 将来サーバー検証を追加した場合の再評価条件を記載
 
 ## 8. 通知
 
@@ -119,7 +130,8 @@
 - [ ] 個別Todo削除後の孤立文書/画像削除を確認
 - [ ] 通知取消・画像削除失敗が再試行される
 - [ ] アンインストール後の端末内データを確認
-- [ ] 外部サービス送信済みデータは一括削除対象外であることを明記
+- [ ] AI解析・広告で外部サービスへ送信済みのデータは一括削除対象外であることを明記
+- [ ] ストアの購入記録はGoogle Play/Apple側で管理されることを明記
 - [ ] JSONエクスポートに人物、Todo、OCRテキストが含まれる
 - [ ] JSONエクスポートに画像本体・ローカル画像パスが含まれない
 - [ ] クリップボード注意を記載
@@ -144,8 +156,8 @@
 - [ ] AdMob由来のDevice or Other IDsを申告
 - [ ] AI画像解析のPhotosを申告
 - [ ] AI画像解析のOther User-Generated Contentを申告
-- [ ] Purchase Historyの扱いをPlay Console最新定義で確認
-- [ ] 収集/共有、一時的処理、任意/必須、目的を各タイプで回答
+- [ ] Purchase Historyは端末内処理のみのため対象外
+- [ ] 収集/共有、一時的処理、任意/必須、目的を各対象タイプで回答
 - [ ] 「すべて転送中暗号化」は正式通信先を確認後に回答
 - [ ] 削除方法と削除URLを公開
 - [ ] Families Policy対象の有無を確定
@@ -155,7 +167,7 @@
 
 - [ ] Photosを確認
 - [ ] Other User Contentを確認
-- [ ] Purchase Historyを確認
+- [ ] Purchase HistoryはCollected: No
 - [ ] Device IDを確認
 - [ ] Product Interaction/Advertising Dataを確認
 - [ ] Performance/Diagnostic Dataを確認
@@ -164,14 +176,16 @@
 - [ ] Tracking判定の根拠を記録
 - [ ] ATT/IDFA/AdMobの実機証跡がある
 - [ ] Privacy Manifestと回答が一致
-- [ ] Privacy Policy URLを公開
+- [ ] Privacy Policy正本と公開URLを一致
 - [ ] Privacy Choices URLの内容を確認
 
 ## 13. サポートページ
 
+- [ ] プライバシーポリシー正本 `docs/privacy_policy.md` を参照
 - [ ] 通知トラブル手順が現在の実装に一致
 - [ ] カメラ/画像/OCRの代替手段を案内
 - [ ] 通常OCRとAI解析の違いを説明
+- [ ] Geminiの送信入力と受信結果を区別
 - [ ] AI結果の確認責任を案内
 - [ ] 広告除去とAI分析が別商品であることを説明
 - [ ] 購入復元手順を記載
