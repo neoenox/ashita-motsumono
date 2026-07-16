@@ -123,12 +123,13 @@ class AppPurchaseProvider extends PurchaseProvider {
   void dispose() {
     VerifiedEntitlementCache.clearAiTokenRefresher();
     VerifiedEntitlementCache.clearAiToken();
-    _subscription?.cancel();
+    unawaited(_subscription?.cancel());
     super.dispose();
   }
 
   Future<void> _init() async {
     try {
+      // 端末内フラグだけでは権利を付与せず、毎回ストア復元とサーバー検証を行う。
       _adRemoved = false;
       _aiAccess = false;
       _storeAvailable = await _purchase.isAvailable();
@@ -139,17 +140,22 @@ class AppPurchaseProvider extends PurchaseProvider {
       }
       _subscription = _purchase.purchaseStream.listen(
         (details) => unawaited(_processPurchases(details)),
-        onError: (Object error) {
+        onError: (Object error, StackTrace stackTrace) {
           _statusMessage = '購入情報の受信に失敗しました。';
           notifyListeners();
+          if (kDebugMode) {
+            debugPrint('PurchaseProvider: stream failed - $error\n$stackTrace');
+          }
         },
       );
       await _loadProductDetails();
       await _purchase.restorePurchases();
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       _statusMessage = '購入情報の確認に失敗しました。時間をおいてもう一度お試しください。';
       notifyListeners();
-      if (kDebugMode) debugPrint('PurchaseProvider: init failed - $error');
+      if (kDebugMode) {
+        debugPrint('PurchaseProvider: init failed - $error\n$stackTrace');
+      }
     }
   }
 
@@ -159,16 +165,34 @@ class AppPurchaseProvider extends PurchaseProvider {
           purchase.productID != PurchaseProvider.aiProductId) {
         continue;
       }
+      await _processPurchaseSafely(purchase);
+    }
+  }
+
+  Future<void> _processPurchaseSafely(PurchaseDetails purchase) async {
+    try {
       switch (purchase.status) {
         case PurchaseStatus.purchased || PurchaseStatus.restored:
           final verification = await _verifier.verify(purchase);
-          if (verification.verified) {
-            await _grant(purchase, verification);
-            if (purchase.pendingCompletePurchase) {
-              await _purchase.completePurchase(purchase);
-            }
-          } else {
+          if (!verification.verified) {
             await _deny(purchase.productID, verification.message);
+            break;
+          }
+
+          await _grant(purchase, verification);
+          if (purchase.pendingCompletePurchase) {
+            try {
+              await _purchase.completePurchase(purchase);
+            } on Object catch (error, stackTrace) {
+              // ストアから再配信されたときに再試行できるよう、検証済み権利は維持する。
+              _statusMessage = '購入は確認済みですが、ストア処理を完了できませんでした。再起動後に再試行します。';
+              if (kDebugMode) {
+                debugPrint(
+                  'PurchaseProvider: completePurchase failed - '
+                  '$error\n$stackTrace',
+                );
+              }
+            }
           }
         case PurchaseStatus.error:
           _statusMessage = '購入処理でエラーが発生しました。';
@@ -177,6 +201,15 @@ class AppPurchaseProvider extends PurchaseProvider {
         case PurchaseStatus.pending:
           _statusMessage = '購入処理を確認しています。';
       }
+    } on Object catch (error, stackTrace) {
+      _statusMessage = '購入情報を確認できませんでした。通信状態を確認して、もう一度お試しください。';
+      if (kDebugMode) {
+        debugPrint(
+          'PurchaseProvider: processing ${purchase.productID} failed - '
+          '$error\n$stackTrace',
+        );
+      }
+    } finally {
       notifyListeners();
     }
   }
@@ -185,32 +218,35 @@ class AppPurchaseProvider extends PurchaseProvider {
     PurchaseDetails purchase,
     EntitlementVerification verification,
   ) async {
-    _statusMessage = null;
     if (purchase.productID == PurchaseProvider.productId) {
-      _adRemoved = true;
       await _settings.setAdRemoved(true);
+      _adRemoved = true;
+      _statusMessage = null;
       return;
     }
+
+    await _settings.setAiAccess(true);
     _aiAccess = true;
     _aiPurchase = purchase;
     _aiAccessToken = verification.accessToken;
     _aiAccessTokenExpiresAt = verification.expiresAt;
-    await _settings.setAiAccess(true);
+    _statusMessage = null;
   }
 
   Future<void> _deny(String productId, String? message) async {
     _statusMessage = message ?? '購入を確認できませんでした。';
     if (productId == PurchaseProvider.productId) {
-      _adRemoved = false;
       await _settings.setAdRemoved(false);
+      _adRemoved = false;
       return;
     }
+
+    await _settings.setAiAccess(false);
     _aiAccess = false;
     _aiPurchase = null;
     _aiAccessToken = null;
     _aiAccessTokenExpiresAt = null;
     VerifiedEntitlementCache.clearAiToken();
-    await _settings.setAiAccess(false);
   }
 
   @override
@@ -222,17 +258,27 @@ class AppPurchaseProvider extends PurchaseProvider {
         expiry.isAfter(DateTime.now().toUtc().add(const Duration(seconds: 30)))) {
       return _aiAccessToken;
     }
+
     final purchase = _aiPurchase;
     if (purchase == null) return null;
-    final verification = await _verifier.verify(purchase);
-    if (!verification.verified || verification.accessToken == null) {
-      await _deny(PurchaseProvider.aiProductId, verification.message);
+    try {
+      final verification = await _verifier.verify(purchase);
+      if (!verification.verified || verification.accessToken == null) {
+        await _deny(PurchaseProvider.aiProductId, verification.message);
+        notifyListeners();
+        return null;
+      }
+      await _grant(purchase, verification);
       notifyListeners();
+      return _aiAccessToken;
+    } on Object catch (error, stackTrace) {
+      _statusMessage = 'AI利用権を更新できませんでした。通信状態を確認してください。';
+      notifyListeners();
+      if (kDebugMode) {
+        debugPrint('PurchaseProvider: token refresh failed - $error\n$stackTrace');
+      }
       return null;
     }
-    await _grant(purchase, verification);
-    notifyListeners();
-    return _aiAccessToken;
   }
 
   @override
@@ -253,9 +299,17 @@ class AppPurchaseProvider extends PurchaseProvider {
       await _loadProductDetails();
       final product = ai ? _aiProduct : _adsProduct;
       if (product == null) return;
-      await _purchase.buyNonConsumable(
+      final started = await _purchase.buyNonConsumable(
         purchaseParam: PurchaseParam(productDetails: product),
       );
+      if (!started) {
+        _statusMessage = '購入処理を開始できませんでした。時間をおいてもう一度お試しください。';
+      }
+    } on Object catch (error, stackTrace) {
+      _statusMessage = '購入処理を開始できませんでした。時間をおいてもう一度お試しください。';
+      if (kDebugMode) {
+        debugPrint('PurchaseProvider: purchase failed - $error\n$stackTrace');
+      }
     } finally {
       _busy = false;
       notifyListeners();
@@ -274,6 +328,11 @@ class AppPurchaseProvider extends PurchaseProvider {
         return;
       }
       await _purchase.restorePurchases();
+    } on Object catch (error, stackTrace) {
+      _statusMessage = '購入履歴を復元できませんでした。時間をおいてもう一度お試しください。';
+      if (kDebugMode) {
+        debugPrint('PurchaseProvider: restore failed - $error\n$stackTrace');
+      }
     } finally {
       _busy = false;
       notifyListeners();
