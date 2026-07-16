@@ -1,6 +1,4 @@
-// lib/src/services/purchase_provider.dart
 // 広告除去・AI分析の購入状態を管理する ChangeNotifier。
-// 関連: ad_service.dart, app_settings.dart, main.dart, settings_screen.dart
 
 import 'dart:async';
 
@@ -8,50 +6,38 @@ import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
 import 'app_settings.dart';
+import 'purchase_verification_service.dart';
 
 abstract class PurchaseGateway {
   Stream<List<PurchaseDetails>> get purchaseStream;
-
   Future<bool> isAvailable();
-
   Future<ProductDetailsResponse> queryProductDetails(Set<String> identifiers);
-
   Future<bool> buyNonConsumable({required PurchaseParam purchaseParam});
-
   Future<void> restorePurchases();
-
   Future<void> completePurchase(PurchaseDetails purchase);
 }
 
 class InAppPurchaseGateway implements PurchaseGateway {
   InAppPurchaseGateway([InAppPurchase? purchase])
-    : _purchase = purchase ?? InAppPurchase.instance;
+      : _purchase = purchase ?? InAppPurchase.instance;
 
   final InAppPurchase _purchase;
 
   @override
   Stream<List<PurchaseDetails>> get purchaseStream => _purchase.purchaseStream;
-
   @override
   Future<bool> isAvailable() => _purchase.isAvailable();
-
   @override
-  Future<ProductDetailsResponse> queryProductDetails(Set<String> identifiers) {
-    return _purchase.queryProductDetails(identifiers);
-  }
-
+  Future<ProductDetailsResponse> queryProductDetails(Set<String> identifiers) =>
+      _purchase.queryProductDetails(identifiers);
   @override
-  Future<bool> buyNonConsumable({required PurchaseParam purchaseParam}) {
-    return _purchase.buyNonConsumable(purchaseParam: purchaseParam);
-  }
-
+  Future<bool> buyNonConsumable({required PurchaseParam purchaseParam}) =>
+      _purchase.buyNonConsumable(purchaseParam: purchaseParam);
   @override
   Future<void> restorePurchases() => _purchase.restorePurchases();
-
   @override
-  Future<void> completePurchase(PurchaseDetails purchase) {
-    return _purchase.completePurchase(purchase);
-  }
+  Future<void> completePurchase(PurchaseDetails purchase) =>
+      _purchase.completePurchase(purchase);
 }
 
 abstract class PurchaseProvider extends ChangeNotifier {
@@ -69,7 +55,6 @@ abstract class PurchaseProvider extends ChangeNotifier {
     'IAP_REMOVE_ADS_PRODUCT_ID',
     defaultValue: 'remove_ads',
   );
-
   static const aiProductId = String.fromEnvironment(
     'IAP_AI_ACCESS_PRODUCT_ID',
     defaultValue: 'ai_analysis',
@@ -78,55 +63,57 @@ abstract class PurchaseProvider extends ChangeNotifier {
   Future<void> purchase();
   Future<void> purchaseAi();
   Future<void> restore();
+  Future<String?> getAiAccessToken();
 }
 
 class AppPurchaseProvider extends PurchaseProvider {
-  AppPurchaseProvider(this._settings, {PurchaseGateway? gateway})
-    : _purchase = gateway ?? InAppPurchaseGateway() {
+  AppPurchaseProvider(
+    this._settings, {
+    PurchaseGateway? gateway,
+    PurchaseVerifier? verifier,
+  })  : _purchase = gateway ?? InAppPurchaseGateway(),
+        _verifier = verifier ?? PurchaseVerificationService() {
     _ready = _init();
   }
 
   final AppSettings _settings;
   final PurchaseGateway _purchase;
+  final PurchaseVerifier _verifier;
   StreamSubscription<List<PurchaseDetails>>? _subscription;
   late final Future<void> _ready;
-  @override
-  Future<void> get ready => _ready;
 
   bool _adRemoved = false;
-  @override
-  bool get adRemoved => _adRemoved;
-
   bool _aiAccess = false;
-  @override
-  bool get aiAccess => _aiAccess;
-
   bool _busy = false;
-  @override
-  bool get busy => _busy;
-
   bool _storeAvailable = false;
   bool _productLoaded = false;
-  String? _statusMessage;
-  @override
-  bool get canPurchase => _storeAvailable && _productLoaded && !_busy;
-
   bool _aiProductLoaded = false;
-  @override
-  bool get canPurchaseAi => _storeAvailable && _aiProductLoaded && !_busy;
-
-  @override
-  String? get statusMessage => _statusMessage;
-
+  String? _statusMessage;
   ProductDetails? _adsProduct;
   ProductDetails? _aiProduct;
-
   String? _storePrice;
+  String? _aiStorePrice;
+  PurchaseDetails? _aiPurchase;
+  String? _aiAccessToken;
+  DateTime? _aiAccessTokenExpiresAt;
+
+  @override
+  Future<void> get ready => _ready;
+  @override
+  bool get adRemoved => _adRemoved;
+  @override
+  bool get aiAccess => _aiAccess;
+  @override
+  bool get busy => _busy;
+  @override
+  bool get canPurchase => _storeAvailable && _productLoaded && !_busy;
+  @override
+  bool get canPurchaseAi => _storeAvailable && _aiProductLoaded && !_busy;
+  @override
+  String? get statusMessage => _statusMessage;
   @override
   String get priceLabel =>
       _storePrice == null ? '価格は購入前に表示' : '買い切り $_storePrice';
-
-  String? _aiStorePrice;
   @override
   String get aiPriceLabel =>
       _aiStorePrice == null ? '価格は購入前に表示' : '買い切り $_aiStorePrice';
@@ -139,106 +126,133 @@ class AppPurchaseProvider extends PurchaseProvider {
 
   Future<void> _init() async {
     try {
-      _adRemoved = _settings.adRemoved;
-      _aiAccess = _settings.aiAccess;
-      final available = await _purchase.isAvailable();
-      _storeAvailable = available;
-      if (!available) {
-        _statusMessage = 'ストアに接続できないため、購入は現在利用できません。';
+      // Local flags are caches only. Entitlements stay disabled until the
+      // store restores a purchase and the backend verifies it.
+      _adRemoved = false;
+      _aiAccess = false;
+      _storeAvailable = await _purchase.isAvailable();
+      if (!_storeAvailable) {
+        _statusMessage = 'ストアに接続できないため、購入済み情報を確認できません。';
         notifyListeners();
         return;
       }
-      _subscription = _purchase.purchaseStream.listen(_onPurchase);
+      _subscription = _purchase.purchaseStream.listen(
+        (details) => unawaited(_processPurchases(details)),
+        onError: (Object error) {
+          _statusMessage = '購入情報の受信に失敗しました。';
+          notifyListeners();
+        },
+      );
       await _loadProductDetails();
-      unawaited(_purchase.restorePurchases());
-    } on Object catch (e) {
+      await _purchase.restorePurchases();
+    } on Object catch (error) {
       _statusMessage = '購入情報の確認に失敗しました。時間をおいてもう一度お試しください。';
       notifyListeners();
-      if (kDebugMode) debugPrint('PurchaseProvider: init failed - $e');
+      if (kDebugMode) debugPrint('PurchaseProvider: init failed - $error');
     }
   }
 
-  void _onPurchase(List<PurchaseDetails> details) {
+  Future<void> _processPurchases(List<PurchaseDetails> details) async {
     for (final purchase in details) {
-      switch (purchase.productID) {
-        case PurchaseProvider.productId:
-          _handleAdPurchase(purchase);
-        case PurchaseProvider.aiProductId:
-          _handleAiPurchase(purchase);
+      if (purchase.productID != PurchaseProvider.productId &&
+          purchase.productID != PurchaseProvider.aiProductId) {
+        continue;
+      }
+      switch (purchase.status) {
+        case PurchaseStatus.purchased || PurchaseStatus.restored:
+          final verification = await _verifier.verify(purchase);
+          if (verification.verified) {
+            await _grant(purchase, verification);
+            if (purchase.pendingCompletePurchase) {
+              await _purchase.completePurchase(purchase);
+            }
+          } else {
+            await _deny(purchase.productID, verification.message);
+          }
+        case PurchaseStatus.error:
+          _statusMessage = '購入処理でエラーが発生しました。';
+        case PurchaseStatus.canceled:
+          _statusMessage = '購入をキャンセルしました。';
+        case PurchaseStatus.pending:
+          _statusMessage = '購入処理を確認しています。';
       }
       notifyListeners();
     }
   }
 
-  void _handleAdPurchase(PurchaseDetails purchase) {
-    switch (purchase.status) {
-      case PurchaseStatus.purchased || PurchaseStatus.restored:
-        _adRemoved = true;
-        unawaited(_settings.setAdRemoved(true));
-        if (purchase.pendingCompletePurchase) {
-          unawaited(_purchase.completePurchase(purchase));
-        }
-      case PurchaseStatus.error:
-        if (kDebugMode) debugPrint('Ad purchase error: ${purchase.error}');
-      case PurchaseStatus.canceled:
-      case PurchaseStatus.pending:
+  Future<void> _grant(
+    PurchaseDetails purchase,
+    EntitlementVerification verification,
+  ) async {
+    _statusMessage = null;
+    if (purchase.productID == PurchaseProvider.productId) {
+      _adRemoved = true;
+      await _settings.setAdRemoved(true);
+      return;
     }
+    _aiAccess = true;
+    _aiPurchase = purchase;
+    _aiAccessToken = verification.accessToken;
+    _aiAccessTokenExpiresAt = verification.expiresAt;
+    await _settings.setAiAccess(true);
   }
 
-  void _handleAiPurchase(PurchaseDetails purchase) {
-    switch (purchase.status) {
-      case PurchaseStatus.purchased || PurchaseStatus.restored:
-        _aiAccess = true;
-        unawaited(_settings.setAiAccess(true));
-        if (purchase.pendingCompletePurchase) {
-          unawaited(_purchase.completePurchase(purchase));
-        }
-      case PurchaseStatus.error:
-        if (kDebugMode) debugPrint('AI purchase error: ${purchase.error}');
-      case PurchaseStatus.canceled:
-      case PurchaseStatus.pending:
+  Future<void> _deny(String productId, String? message) async {
+    _statusMessage = message ?? '購入を確認できませんでした。';
+    if (productId == PurchaseProvider.productId) {
+      _adRemoved = false;
+      await _settings.setAdRemoved(false);
+      return;
     }
+    _aiAccess = false;
+    _aiPurchase = null;
+    _aiAccessToken = null;
+    _aiAccessTokenExpiresAt = null;
+    await _settings.setAiAccess(false);
   }
 
   @override
-  Future<void> purchase() async {
-    if (_busy) return;
-    _busy = true;
-    notifyListeners();
-    try {
-      final available = await _purchase.isAvailable();
-      _storeAvailable = available;
-      if (!available) {
-        _statusMessage = 'ストアに接続できないため、購入は現在利用できません。';
-        return;
-      }
-      if (_adsProduct == null) await _loadProductDetails();
-      if (_adsProduct == null) return;
-      await _purchase.buyNonConsumable(
-        purchaseParam: PurchaseParam(productDetails: _adsProduct!),
-      );
-    } finally {
-      _busy = false;
+  Future<String?> getAiAccessToken() async {
+    final expiry = _aiAccessTokenExpiresAt;
+    if (_aiAccess &&
+        _aiAccessToken != null &&
+        expiry != null &&
+        expiry.isAfter(DateTime.now().toUtc().add(const Duration(seconds: 30)))) {
+      return _aiAccessToken;
+    }
+    final purchase = _aiPurchase;
+    if (purchase == null) return null;
+    final verification = await _verifier.verify(purchase);
+    if (!verification.verified || verification.accessToken == null) {
+      await _deny(PurchaseProvider.aiProductId, verification.message);
       notifyListeners();
+      return null;
     }
+    await _grant(purchase, verification);
+    notifyListeners();
+    return _aiAccessToken;
   }
 
   @override
-  Future<void> purchaseAi() async {
+  Future<void> purchase() => _purchaseProduct(ai: false);
+  @override
+  Future<void> purchaseAi() => _purchaseProduct(ai: true);
+
+  Future<void> _purchaseProduct({required bool ai}) async {
     if (_busy) return;
     _busy = true;
     notifyListeners();
     try {
-      final available = await _purchase.isAvailable();
-      _storeAvailable = available;
-      if (!available) {
+      _storeAvailable = await _purchase.isAvailable();
+      if (!_storeAvailable) {
         _statusMessage = 'ストアに接続できないため、購入は現在利用できません。';
         return;
       }
       await _loadProductDetails();
-      if (_aiProduct == null) return;
+      final product = ai ? _aiProduct : _adsProduct;
+      if (product == null) return;
       await _purchase.buyNonConsumable(
-        purchaseParam: PurchaseParam(productDetails: _aiProduct!),
+        purchaseParam: PurchaseParam(productDetails: product),
       );
     } finally {
       _busy = false;
@@ -252,9 +266,8 @@ class AppPurchaseProvider extends PurchaseProvider {
     _busy = true;
     notifyListeners();
     try {
-      final available = await _purchase.isAvailable();
-      _storeAvailable = available;
-      if (!available) {
+      _storeAvailable = await _purchase.isAvailable();
+      if (!_storeAvailable) {
         _statusMessage = 'ストアに接続できないため、購入は現在利用できません。';
         return;
       }
@@ -266,34 +279,28 @@ class AppPurchaseProvider extends PurchaseProvider {
   }
 
   Future<ProductDetails?> _loadProductDetails() async {
-    final productDetails = await _purchase.queryProductDetails({
+    final response = await _purchase.queryProductDetails({
       PurchaseProvider.productId,
       PurchaseProvider.aiProductId,
     });
     ProductDetails? adsProduct;
     ProductDetails? aiProduct;
-    for (final p in productDetails.productDetails) {
-      if (p.id == PurchaseProvider.productId) {
-        adsProduct = p;
-      } else if (p.id == PurchaseProvider.aiProductId) {
-        aiProduct = p;
+    for (final product in response.productDetails) {
+      if (product.id == PurchaseProvider.productId) {
+        adsProduct = product;
+      } else if (product.id == PurchaseProvider.aiProductId) {
+        aiProduct = product;
       }
     }
     _adsProduct = adsProduct;
     _aiProduct = aiProduct;
     _productLoaded = adsProduct != null;
-    if (adsProduct != null) {
-      _storePrice = adsProduct.price;
-    }
     _aiProductLoaded = aiProduct != null;
-    if (aiProduct != null) {
-      _aiStorePrice = aiProduct.price;
-    }
-    if (!_productLoaded && !_aiProductLoaded) {
-      _statusMessage = '購入アイテムを準備中です。しばらくしてからもう一度お試しください。';
-    } else {
-      _statusMessage = null;
-    }
+    _storePrice = adsProduct?.price;
+    _aiStorePrice = aiProduct?.price;
+    _statusMessage = !_productLoaded && !_aiProductLoaded
+        ? '購入アイテムを準備中です。しばらくしてからもう一度お試しください。'
+        : null;
     notifyListeners();
     return adsProduct;
   }
