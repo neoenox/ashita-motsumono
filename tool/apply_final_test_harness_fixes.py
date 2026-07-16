@@ -90,13 +90,18 @@ def update_widget_tests() -> None:
         "expect(find.text('購入アイテムを準備中です。しばらくしてからもう一度お試しください。'), findsNWidgets(2));",
         label='purchase status expectation',
     )
-    text = replace_once(
-        text,
-        """      await tester.tap(find.text('削除する'));
+
+    completion_marker = (
+        "find.text('登録データを削除しました').evaluate().isEmpty"
+    )
+    if completion_marker not in text:
+        text = replace_once(
+            text,
+            """      await tester.tap(find.text('削除する'));
       await tester.pumpAndSettle();
 
       expect(appState.children, isEmpty);""",
-        """      await tester.tap(find.text('削除する'));
+            """      await tester.tap(find.text('削除する'));
       for (var attempt = 0;
           attempt < 20 &&
               find.text('登録データを削除しました').evaluate().isEmpty;
@@ -106,8 +111,8 @@ def update_widget_tests() -> None:
       await tester.pumpAndSettle();
 
       expect(appState.children, isEmpty);""",
-        label='clear-all completion wait',
-    )
+            label='clear-all completion wait',
+        )
 
     diagnostic = """      final snackbarTexts = tester
           .widgetList<Text>(
