@@ -12,8 +12,10 @@ import 'repositories/store.dart';
 import 'services/document_image_cleaner.dart';
 import 'services/notification_coordinator.dart';
 import 'services/notification_service.dart';
+import 'services/sensitive_data_cleaner.dart';
 import 'services/todo_factory.dart';
 import 'state/app_data_notifiers.dart';
+import 'utils/async_mutex.dart';
 
 part 'app_state_children.dart';
 part 'app_state_documents.dart';
@@ -38,16 +40,16 @@ class AppState extends ChangeNotifier {
     required Store store,
     required NotificationService notifications,
     Uuid? uuid,
-  }) : _store = store,
-       _notifications = notifications,
-       _uuid = uuid ?? const Uuid() {
-    // 既存のcontext.watch<AppState>()は人物選択UIとの互換用に限定する。
+  })  : _store = store,
+        _notifications = notifications,
+        _uuid = uuid ?? const Uuid() {
     childState.addListener(notifyListeners);
   }
 
   final Store _store;
   final NotificationService _notifications;
   final Uuid _uuid;
+  final AsyncMutex _mutationMutex = AsyncMutex();
 
   final ChildState childState = ChildState();
   final TodoState todoState = TodoState();
@@ -151,6 +153,10 @@ class AppState extends ChangeNotifier {
     documentState.replace(values);
   }
 
+  Future<T> _runMutation<T>(Future<T> Function() action) {
+    return _mutationMutex.protect(action);
+  }
+
   Future<void> _persistSnapshot({
     Iterable<PersonProfile>? nextChildren,
     Iterable<AppTodo>? nextTodos,
@@ -198,7 +204,6 @@ class AppState extends ChangeNotifier {
     await _retryPendingFileCleanup();
   }
 
-  /// DBを一度だけ閉じる。再初期化前はこのFutureを待ってclose/open競合を防ぐ。
   Future<void> close() {
     return _closeFuture ??= _store.close();
   }
