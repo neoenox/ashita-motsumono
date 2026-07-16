@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -27,7 +28,9 @@ class _HomeScreenScopeState extends State<HomeScreenScope> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_recoveryStarted) return;
+    if (_recoveryStarted || defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
     _recoveryStarted = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_recoverLostImage());
