@@ -17,6 +17,53 @@ def update_widget_tests() -> None:
     text = path.read_text(encoding='utf-8')
     text = replace_once(
         text,
+        "import 'package:ashita_motsumono/src/app_state.dart';",
+        "import 'dart:io';\n\nimport 'package:ashita_motsumono/src/app_state.dart';",
+        label='widget test dart io import',
+    )
+    text = replace_once(
+        text,
+        "import 'package:ashita_motsumono/src/services/purchase_provider.dart';",
+        "import 'package:ashita_motsumono/src/services/purchase_provider.dart';\nimport 'package:ashita_motsumono/src/services/sensitive_data_cleaner.dart';",
+        label='widget test sensitive cleaner import',
+    )
+    text = replace_once(
+        text,
+        """Future<AppState> _createAppState() async {
+  // ignore: invalid_use_of_visible_for_testing_member
+  SharedPreferences.setMockInitialValues({'notification_info_shown_v1': true});
+  final store = await DriftStore.createInMemory();
+  final state = AppState(
+    store: store,
+    notifications: _FakeNotificationService(),
+  );
+  await state.load();
+  return state;
+}""",
+        """Future<AppState> _createAppState() async {
+  // ignore: invalid_use_of_visible_for_testing_member
+  SharedPreferences.setMockInitialValues({'notification_info_shown_v1': true});
+  final tempDir = await Directory.systemTemp.createTemp('ashita_widget_test_');
+  addTearDown(() async {
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
+  });
+  final store = await DriftStore.createInMemory();
+  final state = AppState(
+    store: store,
+    notifications: _FakeNotificationService(),
+    sensitiveDataCleaner: SensitiveDataCleaner(
+      directoryProvider: () async => tempDir,
+    ),
+  );
+  await state.load();
+  return state;
+}""",
+        label='widget test app state platform isolation',
+    )
+    text = replace_once(
+        text,
         "expect(find.text('買い切り ¥190'), findsOneWidget);",
         "expect(find.text('買い切り ¥190'), findsNWidgets(2));",
         label='purchase price expectation',
@@ -45,14 +92,7 @@ def update_widget_tests() -> None:
       expect(appState.children, isEmpty);""",
         label='clear-all completion wait',
     )
-    text = replace_once(
-        text,
-        """      expect(appState.children, isEmpty);
-      expect(appState.todos, isEmpty);
-      expect(appState.documents, isEmpty);
-      expect(settings.learnedItemLabels, isEmpty);
-      expect(find.text('登録データを削除しました'), findsOneWidget);""",
-        """      final snackbarTexts = tester
+    diagnostic = """      final snackbarTexts = tester
           .widgetList<Text>(
             find.descendant(
               of: find.byType(SnackBar),
@@ -70,9 +110,14 @@ def update_widget_tests() -> None:
       expect(appState.children, isEmpty);
       expect(appState.todos, isEmpty);
       expect(appState.documents, isEmpty);
-      expect(settings.learnedItemLabels, isEmpty);""",
-        label='clear-all diagnostics',
-    )
+      expect(settings.learnedItemLabels, isEmpty);"""
+    clean_assertions = """      expect(find.text('登録データを削除しました'), findsOneWidget);
+      expect(appState.children, isEmpty);
+      expect(appState.todos, isEmpty);
+      expect(appState.documents, isEmpty);
+      expect(settings.learnedItemLabels, isEmpty);"""
+    if diagnostic in text:
+        text = text.replace(diagnostic, clean_assertions)
     path.write_text(text, encoding='utf-8')
 
 
