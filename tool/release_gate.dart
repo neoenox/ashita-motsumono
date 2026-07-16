@@ -155,9 +155,7 @@ Future<int?> _resolveFlutterTargetSdk(Directory root) async {
     sdkRoots.add(fromEnvironment);
   }
 
-  final localProperties = File(
-    _join(root.path, 'android/local.properties'),
-  );
+  final localProperties = File(_join(root.path, 'android/local.properties'));
   if (localProperties.existsSync()) {
     final content = await localProperties.readAsString();
     final match = RegExp(
