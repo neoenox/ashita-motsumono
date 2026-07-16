@@ -1,1 +1,1 @@
-diagnose clear-all completion path on latest hardening head
+validate latest hardening head with widget path_provider isolation
