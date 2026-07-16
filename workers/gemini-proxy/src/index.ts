@@ -1,12 +1,34 @@
-/**
- * workers/gemini-proxy/src/index.ts
- * Cloudflare Workers proxy for Gemini API.
- * Forwards image analysis requests without exposing the API key to the client.
- * Related: lib/src/services/gemini_api_service.dart
- */
-
 const MODEL = 'gemini-2.5-flash';
-const BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
+const DEFAULT_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const TOKEN_TTL_SECONDS = 15 * 60;
+const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+interface RateLimiter {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+}
+
+interface Env {
+  GEMINI_API_KEY: string;
+  ENTITLEMENT_SIGNING_SECRET: string;
+  GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL: string;
+  GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY: string;
+  ANDROID_PACKAGE_NAME: string;
+  IOS_BUNDLE_ID: string;
+  REMOVE_ADS_PRODUCT_ID: string;
+  AI_ACCESS_PRODUCT_ID: string;
+  MAX_IMAGE_BYTES?: string;
+  AI_RATE_LIMITER: RateLimiter;
+  ENTITLEMENT_RATE_LIMITER: RateLimiter;
+}
+
+interface VerifyRequest {
+  platform: 'android' | 'ios';
+  productId: string;
+  verificationData: string;
+}
 
 interface AnalysisRequest {
   imageBase64: string;
@@ -15,129 +37,440 @@ interface AnalysisRequest {
   timezone?: string;
 }
 
-interface Draft {
-  title: string;
-  category: string;
-  dueDate: string | null;
-  amount: number | null;
-  items: string[];
-  note: string | null;
+interface EntitlementPayload {
+  productId: string;
+  platform: string;
+  receiptHash: string;
+  iat: number;
+  exp: number;
 }
 
-interface AnalysisResponse {
-  drafts: Draft[];
-}
+const encoder = new TextEncoder();
 
 export default {
-  async fetch(request: Request, env: { GEMINI_API_KEY: string }): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+    if (request.method === 'GET' && url.pathname === '/health') {
+      return json({ ok: true, model: MODEL });
+    }
     if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
+      return json({ error: 'Method not allowed' }, 405);
     }
-
-    const apiKey = env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'API key not configured' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    if (url.pathname === '/entitlements/verify') {
+      return verifyEntitlement(request, env);
     }
-
-    let body: AnalysisRequest;
-    try {
-      body = await request.json();
-      if (!body.imageBase64 || !body.mimeType) {
-        return new Response(
-          JSON.stringify({ error: 'Missing imageBase64 or mimeType' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } },
-        );
-      }
-    } catch {
-      return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    if (url.pathname === '/analyze' || url.pathname === '/') {
+      return analyze(request, env);
     }
+    return json({ error: 'Not found' }, 404);
+  },
+};
 
-    // today と timezone はクライアントから渡されなければ現在日時/既定値を使う
+async function verifyEntitlement(request: Request, env: Env): Promise<Response> {
+  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+  const rate = await env.ENTITLEMENT_RATE_LIMITER.limit({ key: `verify:${ip}` });
+  if (!rate.success) return json({ error: 'Too many verification attempts' }, 429);
 
-    const today = body.today ?? new Date().toISOString().slice(0, 10);
-    const timezone = body.timezone ?? 'Asia/Tokyo';
+  const body = await readJson<VerifyRequest>(request, 256 * 1024);
+  if (body instanceof Response) return body;
+  const allowedProducts = new Set([
+    env.REMOVE_ADS_PRODUCT_ID,
+    env.AI_ACCESS_PRODUCT_ID,
+  ]);
+  if (!allowedProducts.has(body.productId)) {
+    return json({ error: 'Unknown product' }, 400);
+  }
+  if (!body.verificationData || body.verificationData.length > 200_000) {
+    return json({ error: 'Invalid verification data' }, 400);
+  }
 
-    const prompt = `あなたは学校・園からのお知らせを解析するアシスタントです。
-与えられた画像から以下の情報を抽出し、JSONの配列で返してください。
+  let verified = false;
+  try {
+    if (body.platform === 'android') {
+      verified = await verifyGooglePlay(
+        body.productId,
+        body.verificationData,
+        env,
+      );
+    } else if (body.platform === 'ios') {
+      verified = await verifyAppStore(
+        body.productId,
+        body.verificationData,
+        env,
+      );
+    }
+  } catch {
+    return json({ error: 'Store verification is temporarily unavailable' }, 503);
+  }
+  if (!verified) return json({ error: 'Purchase could not be verified' }, 403);
+  if (!env.ENTITLEMENT_SIGNING_SECRET || env.ENTITLEMENT_SIGNING_SECRET.length < 32) {
+    return json({ error: 'Entitlement signing is not configured' }, 503);
+  }
 
+  const now = Math.floor(Date.now() / 1000);
+  const payload: EntitlementPayload = {
+    productId: body.productId,
+    platform: body.platform,
+    receiptHash: await sha256(body.verificationData),
+    iat: now,
+    exp: now + TOKEN_TTL_SECONDS,
+  };
+  const accessToken = await signEntitlement(
+    payload,
+    env.ENTITLEMENT_SIGNING_SECRET,
+  );
+  return json({
+    verified: true,
+    accessToken:
+      body.productId === env.AI_ACCESS_PRODUCT_ID ? accessToken : undefined,
+    expiresAt: new Date(payload.exp * 1000).toISOString(),
+  });
+}
+
+async function analyze(request: Request, env: Env): Promise<Response> {
+  const authorization = request.headers.get('Authorization') ?? '';
+  if (!authorization.startsWith('Bearer ')) {
+    return json({ error: 'Unauthorized' }, 401);
+  }
+  const entitlement = await verifyEntitlementToken(
+    authorization.slice('Bearer '.length),
+    env.ENTITLEMENT_SIGNING_SECRET,
+  );
+  if (!entitlement || entitlement.productId !== env.AI_ACCESS_PRODUCT_ID) {
+    return json({ error: 'Unauthorized' }, 401);
+  }
+
+  const rate = await env.AI_RATE_LIMITER.limit({
+    key: `ai:${entitlement.receiptHash}`,
+  });
+  if (!rate.success) return json({ error: 'Rate limit exceeded' }, 429);
+  if (!env.GEMINI_API_KEY) return json({ error: 'AI service is not configured' }, 503);
+
+  const body = await readJson<AnalysisRequest>(request, MAX_REQUEST_BYTES);
+  if (body instanceof Response) return body;
+  if (!body.imageBase64 || !ALLOWED_MIME_TYPES.has(body.mimeType)) {
+    return json({ error: 'Invalid image request' }, 400);
+  }
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(body.imageBase64)) {
+    return json({ error: 'Invalid image encoding' }, 400);
+  }
+  const decodedBytes = Math.floor(body.imageBase64.length * 3 / 4);
+  const maxImageBytes = Number(env.MAX_IMAGE_BYTES ?? DEFAULT_MAX_IMAGE_BYTES);
+  if (!Number.isFinite(maxImageBytes) || decodedBytes <= 0 || decodedBytes > maxImageBytes) {
+    return json({ error: 'Image too large' }, 413);
+  }
+
+  const today = /^\d{4}-\d{2}-\d{2}$/.test(body.today ?? '')
+    ? body.today!
+    : new Date().toISOString().slice(0, 10);
+  const timezone = (body.timezone ?? 'Asia/Tokyo').slice(0, 64);
+  const prompt = `あなたは学校・園からのお知らせを解析するアシスタントです。
+与えられた画像からTodo候補を抽出してください。
 今日の日付は ${today}、タイムゾーンは ${timezone} です。
+各候補は title、category、dueDate、amount、items、note を持ちます。
+category は payment、submit、event、item、other のいずれかです。
+相対日付は基準日から解決し、不明な日付は null にしてください。`;
 
-各ToDoは以下を含みます：
-- title: タイトル（例：「体操着を持参」「集金袋を提出」）
-- category: "payment"（金額あり）| "submit"（提出物）| "event"（行事）| "item"（持ち物）| "other"
-- dueDate: 期限日（YYYY-MM-DD形式、画像内の日付から特定できる場合のみ。不明ならnull）
-- amount: 金額（整数。円単位。金額がない場合はnull）
-- items: 持ち物リスト（辞書的な列挙がある場合。なければ空配列）
-- note: 補足事項
-
-重要：
-- 「明日」「明後日」「来週」などの相対表現は今日の日付 ${today} を基準に解決すること
-- 手書き文字も可能な限り読み取ること
-- 複数のToDoがある場合はそれぞれ個別のdraftとして返す`;
-
-    const geminiPayload = {
-      contents: [
+  const geminiPayload = {
+    contents: [{
+      parts: [
+        { text: prompt },
         {
-          parts: [
-            { text: prompt },
-            {
-              inline_data: {
-                mime_type: body.mimeType,
-                data: body.imageBase64,
-              },
-            },
-          ],
+          inline_data: {
+            mime_type: body.mimeType,
+            data: body.imageBase64,
+          },
         },
       ],
-      generationConfig: {
-        response_mime_type: 'application/json',
-        response_schema: {
-          type: 'object',
-          properties: {
-            drafts: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  title: { type: 'string' },
-                  category: { type: 'string' },
-                  dueDate: { type: 'string', nullable: true },
-                  amount: { type: 'integer', nullable: true },
-                  items: { type: 'array', items: { type: 'string' } },
-                  note: { type: 'string', nullable: true },
-                },
-                required: ['title', 'category', 'items'],
+    }],
+    generationConfig: {
+      response_mime_type: 'application/json',
+      response_schema: {
+        type: 'object',
+        properties: {
+          drafts: {
+            type: 'array',
+            maxItems: 20,
+            items: {
+              type: 'object',
+              properties: {
+                title: { type: 'string' },
+                category: { type: 'string' },
+                dueDate: { type: 'string', nullable: true },
+                amount: { type: 'integer', nullable: true },
+                items: { type: 'array', items: { type: 'string' } },
+                note: { type: 'string', nullable: true },
               },
+              required: ['title', 'category', 'items'],
             },
           },
-          required: ['drafts'],
         },
-      ],
-    };
+        required: ['drafts'],
+      },
+    },
+  };
 
-    try {
-      const response = await fetch(`${BASE_URL}?key=${apiKey}`, {
+  try {
+    const response = await fetch(
+      `${GEMINI_URL}?key=${encodeURIComponent(env.GEMINI_API_KEY)}`,
+      {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(geminiPayload),
-      });
+      },
+    );
+    const data = await response.json();
+    return json(data, response.status);
+  } catch {
+    return json({ error: 'Failed to call AI service' }, 502);
+  }
+}
 
-      const data = await response.json();
-      return new Response(JSON.stringify(data), {
-        status: response.status,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (e) {
-      return new Response(
-        JSON.stringify({ error: 'Failed to call Gemini API', detail: String(e) }),
-        { status: 502, headers: { 'Content-Type': 'application/json' } },
-      );
+async function verifyGooglePlay(
+  productId: string,
+  purchaseToken: string,
+  env: Env,
+): Promise<boolean> {
+  if (
+    !env.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL ||
+    !env.GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY ||
+    !env.ANDROID_PACKAGE_NAME
+  ) {
+    return false;
+  }
+  const accessToken = await googleAccessToken(env);
+  const base = 'https://androidpublisher.googleapis.com/androidpublisher/v3/applications';
+  const resource = `${base}/${encodeURIComponent(env.ANDROID_PACKAGE_NAME)}` +
+    `/purchases/products/${encodeURIComponent(productId)}` +
+    `/tokens/${encodeURIComponent(purchaseToken)}`;
+  const response = await fetch(resource, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) return false;
+  const purchase = await response.json() as {
+    purchaseState?: number;
+    acknowledgementState?: number;
+  };
+  if (purchase.purchaseState !== 0) return false;
+  if (purchase.acknowledgementState === 0) {
+    const acknowledge = await fetch(`${resource}:acknowledge`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: '{}',
+    });
+    if (!acknowledge.ok) return false;
+  }
+  return true;
+}
+
+async function googleAccessToken(env: Env): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const assertion = await signRs256Jwt(
+    {
+      iss: env.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL,
+      scope: 'https://www.googleapis.com/auth/androidpublisher',
+      aud: GOOGLE_TOKEN_URL,
+      iat: now,
+      exp: now + 3600,
+    },
+    env.GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY,
+  );
+  const response = await fetch(GOOGLE_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion,
+    }),
+  });
+  if (!response.ok) throw new Error('Google OAuth failed');
+  const payload = await response.json() as { access_token?: string };
+  if (!payload.access_token) throw new Error('Google OAuth token missing');
+  return payload.access_token;
+}
+
+async function verifyAppStore(
+  productId: string,
+  receipt: string,
+  env: Env,
+): Promise<boolean> {
+  const verify = async (host: string) => fetch(`${host}/verifyReceipt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      'receipt-data': receipt,
+      'exclude-old-transactions': true,
+    }),
+  });
+  let response = await verify('https://buy.itunes.apple.com');
+  let data = await response.json() as {
+    status?: number;
+    receipt?: {
+      bundle_id?: string;
+      in_app?: Array<{
+        product_id?: string;
+        cancellation_date?: string;
+      }>;
+    };
+  };
+  if (data.status === 21007) {
+    response = await verify('https://sandbox.itunes.apple.com');
+    data = await response.json() as typeof data;
+  }
+  if (!response.ok || data.status !== 0) return false;
+  if (env.IOS_BUNDLE_ID && data.receipt?.bundle_id !== env.IOS_BUNDLE_ID) {
+    return false;
+  }
+  return (data.receipt?.in_app ?? []).some(
+    (purchase) =>
+      purchase.product_id === productId && purchase.cancellation_date == null,
+  );
+}
+
+async function signEntitlement(
+  payload: EntitlementPayload,
+  secret: string,
+): Promise<string> {
+  const header = base64UrlJson({ alg: 'HS256', typ: 'JWT' });
+  const body = base64UrlJson(payload);
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(`${header}.${body}`),
+  );
+  return `${header}.${body}.${base64UrlBytes(new Uint8Array(signature))}`;
+}
+
+async function verifyEntitlementToken(
+  token: string,
+  secret: string,
+): Promise<EntitlementPayload | null> {
+  if (!secret) return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['verify'],
+  );
+  const valid = await crypto.subtle.verify(
+    'HMAC',
+    key,
+    base64UrlDecode(parts[2]),
+    encoder.encode(`${parts[0]}.${parts[1]}`),
+  );
+  if (!valid) return null;
+  const payload = decodeBase64UrlJson(parts[1]) as EntitlementPayload;
+  if (!payload.exp || payload.exp <= Math.floor(Date.now() / 1000)) return null;
+  return payload;
+}
+
+async function signRs256Jwt(
+  payload: Record<string, unknown>,
+  privateKeyPem: string,
+): Promise<string> {
+  const header = base64UrlJson({ alg: 'RS256', typ: 'JWT' });
+  const body = base64UrlJson(payload);
+  const key = await crypto.subtle.importKey(
+    'pkcs8',
+    pemToBytes(privateKeyPem),
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    encoder.encode(`${header}.${body}`),
+  );
+  return `${header}.${body}.${base64UrlBytes(new Uint8Array(signature))}`;
+}
+
+async function readJson<T>(
+  request: Request,
+  maxBytes: number,
+): Promise<T | Response> {
+  const contentType = request.headers.get('Content-Type') ?? '';
+  if (!contentType.toLowerCase().startsWith('application/json')) {
+    return json({ error: 'Content-Type must be application/json' }, 415);
+  }
+  const declared = Number(request.headers.get('Content-Length') ?? 0);
+  if (declared > maxBytes) return json({ error: 'Request too large' }, 413);
+  const text = await request.text();
+  if (encoder.encode(text).byteLength > maxBytes) {
+    return json({ error: 'Request too large' }, 413);
+  }
+  try {
+    const value = JSON.parse(text);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error('Invalid JSON object');
     }
-  },
-};
+    return value as T;
+  } catch {
+    return json({ error: 'Invalid JSON' }, 400);
+  }
+}
+
+function json(value: unknown, status = 200): Response {
+  return new Response(JSON.stringify(value), {
+    status,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    },
+  });
+}
+
+async function sha256(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(value));
+  return Array.from(
+    new Uint8Array(digest),
+    (byte) => byte.toString(16).padStart(2, '0'),
+  ).join('');
+}
+
+function base64UrlJson(value: unknown): string {
+  return base64UrlBytes(encoder.encode(JSON.stringify(value)));
+}
+
+function base64UrlBytes(value: Uint8Array): string {
+  let binary = '';
+  for (const byte of value) binary += String.fromCharCode(byte);
+  return btoa(binary)
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+}
+
+function base64UrlDecode(value: string): Uint8Array {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+function decodeBase64UrlJson(value: string): unknown {
+  return JSON.parse(new TextDecoder().decode(base64UrlDecode(value)));
+}
+
+function pemToBytes(pem: string): ArrayBuffer {
+  const base64 = pem.replace(
+    /-----BEGIN [^-]+-----|-----END [^-]+-----|\s/g,
+    '',
+  );
+  const binary = atob(base64);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0)).buffer;
+}
