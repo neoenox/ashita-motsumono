@@ -1,1 +1,1 @@
-validate idempotent final harness and asynchronous deletion cleanup
+validate committed widget isolation and asynchronous deletion cleanup
