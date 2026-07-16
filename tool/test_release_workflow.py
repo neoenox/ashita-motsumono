@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 import unittest
 
+from tool.configure_android_privacy import transform_manifest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / '.github/workflows/ci.yml'
@@ -24,7 +26,6 @@ class ReleaseWorkflowTest(unittest.TestCase):
         aab_build = self.workflow.index(
             '- name: Build release AAB (signed, for Play Console submission)'
         )
-
         self.assertLess(verify, apk_build)
         self.assertLess(verify, aab_build)
         self.assertIn(
@@ -39,7 +40,6 @@ class ReleaseWorkflowTest(unittest.TestCase):
         build = self.workflow.index('- name: Build release APK (signed)')
         verify = self.workflow.index('- name: Verify signed APK')
         upload = self.workflow.index('- name: Upload signed APK artifact')
-
         self.assertLess(build, verify)
         self.assertLess(verify, upload)
         self.assertIn('verify --verbose --print-certs "$apk"', self.workflow)
@@ -54,7 +54,6 @@ class ReleaseWorkflowTest(unittest.TestCase):
         )
         verify = self.workflow.index('- name: Verify signed AAB')
         upload = self.workflow.index('- name: Upload signed AAB artifact')
-
         self.assertLess(build, verify)
         self.assertLess(verify, upload)
         self.assertIn('jarsigner -verify -verbose -certs', self.workflow)
@@ -70,7 +69,6 @@ class ReleaseWorkflowTest(unittest.TestCase):
         apk_upload = self.workflow.index('- name: Upload signed APK artifact')
         aab_upload = self.workflow.index('- name: Upload signed AAB artifact')
         evidence_upload = self.workflow.index('- name: Upload release evidence artifact')
-
         self.assertLess(apk_verify, generate)
         self.assertLess(aab_verify, generate)
         self.assertLess(generate, apk_upload)
@@ -128,10 +126,23 @@ class ReleaseWorkflowTest(unittest.TestCase):
         privacy = self.release_config.index('configure_android_privacy.py')
         display_name = self.release_config.index('configure_platform_display_name.py')
         signing = self.release_config.index('enforce_android_release_signing.py')
-
         self.assertLess(release, privacy)
         self.assertLess(privacy, display_name)
         self.assertLess(display_name, signing)
+
+        source = '''<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:label="Example" android:icon="@mipmap/ic_launcher" />
+</manifest>
+'''
+        first = transform_manifest(source)
+        second = transform_manifest(first)
+        self.assertEqual(first, second)
+        self.assertIn('android:allowBackup="false"', first)
+        self.assertIn('android:fullBackupContent="@xml/backup_rules"', first)
+        self.assertIn(
+            'android:dataExtractionRules="@xml/data_extraction_rules"',
+            first,
+        )
 
 
 if __name__ == '__main__':
