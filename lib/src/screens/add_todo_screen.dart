@@ -491,9 +491,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
         appState: context.read<AppState>(),
         appSettings: context.read<AppSettings>(),
       );
-      final proxyUrl =
-          GeminiApiService.defaultInstance().proxyUrl ??
-          'http://localhost:8787';
+      final proxyUrl = GeminiApiService.defaultInstance().proxyUrl ?? '';
       final result = await service.pickAndProcessWithAi(proxyUrl);
       if (result == null) return;
       if (!mounted) return;
