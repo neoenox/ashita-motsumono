@@ -30,7 +30,7 @@ void main() {
     );
   }
 
-  test('builds previous-night and same-morning requests for a future todo', () {
+  test('builds private previous-night and same-morning requests', () {
     final service = NotificationService(timezoneName: 'Asia/Tokyo');
 
     final requests = service.buildScheduleRequests(
@@ -43,8 +43,12 @@ void main() {
     expect(requests[0].title, '明日の支度');
     expect(requests[1].scheduledDate, DateTime(2026, 7, 13, 7));
     expect(requests[1].title, '今日の支度・提出');
-    expect(requests.every((request) => request.body.contains('水筒')), isTrue);
-    expect(requests.every((request) => request.body.contains('500円')), isTrue);
+    expect(
+      requests.every(
+        (request) => request.body == 'アプリを開いて内容を確認してください。',
+      ),
+      isTrue,
+    );
     expect(requests[0].id, isNot(requests[1].id));
   });
 
