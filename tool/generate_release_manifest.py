@@ -137,7 +137,7 @@ def build_manifest(
     apk_certificate: Path,
     aab_certificate: Path,
     iap_product_id: str,
-    iap_ai_product_id: str = "ai_analysis",
+    iap_ai_product_id: str,
     apk_artifact_name: str,
     aab_artifact_name: str,
     evidence_artifact_name: str,
