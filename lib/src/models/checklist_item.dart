@@ -1,8 +1,3 @@
-// lib/src/models/checklist_item.dart
-// Todoに紐づくチェックリスト項目（ID、ラベル、チェック状態）を保持するモデル。
-// AppTodo.items で使うリスト要素。toJson/fromJson で永続化可能。
-// 関連: entities.dart, app_todo.dart
-
 import 'package:flutter/foundation.dart';
 
 @immutable
@@ -31,9 +26,16 @@ class ChecklistItem {
         'isChecked': isChecked,
       };
 
-  factory ChecklistItem.fromJson(Map<String, dynamic> json) => ChecklistItem(
-        id: (json['id'] as String?) ?? '',
-        label: (json['label'] as String?) ?? '',
-        isChecked: json['isChecked'] as bool? ?? false,
-      );
+  factory ChecklistItem.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final label = json['label'];
+    final checked = json['isChecked'];
+    if (id is! String || id.trim().isEmpty) {
+      throw const FormatException('ChecklistItem.id is invalid');
+    }
+    if (label is! String || label.trim().isEmpty || checked is! bool) {
+      throw const FormatException('ChecklistItem fields are invalid');
+    }
+    return ChecklistItem(id: id, label: label, isChecked: checked);
+  }
 }
