@@ -13,7 +13,6 @@ from tool.generate_release_manifest import (
     read_pubspec_version,
 )
 
-
 FINGERPRINT = "0C:82:0E:D2:3C:67:97:78:04:22:93:84:45:BA:DF:3A:24:E4:C3:A2:47:AA:5B:10:94:EA:2B:BC:BF:10:B1:ED"
 ENVIRONMENT = {
     "GITHUB_REPOSITORY": "kaenozu/ashita-motsumono",
@@ -42,31 +41,13 @@ class ReleaseManifestTest(unittest.TestCase):
                 'android { defaultConfig { applicationId = "com.ashita_motsumono" } }\n',
                 encoding="utf-8",
             )
-            self.assertEqual(
-                read_application_id(root),
-                "com.ashita_motsumono",
-            )
+            self.assertEqual(read_application_id(root), "com.ashita_motsumono")
 
     def test_builds_manifest_from_verified_release_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             paths = self._write_fixture(root)
-            manifest = build_manifest(
-                root=root,
-                apk=paths["apk"],
-                aab=paths["aab"],
-                apk_sums=paths["apk_sums"],
-                aab_sums=paths["aab_sums"],
-                upload_certificate=paths["upload_certificate"],
-                apk_certificate=paths["apk_certificate"],
-                aab_certificate=paths["aab_certificate"],
-                iap_product_id="remove_ads",
-                apk_artifact_name="ashita-motsumono-signed-release-apk",
-                aab_artifact_name="ashita-motsumono-signed-release-aab",
-                evidence_artifact_name="ashita-motsumono-release-evidence",
-                environment=ENVIRONMENT,
-                generated_at=datetime(2026, 7, 13, 0, 0, tzinfo=timezone.utc),
-            )
+            manifest = self._build(root, paths)
 
             self.assertEqual(manifest["version"], {"name": "0.6.3", "code": 2})
             self.assertEqual(
@@ -76,6 +57,13 @@ class ReleaseManifestTest(unittest.TestCase):
             self.assertEqual(
                 manifest["android"]["uploadCertificateSha256"],
                 FINGERPRINT,
+            )
+            self.assertEqual(
+                manifest["billing"],
+                {
+                    "removeAdsProductId": "remove_ads",
+                    "aiAccessProductId": "ai_analysis",
+                },
             )
             self.assertEqual(manifest["githubActions"]["runId"], 29197023560)
             self.assertTrue(
@@ -87,23 +75,8 @@ class ReleaseManifestTest(unittest.TestCase):
             root = Path(directory)
             paths = self._write_fixture(root)
             paths["apk_sums"].write_text(f"{'0' * 64}  app-release.apk\n")
-
             with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
-                build_manifest(
-                    root=root,
-                    apk=paths["apk"],
-                    aab=paths["aab"],
-                    apk_sums=paths["apk_sums"],
-                    aab_sums=paths["aab_sums"],
-                    upload_certificate=paths["upload_certificate"],
-                    apk_certificate=paths["apk_certificate"],
-                    aab_certificate=paths["aab_certificate"],
-                    iap_product_id="remove_ads",
-                    apk_artifact_name="apk",
-                    aab_artifact_name="aab",
-                    evidence_artifact_name="evidence",
-                    environment=ENVIRONMENT,
-                )
+                self._build(root, paths)
 
     def test_rejects_unsuccessful_certificate_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -117,23 +90,27 @@ class ReleaseManifestTest(unittest.TestCase):
                 json.dumps(payload),
                 encoding="utf-8",
             )
-
             with self.assertRaisesRegex(ValueError, "successful certificate match"):
-                build_manifest(
-                    root=root,
-                    apk=paths["apk"],
-                    aab=paths["aab"],
-                    apk_sums=paths["apk_sums"],
-                    aab_sums=paths["aab_sums"],
-                    upload_certificate=paths["upload_certificate"],
-                    apk_certificate=paths["apk_certificate"],
-                    aab_certificate=paths["aab_certificate"],
-                    iap_product_id="remove_ads",
-                    apk_artifact_name="apk",
-                    aab_artifact_name="aab",
-                    evidence_artifact_name="evidence",
-                    environment=ENVIRONMENT,
-                )
+                self._build(root, paths)
+
+    def _build(self, root: Path, paths: dict[str, Path]) -> dict[str, object]:
+        return build_manifest(
+            root=root,
+            apk=paths["apk"],
+            aab=paths["aab"],
+            apk_sums=paths["apk_sums"],
+            aab_sums=paths["aab_sums"],
+            upload_certificate=paths["upload_certificate"],
+            apk_certificate=paths["apk_certificate"],
+            aab_certificate=paths["aab_certificate"],
+            iap_product_id="remove_ads",
+            iap_ai_product_id="ai_analysis",
+            apk_artifact_name="ashita-motsumono-signed-release-apk",
+            aab_artifact_name="ashita-motsumono-signed-release-aab",
+            evidence_artifact_name="ashita-motsumono-release-evidence",
+            environment=ENVIRONMENT,
+            generated_at=datetime(2026, 7, 13, 0, 0, tzinfo=timezone.utc),
+        )
 
     def _write_fixture(self, root: Path) -> dict[str, Path]:
         (root / "pubspec.yaml").write_text(
