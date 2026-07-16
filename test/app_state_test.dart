@@ -2,13 +2,15 @@
 // AppState の状態遷移と通知再予約の回帰テスト。
 // 関連: lib/src/app_state.dart, lib/src/services/notification_service.dart
 
+import 'dart:io';
+
 import 'package:ashita_motsumono/src/app_state.dart';
 import 'package:ashita_motsumono/src/models/entities.dart';
 import 'package:ashita_motsumono/src/repositories/drift_store.dart';
 import 'package:ashita_motsumono/src/services/notification_service.dart';
+import 'package:ashita_motsumono/src/services/sensitive_data_cleaner.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'dart:io';
 
 class _FakeNotificationService extends NotificationService {
   _FakeNotificationService() : super(timezoneName: 'Asia/Tokyo');
@@ -76,11 +78,6 @@ void main() {
   test(
     'clearAllData removes local records, document images and notifications',
     () async {
-      final store = await DriftStore.createInMemory();
-      final notifications = _FakeNotificationService();
-      final appState = AppState(store: store, notifications: notifications);
-      await appState.load();
-
       final tempDir = await Directory.systemTemp.createTemp(
         'ashita_clear_test_',
       );
@@ -89,6 +86,18 @@ void main() {
           await tempDir.delete(recursive: true);
         }
       });
+
+      final store = await DriftStore.createInMemory();
+      final notifications = _FakeNotificationService();
+      final appState = AppState(
+        store: store,
+        notifications: notifications,
+        sensitiveDataCleaner: SensitiveDataCleaner(
+          directoryProvider: () async => tempDir,
+        ),
+      );
+      await appState.load();
+
       final imageFile = File(
         '${tempDir.path}${Platform.pathSeparator}notice.jpg',
       );
