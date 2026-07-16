@@ -56,7 +56,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(title: const Text('設定')),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
-          Spacing.md, Spacing.md, Spacing.md,
+          Spacing.md,
+          Spacing.md,
+          Spacing.md,
           MediaQuery.paddingOf(context).bottom + Spacing.lg,
         ),
         children: [
@@ -65,19 +67,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Text(
               '通知やサポーター機能の管理ができます',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
+                    color: cs.onSurfaceVariant,
+                  ),
             ),
           ),
           _SectionCard(
             icon: Icons.notifications_outlined,
-            title: '通知時刻',
-            description: '前日と当日のリマインド通知を設定します',
+            title: '通知',
+            description: '通知時刻とロック画面に表示する内容を設定します',
             child: Column(
               children: [
                 _TimeTile(
                   icon: Icons.nightlight_round,
-                  title: '夜 前日 ${_fmt(settings.previousNightHour, settings.previousNightMinute)}',
+                  title:
+                      '夜 前日 ${_fmt(settings.previousNightHour, settings.previousNightMinute)}',
                   subtitle: '前日の持ち物を確認しましょう',
                   onTap: () => _pickTime(
                     context,
@@ -89,7 +92,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(),
                 _TimeTile(
                   icon: Icons.wb_sunny_outlined,
-                  title: '朝 当日 ${_fmt(settings.sameMorningHour, settings.sameMorningMinute)}',
+                  title:
+                      '朝 当日 ${_fmt(settings.sameMorningHour, settings.sameMorningMinute)}',
                   subtitle: '最終チェックで安心な1日を',
                   onTap: () => _pickTime(
                     context,
@@ -97,6 +101,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     settings.sameMorningMinute,
                     (h, m) => settings.setSameMorningTime(h, m),
                   ),
+                ),
+                const Divider(),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.lock_outline),
+                  title: const Text('通知に予定の詳細を表示'),
+                  subtitle: const Text(
+                    'オフではタイトル、持ち物、金額を隠し、アプリを開くまで内容を表示しません',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  value: settings.showNotificationDetails,
+                  onChanged: (enabled) =>
+                      _setNotificationDetails(context, enabled),
                 ),
               ],
             ),
@@ -132,7 +149,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'サポーター',
             description: '広告除去と開発支援',
             child: Consumer<PurchaseProvider>(
-              builder: (context, purchase, _) => _SupporterCard(purchase: purchase),
+              builder: (context, purchase, _) =>
+                  _SupporterCard(purchase: purchase),
             ),
           ),
           const SizedBox(height: Spacing.sm),
@@ -141,7 +159,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'AI分析',
             description: '手書きメモも解析できるAI画像認識',
             child: Consumer<PurchaseProvider>(
-              builder: (context, purchase, _) => _AiAccessCard(purchase: purchase),
+              builder: (context, purchase, _) =>
+                  _AiAccessCard(purchase: purchase),
             ),
           ),
           const SizedBox(height: Spacing.lg),
@@ -165,7 +184,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.open_in_new, size: 16),
             contentPadding: EdgeInsets.zero,
             onTap: () => _openExternalPage(
-              Uri.parse('https://lp-5t7.pages.dev/apps/ashita-motsumono/privacy'),
+              Uri.parse(
+                'https://lp-5t7.pages.dev/apps/ashita-motsumono/privacy',
+              ),
               'リンクを開けませんでした',
             ),
           ),
@@ -175,7 +196,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.chevron_right, size: 16),
             contentPadding: EdgeInsets.zero,
             onTap: () => _openExternalPage(
-              Uri.parse('https://lp-5t7.pages.dev/apps/ashita-motsumono/contact'),
+              Uri.parse(
+                'https://lp-5t7.pages.dev/apps/ashita-motsumono/contact',
+              ),
               'お問い合わせページを開けませんでした',
             ),
           ),
@@ -243,6 +266,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _setNotificationDetails(
+    BuildContext context,
+    bool enabled,
+  ) async {
+    final appState = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await settings.setShowNotificationDetails(enabled);
+      if (!mounted) return;
+      setState(() {});
+      await appState.rescheduleAllNotifications();
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            enabled
+                ? '通知に予定の詳細を表示します'
+                : '通知の予定詳細を非表示にしました',
+          ),
+        ),
+      );
+    } on Object {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('通知表示設定の保存に失敗しました')),
+      );
+    }
+  }
+
   Future<void> _confirmClearAllData(BuildContext context) async {
     final appState = context.read<AppState>();
     final messenger = ScaffoldMessenger.of(context);
@@ -250,7 +302,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('登録データを削除しますか？'),
-        content: const Text('人物、Todo、読み取り履歴、保存画像をこの端末から削除します。この操作は元に戻せません。'),
+        content: const Text(
+          '人物、Todo、読み取り履歴、保存画像をこの端末から削除します。この操作は元に戻せません。',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -344,8 +398,8 @@ class _SectionCard extends StatelessWidget {
                 child: Text(
                   description!,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
               ),
             ],
@@ -376,10 +430,11 @@ class _SupporterCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('サポーター登録済み',
+                Text(
+                  'サポーター登録済み',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: cs.primary,
-                  ),
+                        color: cs.primary,
+                      ),
                 ),
                 const SizedBox(height: Spacing.xs),
                 const Text('広告なしで使えます。ご購入ありがとうございます。'),
@@ -402,7 +457,8 @@ class _SupporterCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('買い切りサポーター',
+                  Text(
+                    '買い切りサポーター',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: Spacing.xs),
@@ -413,11 +469,11 @@ class _SupporterCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: Spacing.sm),
-        _BenefitRow(icon: Icons.check, text: '広告なしでホーム画面を広く使える'),
+        const _BenefitRow(icon: Icons.check, text: '広告なしでホーム画面を広く使える'),
         const SizedBox(height: Spacing.xs),
-        _BenefitRow(icon: Icons.check, text: 'ログイン不要・端末内保存の方針はそのまま'),
+        const _BenefitRow(icon: Icons.check, text: 'ログイン不要・端末内保存の方針はそのまま'),
         const SizedBox(height: Spacing.xs),
-        _BenefitRow(icon: Icons.check, text: '今後の継続的な開発を応援'),
+        const _BenefitRow(icon: Icons.check, text: '今後の継続的な開発を応援'),
         const SizedBox(height: Spacing.md),
         SizedBox(
           width: double.infinity,
@@ -477,10 +533,11 @@ class _AiAccessCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('AI分析 利用可能',
+                Text(
+                  'AI分析 利用可能',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: cs.primary,
-                  ),
+                        color: cs.primary,
+                      ),
                 ),
                 const SizedBox(height: Spacing.xs),
                 const Text('画像の手書きメモもAIが読み取ってTodoに変換します。'),
@@ -503,7 +560,8 @@ class _AiAccessCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('AI画像認識',
+                  Text(
+                    'AI画像認識',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: Spacing.xs),
@@ -514,11 +572,11 @@ class _AiAccessCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: Spacing.sm),
-        _BenefitRow(icon: Icons.check, text: '手書き文字の読み取りに対応'),
+        const _BenefitRow(icon: Icons.check, text: '手書き文字の読み取りに対応'),
         const SizedBox(height: Spacing.xs),
-        _BenefitRow(icon: Icons.check, text: '¥190 買い切り／無制限に利用可能'),
+        const _BenefitRow(icon: Icons.check, text: '¥190 買い切り／無制限に利用可能'),
         const SizedBox(height: Spacing.xs),
-        _BenefitRow(icon: Icons.check, text: '広告除去とは別商品（両方購入で¥380）'),
+        const _BenefitRow(icon: Icons.check, text: '広告除去とは別商品（両方購入で¥380）'),
         const SizedBox(height: Spacing.md),
         SizedBox(
           width: double.infinity,
