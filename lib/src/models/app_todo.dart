@@ -103,8 +103,8 @@ class AppTodo {
     final createdAt = DateTime.tryParse(json['createdAt'] as String? ?? '');
     final updatedAt = DateTime.tryParse(json['updatedAt'] as String? ?? '');
     final rawItems = json['items'];
-    final previousNight = json['notifyPreviousNight'];
-    final sameMorning = json['notifySameMorning'];
+    final previousNightRaw = json['notifyPreviousNight'];
+    final sameMorningRaw = json['notifySameMorning'];
 
     if (id is! String || id.trim().isEmpty) {
       throw const FormatException('AppTodo.id is invalid');
@@ -124,8 +124,11 @@ class AppTodo {
     if (createdAt == null || updatedAt == null || rawItems is! List) {
       throw const FormatException('AppTodo fields are invalid');
     }
-    if (previousNight is! bool || sameMorning is! bool) {
-      throw const FormatException('AppTodo notification flags are invalid');
+    if (previousNightRaw != null && previousNightRaw is! bool) {
+      throw const FormatException('AppTodo.notifyPreviousNight is invalid');
+    }
+    if (sameMorningRaw != null && sameMorningRaw is! bool) {
+      throw const FormatException('AppTodo.notifySameMorning is invalid');
     }
 
     final dueDateRaw = json['dueDate'];
@@ -135,6 +138,10 @@ class AppTodo {
     if (dueDateRaw != null && dueDate == null) {
       throw const FormatException('AppTodo.dueDate is invalid');
     }
+    final amountRaw = json['amount'];
+    if (amountRaw != null && amountRaw is! num) {
+      throw const FormatException('AppTodo.amount is invalid');
+    }
 
     return AppTodo(
       id: id,
@@ -143,7 +150,7 @@ class AppTodo {
       documentId: json['documentId'] as String?,
       dueDate: dueDate,
       category: category,
-      amount: json['amount'] as int?,
+      amount: (amountRaw as num?)?.toInt(),
       note: json['note'] as String?,
       status: status,
       items: rawItems
@@ -153,8 +160,8 @@ class AppTodo {
             ),
           )
           .toList(),
-      notifyPreviousNight: previousNight,
-      notifySameMorning: sameMorning,
+      notifyPreviousNight: previousNightRaw as bool? ?? true,
+      notifySameMorning: sameMorningRaw as bool? ?? true,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
