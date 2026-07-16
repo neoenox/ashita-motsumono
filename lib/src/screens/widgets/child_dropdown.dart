@@ -1,7 +1,3 @@
-// lib/src/screens/widgets/child_dropdown.dart
-// 人物選択のドロップダウン。Todo追加・レビュー画面で共通利用。
-// 関連: add_todo_screen.dart, review_extraction_screen.dart
-
 import 'package:flutter/material.dart';
 
 import '../../models/entities.dart';
@@ -16,7 +12,7 @@ class ChildDropdown extends StatelessWidget {
 
   final String? value;
   final List<PersonProfile> children;
-  final ValueChanged<String?> onChanged;
+  final ValueChanged<String?>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +25,10 @@ class ChildDropdown extends StatelessWidget {
       items: [
         const DropdownMenuItem<String?>(value: null, child: Text('未指定')),
         ...children.map(
-          (child) => DropdownMenuItem<String?>(value: child.id, child: Text(child.name)),
+          (child) => DropdownMenuItem<String?>(
+            value: child.id,
+            child: Text(child.name),
+          ),
         ),
       ],
       onChanged: onChanged,
