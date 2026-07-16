@@ -64,8 +64,16 @@ void main() {
       expect(restored.items[0].label, todo.items[0].label);
     });
 
-    test('fromJson handles null fields', () {
-      final json = {'id': 't1', 'title': 'test', 'category': 'item', 'status': 'active'};
+    test('fromJson handles absent optional fields', () {
+      final json = {
+        'id': 't1',
+        'title': 'test',
+        'category': 'item',
+        'status': 'active',
+        'items': <Map<String, dynamic>>[],
+        'createdAt': '2026-07-01T00:00:00.000',
+        'updatedAt': '2026-07-01T00:00:00.000',
+      };
       final restored = AppTodo.fromJson(json);
       expect(restored.id, 't1');
       expect(restored.personId, isNull);
@@ -82,6 +90,9 @@ void main() {
         'category': 'other',
         'status': 'active',
         'childId': 'legacy-person-1',
+        'items': <Map<String, dynamic>>[],
+        'createdAt': '2026-07-01T00:00:00.000',
+        'updatedAt': '2026-07-01T00:00:00.000',
       };
       final restored = AppTodo.fromJson(json);
       expect(restored.personId, 'legacy-person-1');
@@ -95,19 +106,19 @@ void main() {
         'status': 'active',
         'personId': 'person-2',
         'childId': 'legacy-person-1',
+        'items': <Map<String, dynamic>>[],
+        'createdAt': '2026-07-01T00:00:00.000',
+        'updatedAt': '2026-07-01T00:00:00.000',
       };
       final restored = AppTodo.fromJson(json);
       expect(restored.personId, 'person-2');
     });
 
-    test('fromJson falls back to default values', () {
-      final restored = AppTodo.fromJson({});
-      expect(restored.id, '');
-      expect(restored.title, '');
-      expect(restored.category, TodoCategory.other);
-      expect(restored.status, TodoStatus.active);
-      expect(restored.notifyPreviousNight, true);
-      expect(restored.notifySameMorning, true);
+    test('fromJson rejects missing stable fields', () {
+      expect(
+        () => AppTodo.fromJson({}),
+        throwsA(isA<FormatException>()),
+      );
     });
 
     test('copyWith preserves original when no args', () {
@@ -136,7 +147,7 @@ void main() {
       expect(todo.isDone, false);
     });
 
-    test('fromJson handles invalid dueDate gracefully', () {
+    test('fromJson rejects invalid dueDate', () {
       final json = {
         'id': 'todo-1',
         'title': 'Test',
@@ -149,9 +160,10 @@ void main() {
         'createdAt': '2026-01-01T00:00:00.000',
         'updatedAt': '2026-01-01T00:00:00.000',
       };
-      final restored = AppTodo.fromJson(json);
-      expect(restored.dueDate, isNull);
-      expect(restored.title, 'Test');
+      expect(
+        () => AppTodo.fromJson(json),
+        throwsA(isA<FormatException>()),
+      );
     });
   });
 
@@ -179,11 +191,11 @@ void main() {
       expect(restored.colorValue, profile.colorValue);
     });
 
-    test('fromJson handles empty input', () {
-      final restored = PersonProfile.fromJson({});
-      expect(restored.id, '');
-      expect(restored.name, '');
-      expect(restored.colorValue, 0);
+    test('fromJson rejects empty input', () {
+      expect(
+        () => PersonProfile.fromJson({}),
+        throwsA(isA<FormatException>()),
+      );
     });
 
     test('copyWith preserves original when no args', () {
@@ -226,7 +238,12 @@ void main() {
     });
 
     test('fromJson handles null optional fields', () {
-      final doc2 = DocumentRecord(id: 'doc-2', sourceType: 'gallery', createdAt: DateTime.now(), updatedAt: DateTime.now());
+      final doc2 = DocumentRecord(
+        id: 'doc-2',
+        sourceType: 'gallery',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
       final json = doc2.toJson();
       final restored = DocumentRecord.fromJson(json);
       expect(restored.localImagePath, isNull);
