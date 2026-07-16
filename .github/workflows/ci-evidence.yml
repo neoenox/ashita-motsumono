@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - agent/full-source-hardening
+    paths:
+      - docs/validation/validation-trigger.txt
   workflow_dispatch:
 
 permissions:
@@ -81,6 +83,7 @@ jobs:
           def json_test_failures(lines: list[str]) -> list[dict[str, object]]:
               tests: dict[int, dict[str, object]] = {}
               errors: dict[int, list[dict[str, object]]] = {}
+              prints: dict[int, list[str]] = {}
               failed_ids: set[int] = set()
               for line in lines:
                   try:
@@ -110,6 +113,11 @@ jobs:
                               ),
                               'isFailure': event.get('isFailure'),
                           })
+                  elif event_type == 'print':
+                      test_id = event.get('testID')
+                      if isinstance(test_id, int):
+                          message = clipped(event.get('message'), 3000)
+                          prints.setdefault(test_id, []).append(message)
                   elif event_type == 'testDone' and event.get('result') != 'success':
                       test_id = event.get('testID')
                       if isinstance(test_id, int) and not event.get('skipped', False):
@@ -122,6 +130,7 @@ jobs:
                       'testID': test_id,
                       **metadata,
                       'errors': errors.get(test_id, []),
+                      'printOutput': prints.get(test_id, [])[-20:],
                   })
               return failures
 
