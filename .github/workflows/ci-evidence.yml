@@ -49,7 +49,7 @@ jobs:
                   'flutter analyze --no-fatal-infos',
                   'flutter test --reporter json',
                   'flutter test tool/generate_lp_screenshots_test.dart --reporter json',
-              ]),
+              ]) + '\n',
               encoding='utf-8',
           )
           PY
