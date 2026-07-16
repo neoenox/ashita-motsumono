@@ -7,6 +7,7 @@ import 'extraction_service.dart';
 import 'gemini_api_service.dart';
 import 'image_file_service.dart';
 import 'ocr_service.dart';
+import 'verified_entitlement_cache.dart';
 
 sealed class OcrPickResult {}
 
@@ -64,8 +65,6 @@ class OcrPickService {
     }
     final files = response.files;
     if (files == null || files.isEmpty) return null;
-    // Recovered images are processed locally. AI upload always needs a fresh
-    // disclosure and consent action.
     return _processLocalImage(files.first, ImageSource.gallery);
   }
 
@@ -101,8 +100,12 @@ class OcrPickService {
 
   Future<OcrPickResult?> pickAndProcessWithAi(
     String proxyUrl, {
-    required String accessToken,
+    String? accessToken,
   }) async {
+    final verifiedToken = accessToken ?? VerifiedEntitlementCache.validAiToken;
+    if (verifiedToken == null) {
+      throw const OcrException('AI分析の購入情報を確認できませんでした。購入情報を復元してください。');
+    }
     final gemini = _geminiService ?? GeminiApiService(proxyUrl: proxyUrl);
     final picked = await _picker.pickImage(
       source: ImageSource.camera,
@@ -118,7 +121,7 @@ class OcrPickService {
     try {
       final result = await gemini.analyzeImage(
         imageFile,
-        accessToken: accessToken,
+        accessToken: verifiedToken,
       );
       final now = DateTime.now();
       switch (result) {
