@@ -102,7 +102,7 @@ class OcrPickService {
     String proxyUrl, {
     String? accessToken,
   }) async {
-    final verifiedToken = accessToken ?? VerifiedEntitlementCache.validAiToken;
+    final verifiedToken = accessToken ?? await VerifiedEntitlementCache.getAiToken();
     if (verifiedToken == null) {
       throw const OcrException('AI分析の購入情報を確認できませんでした。購入情報を復元してください。');
     }
