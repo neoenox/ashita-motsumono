@@ -6,9 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppSettings extends ChangeNotifier {
-  AppSettings(this._prefs);
+  AppSettings(this._prefs)
+      : _learnedItemLabels = List<String>.of(
+          _prefs.getStringList(_keyLearnedItemLabels) ?? const <String>[],
+        );
 
   final SharedPreferences _prefs;
+  List<String> _learnedItemLabels;
 
   int get previousNightHour =>
       _prefs.getInt(_keyPreviousNightHour) ?? defaultPreviousNightHour;
@@ -36,9 +40,8 @@ class AppSettings extends ChangeNotifier {
   bool get showNotificationDetails =>
       _prefs.getBool(_keyShowNotificationDetails) ?? false;
 
-  List<String> get learnedItemLabels => List.unmodifiable(
-    _prefs.getStringList(_keyLearnedItemLabels) ?? const [],
-  );
+  List<String> get learnedItemLabels =>
+      List<String>.unmodifiable(_learnedItemLabels);
 
   static const defaultPreviousNightHour = 20;
   static const defaultPreviousNightMinute = 0;
@@ -84,13 +87,11 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> addLearnedItemLabels(Iterable<String> labels) async {
     final merged = <String>{
-      ...learnedItemLabels,
+      ..._learnedItemLabels,
       ...labels.map((label) => label.trim()).where(_isUsefulItemLabel),
-    }.toList(growable: false);
-    await _prefs.setStringList(
-      _keyLearnedItemLabels,
-      merged.take(100).toList(),
-    );
+    }.take(100).toList(growable: false);
+    await _prefs.setStringList(_keyLearnedItemLabels, merged);
+    _learnedItemLabels = merged;
     notifyListeners();
   }
 
@@ -105,10 +106,16 @@ class AppSettings extends ChangeNotifier {
   }
 
   Future<void> clearLearnedItemLabels() async {
-    // 一部のSharedPreferences実装・モックでremove直後のキャッシュが残るケースを
-    // 避けるため、空リストを明示的に保存して状態を確定する。
-    await _prefs.setStringList(_keyLearnedItemLabels, const <String>[]);
+    final previous = _learnedItemLabels;
+    _learnedItemLabels = const <String>[];
     notifyListeners();
+    try {
+      await _prefs.setStringList(_keyLearnedItemLabels, const <String>[]);
+    } on Object {
+      _learnedItemLabels = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   static bool _isUsefulItemLabel(String label) {
