@@ -1,1 +1,1 @@
-validate latest hardening head after settings cache synchronization
+diagnose clear-all completion path on latest hardening head
