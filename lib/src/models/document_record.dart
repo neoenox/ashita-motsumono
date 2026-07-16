@@ -1,8 +1,3 @@
-// lib/src/models/document_record.dart
-// 撮影/スキャンした書類レコード（画像パス、OCRテキスト）を保持するモデル。
-// スナップショット内でドキュメント一覧を管理するために存在する。
-// 関連: entities.dart, app_snapshot.dart
-
 import 'package:flutter/foundation.dart';
 
 @immutable
@@ -35,7 +30,8 @@ class DocumentRecord {
     return DocumentRecord(
       id: id ?? this.id,
       sourceType: sourceType ?? this.sourceType,
-      localImagePath: clearLocalImagePath ? null : localImagePath ?? this.localImagePath,
+      localImagePath:
+          clearLocalImagePath ? null : localImagePath ?? this.localImagePath,
       ocrText: ocrText ?? this.ocrText,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -51,12 +47,27 @@ class DocumentRecord {
         'updatedAt': updatedAt.toIso8601String(),
       };
 
-  factory DocumentRecord.fromJson(Map<String, dynamic> json) => DocumentRecord(
-        id: (json['id'] as String?) ?? '',
-        sourceType: (json['sourceType'] as String?) ?? '',
-        localImagePath: json['localImagePath'] as String?,
-        ocrText: json['ocrText'] as String?,
-        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
-        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
-      );
+  factory DocumentRecord.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final sourceType = json['sourceType'];
+    final createdAt = DateTime.tryParse(json['createdAt'] as String? ?? '');
+    final updatedAt = DateTime.tryParse(json['updatedAt'] as String? ?? '');
+    if (id is! String || id.trim().isEmpty) {
+      throw const FormatException('DocumentRecord.id is invalid');
+    }
+    if (sourceType is! String || sourceType.trim().isEmpty) {
+      throw const FormatException('DocumentRecord.sourceType is invalid');
+    }
+    if (createdAt == null || updatedAt == null) {
+      throw const FormatException('DocumentRecord dates are invalid');
+    }
+    return DocumentRecord(
+      id: id,
+      sourceType: sourceType,
+      localImagePath: json['localImagePath'] as String?,
+      ocrText: json['ocrText'] as String?,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
 }
