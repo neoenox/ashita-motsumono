@@ -112,12 +112,22 @@ class AppTodo {
     if (title is! String || title.trim().isEmpty) {
       throw const FormatException('AppTodo.title is invalid');
     }
-    final category = TodoCategory.values
-        .where((value) => value.name == categoryName)
-        .firstOrNull;
-    final status = TodoStatus.values
-        .where((value) => value.name == statusName)
-        .firstOrNull;
+
+    final category = switch (categoryName) {
+      null => TodoCategory.other,
+      'submission' => TodoCategory.submit,
+      String value => TodoCategory.values
+          .where((candidate) => candidate.name == value)
+          .firstOrNull,
+      _ => null,
+    };
+    final status = switch (statusName) {
+      null => TodoStatus.active,
+      String value => TodoStatus.values
+          .where((candidate) => candidate.name == value)
+          .firstOrNull,
+      _ => null,
+    };
     if (category == null || status == null) {
       throw const FormatException('AppTodo enum value is invalid');
     }
