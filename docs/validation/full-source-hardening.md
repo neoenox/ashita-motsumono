@@ -3,8 +3,9 @@
 - Review branch: `agent/full-source-hardening`
 - Pull request: #119
 - Static code and contract changes: implemented
-- GitHub Actions: not yet executed because commits made through the GitHub App did not emit workflow events
-- Flutter analyze/test: pending independent CI or local execution
-- Cloudflare deployment, store purchase verification, real billing, refund, restore, and device tests: external gates
+- Flutter SDK: pinned to `3.44.0` to satisfy the repository's Dart `>=3.12.0` constraint
+- Dependency resolution, Python release checks, and `flutter analyze --no-fatal-infos`: passed in automated validation
+- Full Flutter tests and LP screenshot generation: being revalidated after contract and testability fixes
+- Cloudflare deployment, store purchase verification, real billing, refund, restore, and physical-device tests: external gates
 
-This document deliberately does not classify unexecuted checks as PASS.
+This document deliberately does not classify checks as PASS until their latest-HEAD evidence is available.
