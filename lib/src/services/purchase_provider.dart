@@ -1,5 +1,3 @@
-// 広告除去・AI分析の購入状態を管理する ChangeNotifier。
-
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -63,7 +61,9 @@ abstract class PurchaseProvider extends ChangeNotifier {
   Future<void> purchase();
   Future<void> purchaseAi();
   Future<void> restore();
-  Future<String?> getAiAccessToken();
+
+  /// Test doubles and unavailable stores fail closed by default.
+  Future<String?> getAiAccessToken() async => null;
 }
 
 class AppPurchaseProvider extends PurchaseProvider {
@@ -126,8 +126,6 @@ class AppPurchaseProvider extends PurchaseProvider {
 
   Future<void> _init() async {
     try {
-      // Local flags are caches only. Entitlements stay disabled until the
-      // store restores a purchase and the backend verifies it.
       _adRemoved = false;
       _aiAccess = false;
       _storeAvailable = await _purchase.isAvailable();
