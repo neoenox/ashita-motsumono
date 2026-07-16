@@ -18,7 +18,7 @@ extension CleanupAppStateOperations on AppState {
 
         await _notificationCoordinator.retryPending(const <AppTodo>[]);
         await _retryPendingFileCleanup();
-        await SensitiveDataCleaner.clearResidualFiles();
+        await _sensitiveDataCleaner.clearResidualFiles();
       });
 
   Future<void> tryDeleteDocumentOnDispose({
