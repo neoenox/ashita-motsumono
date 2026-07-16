@@ -74,6 +74,10 @@ jobs:
           import os
           from pathlib import Path
 
+          def clipped(value: object, limit: int = 1600) -> str:
+              text = str(value or '')
+              return text if len(text) <= limit else text[:limit] + '…'
+
           def json_test_failures(lines: list[str]) -> list[dict[str, object]]:
               tests: dict[int, dict[str, object]] = {}
               errors: dict[int, list[dict[str, object]]] = {}
@@ -98,9 +102,11 @@ jobs:
                       if isinstance(test_id, int):
                           failed_ids.add(test_id)
                           errors.setdefault(test_id, []).append({
-                              'error': event.get('error'),
-                              'stackTrace': '\n'.join(
-                                  str(event.get('stackTrace') or '').splitlines()[:50]
+                              'error': clipped(event.get('error')),
+                              'stackTrace': clipped(
+                                  '\n'.join(
+                                      str(event.get('stackTrace') or '').splitlines()[:25]
+                                  )
                               ),
                               'isFailure': event.get('isFailure'),
                           })
