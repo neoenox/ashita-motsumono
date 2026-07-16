@@ -45,6 +45,34 @@ def update_widget_tests() -> None:
       expect(appState.children, isEmpty);""",
         label='clear-all completion wait',
     )
+    text = replace_once(
+        text,
+        """      expect(appState.children, isEmpty);
+      expect(appState.todos, isEmpty);
+      expect(appState.documents, isEmpty);
+      expect(settings.learnedItemLabels, isEmpty);
+      expect(find.text('登録データを削除しました'), findsOneWidget);""",
+        """      final snackbarTexts = tester
+          .widgetList<Text>(
+            find.descendant(
+              of: find.byType(SnackBar),
+              matching: find.byType(Text),
+            ),
+          )
+          .map((text) => text.data)
+          .toList();
+      debugPrint(
+        'clear-all snackbars=$snackbarTexts '
+        'labels=${settings.learnedItemLabels}',
+      );
+
+      expect(find.text('登録データを削除しました'), findsOneWidget);
+      expect(appState.children, isEmpty);
+      expect(appState.todos, isEmpty);
+      expect(appState.documents, isEmpty);
+      expect(settings.learnedItemLabels, isEmpty);""",
+        label='clear-all diagnostics',
+    )
     path.write_text(text, encoding='utf-8')
 
 
