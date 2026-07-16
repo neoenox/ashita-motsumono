@@ -1,0 +1,116 @@
+name: Full Source Hardening Evidence
+
+on:
+  push:
+    branches:
+      - agent/full-source-hardening
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/full-source-hardening
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+
+      - name: Run validation and record evidence
+        id: validation
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p build/ci-evidence
+          python3 - <<'PY'
+          from pathlib import Path
+
+          Path('build/ci-evidence/commands.txt').write_text(
+              '\n'.join([
+                  'flutter pub get',
+                  'python3 tool/sync_app_version.py',
+                  'python3 tool/verify_android_manifest.py',
+                  'python3 -m unittest tool/test_enforce_android_release_signing.py',
+                  'python3 -m unittest tool/test_verify_android_certificate_fingerprint.py',
+                  'python3 -m unittest tool/test_generate_release_manifest.py',
+                  'python3 -m unittest tool/test_release_workflow.py',
+                  'flutter analyze --no-fatal-infos',
+                  'flutter test',
+                  'flutter test tool/generate_lp_screenshots_test.dart',
+              ]),
+              encoding='utf-8',
+          )
+          PY
+
+          : > build/ci-evidence/results.tsv
+          index=0
+          while IFS= read -r command; do
+            index=$((index + 1))
+            log="build/ci-evidence/command-${index}.log"
+            echo "::group::${command}"
+            set +e
+            bash -lc "$command" >"$log" 2>&1
+            status=$?
+            set -e
+            cat "$log"
+            echo "::endgroup::"
+            printf '%s\t%s\t%s\n' "$status" "$command" "$log" >> build/ci-evidence/results.tsv
+          done < build/ci-evidence/commands.txt
+
+          python3 - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import os
+          from pathlib import Path
+
+          rows = []
+          overall = True
+          for raw in Path('build/ci-evidence/results.tsv').read_text(encoding='utf-8').splitlines():
+              status_raw, command, log_path = raw.split('\t', 2)
+              status = int(status_raw)
+              overall = overall and status == 0
+              output = Path(log_path).read_text(encoding='utf-8', errors='replace').splitlines()
+              rows.append({
+                  'command': command,
+                  'exitCode': status,
+                  'tail': output[-80:] if status != 0 else [],
+              })
+
+          evidence = {
+              'validatedCommit': os.environ['GITHUB_SHA'],
+              'workflowRunId': os.environ['GITHUB_RUN_ID'],
+              'flutterVersion': '3.44.0',
+              'overall': 'PASS' if overall else 'FAIL',
+              'commands': rows,
+          }
+          output_path = Path('docs/validation/ci-evidence.json')
+          output_path.parent.mkdir(parents=True, exist_ok=True)
+          output_path.write_text(
+              json.dumps(evidence, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          PY
+
+      - name: Commit validation evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/validation/ci-evidence.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "ci: record hardening validation evidence [skip ci]"
+          git push origin HEAD:agent/full-source-hardening
