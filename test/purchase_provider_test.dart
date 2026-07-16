@@ -130,6 +130,70 @@ void main() {
     expect(gateway.completedPurchases, isEmpty);
     expect(provider.statusMessage, 'verification failed');
   });
+
+  test('contains verifier exceptions and keeps entitlement denied', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = AppSettings(await SharedPreferences.getInstance());
+    final gateway = _FakePurchaseGateway();
+    final verifier = _ThrowingVerifier();
+    final provider = AppPurchaseProvider(
+      settings,
+      gateway: gateway,
+      verifier: verifier,
+    );
+    addTearDown(provider.dispose);
+    addTearDown(gateway.dispose);
+    await provider.ready;
+
+    gateway.emit([_purchase(PurchaseProvider.aiProductId)]);
+    await verifier.called.future;
+    await Future<void>.delayed(Duration.zero);
+
+    expect(provider.aiAccess, isFalse);
+    expect(gateway.completedPurchases, isEmpty);
+    expect(
+      provider.statusMessage,
+      '購入情報を確認できませんでした。通信状態を確認して、もう一度お試しください。',
+    );
+  });
+
+  test('keeps verified access and retries completion on redelivery', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = AppSettings(await SharedPreferences.getInstance());
+    final gateway = _FakePurchaseGateway(completeFailures: 1);
+    final verifier = _FakeVerifier(
+      const EntitlementVerification.granted(
+        accessToken: 'verified-token',
+      ),
+    );
+    final provider = AppPurchaseProvider(
+      settings,
+      gateway: gateway,
+      verifier: verifier,
+    );
+    addTearDown(provider.dispose);
+    addTearDown(gateway.dispose);
+    await provider.ready;
+
+    final purchase = _purchase(PurchaseProvider.aiProductId);
+    gateway.emit([purchase]);
+    await gateway.firstCompletionAttempt.future;
+    await Future<void>.delayed(Duration.zero);
+
+    expect(provider.aiAccess, isTrue);
+    expect(gateway.completedPurchases, isEmpty);
+    expect(
+      provider.statusMessage,
+      '購入は確認済みですが、ストア処理を完了できませんでした。再起動後に再試行します。',
+    );
+
+    gateway.emit([purchase]);
+    await gateway.purchaseCompleted.future;
+
+    expect(gateway.completionAttempts, 2);
+    expect(gateway.completedPurchases, [purchase]);
+    expect(provider.statusMessage, isNull);
+  });
 }
 
 PurchaseDetails _purchase(String productId) {
@@ -163,23 +227,37 @@ class _FakeVerifier implements PurchaseVerifier {
   }
 }
 
+class _ThrowingVerifier implements PurchaseVerifier {
+  final Completer<void> called = Completer<void>();
+
+  @override
+  Future<EntitlementVerification> verify(PurchaseDetails purchase) async {
+    if (!called.isCompleted) called.complete();
+    throw StateError('verification unavailable');
+  }
+}
+
 class _FakePurchaseGateway implements PurchaseGateway {
   _FakePurchaseGateway({
     this.available = true,
     this.productDetails = const [],
     this.notFoundIDs = const [],
+    this.completeFailures = 0,
   });
 
   final bool available;
   final List<ProductDetails> productDetails;
   final List<String> notFoundIDs;
+  int completeFailures;
   final StreamController<List<PurchaseDetails>> _controller =
       StreamController<List<PurchaseDetails>>.broadcast();
   final List<Set<String>> queriedIds = [];
   final List<PurchaseDetails> completedPurchases = [];
+  final Completer<void> firstCompletionAttempt = Completer<void>();
   final Completer<void> purchaseCompleted = Completer<void>();
   int restoreCount = 0;
   int buyCount = 0;
+  int completionAttempts = 0;
 
   @override
   Stream<List<PurchaseDetails>> get purchaseStream => _controller.stream;
@@ -213,6 +291,12 @@ class _FakePurchaseGateway implements PurchaseGateway {
 
   @override
   Future<void> completePurchase(PurchaseDetails purchase) async {
+    completionAttempts += 1;
+    if (!firstCompletionAttempt.isCompleted) firstCompletionAttempt.complete();
+    if (completeFailures > 0) {
+      completeFailures -= 1;
+      throw StateError('completion unavailable');
+    }
     completedPurchases.add(purchase);
     if (!purchaseCompleted.isCompleted) purchaseCompleted.complete();
   }
