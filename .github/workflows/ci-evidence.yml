@@ -45,8 +45,8 @@ jobs:
                   'python3 -m unittest tool/test_generate_release_manifest.py',
                   'python3 -m unittest tool/test_release_workflow.py',
                   'flutter analyze --no-fatal-infos',
-                  'flutter test',
-                  'flutter test tool/generate_lp_screenshots_test.dart',
+                  'flutter test --reporter expanded',
+                  'flutter test tool/generate_lp_screenshots_test.dart --reporter expanded',
               ]),
               encoding='utf-8',
           )
@@ -74,6 +74,24 @@ jobs:
           import os
           from pathlib import Path
 
+          def failure_blocks(lines: list[str]) -> list[list[str]]:
+              blocks: list[list[str]] = []
+              current: list[str] | None = None
+              for line in lines:
+                  if line.startswith('::group::❌') or line.startswith('❌'):
+                      if current:
+                          blocks.append(current)
+                      current = [line]
+                      continue
+                  if current is not None:
+                      current.append(line)
+                      if line == '::endgroup::':
+                          blocks.append(current)
+                          current = None
+              if current:
+                  blocks.append(current)
+              return blocks
+
           rows = []
           overall = True
           for raw in Path('build/ci-evidence/results.tsv').read_text(encoding='utf-8').splitlines():
@@ -84,7 +102,8 @@ jobs:
               rows.append({
                   'command': command,
                   'exitCode': status,
-                  'tail': output[-80:] if status != 0 else [],
+                  'failures': failure_blocks(output) if status != 0 else [],
+                  'tail': output[-120:] if status != 0 else [],
               })
 
           evidence = {
