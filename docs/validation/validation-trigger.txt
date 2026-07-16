@@ -1,1 +1,1 @@
-validate latest hardening head after settings and cleanup fixes
+validate latest hardening head with isolated platform test harnesses
