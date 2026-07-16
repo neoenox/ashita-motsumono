@@ -3,6 +3,8 @@ class VerifiedEntitlementCache {
 
   static String? _aiToken;
   static DateTime? _aiTokenExpiresAt;
+  static Future<String?> Function()? _aiTokenRefresher;
+  static Future<String?>? _refreshInFlight;
 
   static String? get validAiToken {
     final token = _aiToken;
@@ -15,6 +17,30 @@ class VerifiedEntitlementCache {
       return null;
     }
     return token;
+  }
+
+  static Future<String?> getAiToken() async {
+    final current = validAiToken;
+    if (current != null) return current;
+    final refresher = _aiTokenRefresher;
+    if (refresher == null) return null;
+    final pending = _refreshInFlight ??= refresher();
+    try {
+      return await pending;
+    } finally {
+      if (identical(_refreshInFlight, pending)) _refreshInFlight = null;
+    }
+  }
+
+  static void registerAiTokenRefresher(
+    Future<String?> Function() refresher,
+  ) {
+    _aiTokenRefresher = refresher;
+  }
+
+  static void clearAiTokenRefresher() {
+    _aiTokenRefresher = null;
+    _refreshInFlight = null;
   }
 
   static void setAiToken(String token, DateTime expiresAt) {
