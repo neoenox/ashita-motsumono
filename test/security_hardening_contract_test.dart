@@ -44,7 +44,7 @@ void main() {
       'tool/generate_release_manifest.py',
     ).readAsStringSync();
 
-    expect(workflow, contains("flutter-version: '3.38.1'"));
+    expect(workflow, contains("flutter-version: '3.44.0'"));
     expect(workflow, contains('IAP_AI_ACCESS_PRODUCT_ID'));
     expect(workflow, contains('--iap-ai-product-id'));
     expect(generator, contains('aiAccessProductId'));
