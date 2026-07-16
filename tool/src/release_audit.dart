@@ -482,8 +482,9 @@ final class ReleaseAudit {
     if (expression == null) return null;
     final numeric = RegExp(r'\b(\d+)\b').firstMatch(expression);
     if (numeric != null) return int.parse(numeric.group(1)!);
-    if (expression.contains('flutter.targetSdkVersion'))
+    if (expression.contains('flutter.targetSdkVersion')) {
       return flutterTargetSdk;
+    }
     return null;
   }
 
