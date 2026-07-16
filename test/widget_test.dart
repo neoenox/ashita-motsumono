@@ -3,7 +3,7 @@
 // 関連: main.dart, src/screens/home_screen.dart, src/screens/add_child_screen.dart,
 //       src/screens/todo_detail_screen.dart, src/app_state.dart
 
-import 'dart:io' show Platform;
+import 'dart:io' show Directory, Platform;
 
 import 'package:ashita_motsumono/main.dart';
 import 'package:ashita_motsumono/src/app_state.dart';
@@ -13,6 +13,7 @@ import 'package:ashita_motsumono/src/services/app_settings.dart';
 import 'package:ashita_motsumono/src/services/export_service.dart';
 import 'package:ashita_motsumono/src/services/notification_service.dart';
 import 'package:ashita_motsumono/src/services/purchase_provider.dart';
+import 'package:ashita_motsumono/src/services/sensitive_data_cleaner.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -96,10 +97,19 @@ class _TestPurchaseProvider extends PurchaseProvider {
 /// 通知説明ダイアログをスキップした AppState を生成する。
 Future<AppState> _createAppState() async {
   SharedPreferences.setMockInitialValues({'notification_info_shown_v1': true});
+  final tempDir = await Directory.systemTemp.createTemp('ashita_widget_test_');
+  addTearDown(() async {
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
+  });
   final store = await DriftStore.createInMemory();
   final appState = AppState(
     store: store,
     notifications: _FakeNotificationService(),
+    sensitiveDataCleaner: SensitiveDataCleaner(
+      directoryProvider: () async => tempDir,
+    ),
   );
   await appState.load();
   return appState;
@@ -548,20 +558,6 @@ void main() {
         await tester.pump(const Duration(milliseconds: 50));
       }
       await tester.pumpAndSettle();
-
-      final snackbarTexts = tester
-          .widgetList<Text>(
-            find.descendant(
-              of: find.byType(SnackBar),
-              matching: find.byType(Text),
-            ),
-          )
-          .map((text) => text.data)
-          .toList();
-      debugPrint(
-        'clear-all snackbars=$snackbarTexts '
-        'labels=${settings.learnedItemLabels}',
-      );
 
       expect(find.text('登録データを削除しました'), findsOneWidget);
       expect(appState.children, isEmpty);
