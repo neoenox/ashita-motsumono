@@ -17,22 +17,25 @@ extension CleanupAppStateOperations on AppState {
         _replaceTodos(const []);
         _replaceDocuments(const []);
 
-        // OS通知取消、画像削除、残留ログ削除は再試行可能な後処理。
-        // 主データ削除後の一時的なプラグイン/I/O障害で、削除済み操作を
-        // ユーザーへ失敗扱いとして返さない。
-        await _runPostDeleteBestEffort(
-          'notification cancellation',
-          () => _notificationCoordinator.retryPending(const <AppTodo>[]),
-        );
-        await _runPostDeleteBestEffort(
-          'document image cleanup',
-          _retryPendingFileCleanup,
-        );
-        await _runPostDeleteBestEffort(
-          'residual file cleanup',
-          _sensitiveDataCleaner.clearResidualFiles,
-        );
+        // OS通知取消、画像削除、残留ログ削除は永続キューを起点とした
+        // 再試行可能な後処理。完了を待って設定削除や画面応答をブロックしない。
+        unawaited(_runPostDeleteCleanup());
       });
+
+  Future<void> _runPostDeleteCleanup() async {
+    await _runPostDeleteBestEffort(
+      'notification cancellation',
+      () => _notificationCoordinator.retryPending(const <AppTodo>[]),
+    );
+    await _runPostDeleteBestEffort(
+      'document image cleanup',
+      _retryPendingFileCleanup,
+    );
+    await _runPostDeleteBestEffort(
+      'residual file cleanup',
+      _sensitiveDataCleaner.clearResidualFiles,
+    );
+  }
 
   Future<void> _runPostDeleteBestEffort(
     String operation,
