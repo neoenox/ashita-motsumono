@@ -18,7 +18,7 @@ class ReleaseWorkflowTest(unittest.TestCase):
         cls.release_config = RELEASE_CONFIG.read_text(encoding='utf-8')
 
     def test_flutter_sdk_is_pinned(self) -> None:
-        self.assertEqual(self.workflow.count("flutter-version: '3.38.1'"), 2)
+        self.assertEqual(self.workflow.count("flutter-version: '3.44.0'"), 2)
 
     def test_upload_keystore_certificate_is_verified_before_builds(self) -> None:
         verify = self.workflow.index('- name: Verify upload keystore certificate')
