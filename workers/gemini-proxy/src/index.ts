@@ -467,7 +467,8 @@ function decodeBase64UrlJson(value: string): unknown {
 }
 
 function pemToBytes(pem: string): ArrayBuffer {
-  const base64 = pem.replace(
+  const normalizedPem = pem.replace(/\\n/g, '\n');
+  const base64 = normalizedPem.replace(
     /-----BEGIN [^-]+-----|-----END [^-]+-----|\s/g,
     '',
   );
