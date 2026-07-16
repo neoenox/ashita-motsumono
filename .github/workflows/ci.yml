@@ -45,7 +45,7 @@ jobs:
         run: python3 -m unittest tool/test_release_workflow.py
 
       - name: Analyze
-        run: flutter analyze --no-fatal-infos
+        run: python3 tool/run_flutter_analyze.py
 
       - name: Test
         run: flutter test
