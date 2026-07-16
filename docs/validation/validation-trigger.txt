@@ -1,1 +1,1 @@
-validate latest hardening head with isolated platform test harnesses
+validate latest hardening head after post-delete isolation
