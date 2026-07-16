@@ -91,6 +91,7 @@ class AppSettings extends ChangeNotifier {
       _keyLearnedItemLabels,
       merged.take(100).toList(),
     );
+    notifyListeners();
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
@@ -104,7 +105,10 @@ class AppSettings extends ChangeNotifier {
   }
 
   Future<void> clearLearnedItemLabels() async {
-    await _prefs.remove(_keyLearnedItemLabels);
+    // 一部のSharedPreferences実装・モックでremove直後のキャッシュが残るケースを
+    // 避けるため、空リストを明示的に保存して状態を確定する。
+    await _prefs.setStringList(_keyLearnedItemLabels, const <String>[]);
+    notifyListeners();
   }
 
   static bool _isUsefulItemLabel(String label) {
