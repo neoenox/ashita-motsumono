@@ -8,10 +8,12 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_state.dart';
@@ -43,9 +45,52 @@ class _HomeScreenState extends State<HomeScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String? _filterPersonId;
+  StreamSubscription<List<SharedMediaFile>>? _shareIntentSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _initShareIntentListener();
+  }
+
+  void _initShareIntentListener() {
+    try {
+      _shareIntentSubscription =
+          ReceiveSharingIntent.instance.getMediaStream().listen(
+        _handleShareIntent,
+        onError: (Object e) {
+          if (kDebugMode) debugPrint('Share intent stream error: $e');
+        },
+      );
+      ReceiveSharingIntent.instance.getInitialMedia().then(
+        _handleShareIntent,
+        onError: (Object e) {
+          if (kDebugMode) debugPrint('Share intent initial error: $e');
+        },
+      );
+    } on Object catch (e) {
+      if (kDebugMode) debugPrint('Share intent init error: $e');
+    }
+  }
+
+  void _handleShareIntent(List<SharedMediaFile> files) {
+    for (final file in files) {
+      if (file.type != SharedMediaType.text) continue;
+      final text = file.path.trim();
+      if (text.isEmpty) continue;
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => AddTodoScreen(initialText: text),
+        ),
+      );
+      break;
+    }
+  }
 
   @override
   void dispose() {
+    _shareIntentSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }

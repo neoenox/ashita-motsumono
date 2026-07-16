@@ -21,6 +21,7 @@ import '../services/ocr_pick_service.dart';
 import '../services/ocr_service.dart';
 import '../services/purchase_provider.dart';
 import '../utils/amount.dart';
+import '../utils/clipboard_helper.dart';
 import '../utils/date_picker.dart';
 import '../utils/string_utils.dart';
 import 'review_extraction_screen.dart';
@@ -59,7 +60,10 @@ Future<void> requestAiImageAnalysisWithDisclosure(
 }
 
 class AddTodoScreen extends StatefulWidget {
-  const AddTodoScreen({super.key});
+  const AddTodoScreen({super.key, this.initialText});
+
+  /// 共有インテントやクリップボードから受け取った初期テキスト
+  final String? initialText;
 
   @override
   State<AddTodoScreen> createState() => _AddTodoScreenState();
@@ -77,6 +81,17 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
   String? _personId;
   bool _busy = false;
   bool _showManual = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialText != null && widget.initialText!.isNotEmpty) {
+      _pasteController.text = widget.initialText!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _extractFromText(widget.initialText!);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -228,13 +243,24 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
               ),
             ),
           ),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _extractFromText(_pasteController.text),
-              icon: const Icon(Icons.auto_fix_high),
-              label: const Text('貼り付け文からTodo候補を作る'),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _extractFromText(_pasteController.text),
+                  icon: const Icon(Icons.auto_fix_high),
+                  label: const Text('貼り付け文からTodo候補を作る'),
+                ),
+              ),
+              const SizedBox(width: Spacing.sm),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _importFromClipboard,
+                  icon: const Icon(Icons.content_paste),
+                  label: const Text('クリップボードから貼り付け'),
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: Spacing.lg),
@@ -438,6 +464,19 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
     );
   }
 
+  Future<void> _importFromClipboard() async {
+    final text = await getClipboardText();
+    if (text == null || text.trim().isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('クリップボードにテキストがありません')),
+      );
+      return;
+    }
+    _pasteController.text = text;
+    await _extractFromText(text);
+  }
+
   Future<void> _pickAndOcr(ImageSource source) async {
     setState(() => _busy = true);
     try {
@@ -492,8 +531,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
         appSettings: context.read<AppSettings>(),
       );
       final proxyUrl =
-          GeminiApiService.defaultInstance().proxyUrl ??
-          'http://localhost:8787';
+          GeminiApiService.defaultInstance().proxyUrl ?? '';
       final result = await service.pickAndProcessWithAi(proxyUrl);
       if (result == null) return;
       if (!mounted) return;
