@@ -1,1 +1,1 @@
-validate asynchronous post-delete cleanup and robust harness patch
+validate idempotent final harness and asynchronous deletion cleanup
