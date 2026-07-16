@@ -1,0 +1,64 @@
+name: Apply Known Contract Fixes
+
+on:
+  push:
+    branches:
+      - agent/full-source-hardening
+    paths:
+      - .github/workflows/apply-known-contract-fixes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/full-source-hardening
+          fetch-depth: 0
+
+      - name: Apply exact test contract updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path('test/widget_test.dart'): [
+                  (
+                      "expect(find.text('あした持つもの'), findsOneWidget);",
+                      "expect(find.text('あしたもつもの'), findsOneWidget);",
+                  ),
+              ],
+              Path('test/app_database_test.dart'): [
+                  (
+                      "test('migrates todo with invalid dueDate gracefully', () async {",
+                      "test('rejects todo with invalid dueDate', () async {",
+                  ),
+                  (
+                      "// dueDate is invalid but DateTime.tryParse returns null gracefully\n      expect(ok, isTrue);",
+                      "// 不正な日付を現在日時やnullへ置換せず、移行全体を保留する。\n      expect(ok, isFalse);",
+                  ),
+              ],
+          }
+
+          for path, pairs in replacements.items():
+              text = path.read_text(encoding='utf-8')
+              for old, new in pairs:
+                  count = text.count(old)
+                  if count != 1:
+                      raise SystemExit(f'{path}: expected one match, found {count}: {old!r}')
+                  text = text.replace(old, new)
+              path.write_text(text, encoding='utf-8')
+          PY
+
+          rm .github/workflows/apply-known-contract-fixes.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add test/widget_test.dart test/app_database_test.dart .github/workflows/apply-known-contract-fixes.yml
+          git commit -m "test: align UI and migration contracts with hardening"
+          git push origin HEAD:agent/full-source-hardening
