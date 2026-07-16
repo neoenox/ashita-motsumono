@@ -45,8 +45,8 @@ jobs:
                   'python3 -m unittest tool/test_generate_release_manifest.py',
                   'python3 -m unittest tool/test_release_workflow.py',
                   'flutter analyze --no-fatal-infos',
-                  'flutter test --reporter expanded',
-                  'flutter test tool/generate_lp_screenshots_test.dart --reporter expanded',
+                  'flutter test --reporter json',
+                  'flutter test tool/generate_lp_screenshots_test.dart --reporter json',
               ]),
               encoding='utf-8',
           )
@@ -74,23 +74,50 @@ jobs:
           import os
           from pathlib import Path
 
-          def failure_blocks(lines: list[str]) -> list[list[str]]:
-              blocks: list[list[str]] = []
-              current: list[str] | None = None
+          def json_test_failures(lines: list[str]) -> list[dict[str, object]]:
+              tests: dict[int, dict[str, object]] = {}
+              errors: dict[int, list[dict[str, object]]] = {}
+              failed_ids: set[int] = set()
               for line in lines:
-                  if line.startswith('::group::❌') or line.startswith('❌'):
-                      if current:
-                          blocks.append(current)
-                      current = [line]
+                  try:
+                      event = json.loads(line)
+                  except (json.JSONDecodeError, TypeError):
                       continue
-                  if current is not None:
-                      current.append(line)
-                      if line == '::endgroup::':
-                          blocks.append(current)
-                          current = None
-              if current:
-                  blocks.append(current)
-              return blocks
+                  event_type = event.get('type')
+                  if event_type == 'testStart':
+                      test = event.get('test') or {}
+                      test_id = test.get('id')
+                      if isinstance(test_id, int):
+                          tests[test_id] = {
+                              'name': test.get('name'),
+                              'url': test.get('url'),
+                              'line': test.get('line'),
+                          }
+                  elif event_type == 'error':
+                      test_id = event.get('testID')
+                      if isinstance(test_id, int):
+                          failed_ids.add(test_id)
+                          errors.setdefault(test_id, []).append({
+                              'error': event.get('error'),
+                              'stackTrace': '\n'.join(
+                                  str(event.get('stackTrace') or '').splitlines()[:50]
+                              ),
+                              'isFailure': event.get('isFailure'),
+                          })
+                  elif event_type == 'testDone' and event.get('result') != 'success':
+                      test_id = event.get('testID')
+                      if isinstance(test_id, int) and not event.get('skipped', False):
+                          failed_ids.add(test_id)
+
+              failures = []
+              for test_id in sorted(failed_ids):
+                  metadata = tests.get(test_id, {})
+                  failures.append({
+                      'testID': test_id,
+                      **metadata,
+                      'errors': errors.get(test_id, []),
+                  })
+              return failures
 
           rows = []
           overall = True
@@ -99,11 +126,16 @@ jobs:
               status = int(status_raw)
               overall = overall and status == 0
               output = Path(log_path).read_text(encoding='utf-8', errors='replace').splitlines()
+              failures = (
+                  json_test_failures(output)
+                  if status != 0 and '--reporter json' in command
+                  else []
+              )
               rows.append({
                   'command': command,
                   'exitCode': status,
-                  'failures': failure_blocks(output) if status != 0 else [],
-                  'tail': output[-120:] if status != 0 else [],
+                  'failures': failures,
+                  'tail': output[-80:] if status != 0 and not failures else [],
               })
 
           evidence = {
