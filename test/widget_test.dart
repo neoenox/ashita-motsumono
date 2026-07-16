@@ -416,6 +416,12 @@ void main() {
       expect(find.text('通知時刻'), findsOneWidget);
       expect(find.text('夜 前日 20:00'), findsOneWidget);
       expect(find.text('朝 当日 07:00'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('サポーター'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
       expect(find.text('サポーター'), findsOneWidget);
     });
 
@@ -433,6 +439,12 @@ void main() {
       await tester.pumpAndSettle();
 
       await _openSettings(tester);
+      await tester.scrollUntilVisible(
+        find.text('買い切りサポーター'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
 
       expect(find.text('買い切りサポーター'), findsOneWidget);
       expect(find.text('買い切り ¥190'), findsOneWidget);
@@ -459,6 +471,12 @@ void main() {
       await tester.pumpAndSettle();
 
       await _openSettings(tester);
+      await tester.scrollUntilVisible(
+        find.text('購入アイテムを準備中です。しばらくしてからもう一度お試しください。'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
 
       expect(find.text('購入アイテムを準備中です。しばらくしてからもう一度お試しください。'), findsOneWidget);
       final button = tester.widget<FilledButton>(
@@ -483,6 +501,12 @@ void main() {
       await tester.pumpAndSettle();
 
       await _openSettings(tester);
+      await tester.scrollUntilVisible(
+        find.text('サポーター登録済み'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
 
       expect(find.text('サポーター登録済み'), findsOneWidget);
       expect(find.text('広告なしで使えます。ご購入ありがとうございます。'), findsOneWidget);
