@@ -1,0 +1,57 @@
+name: Release Gate Validation
+
+on:
+  push:
+    branches:
+      - feat/release-gate
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run requested validation commands
+        shell: bash
+        run: |
+          set +e
+          failures=0
+
+          run_check() {
+            label="$1"
+            shift
+            echo "::group::${label}"
+            "$@"
+            status=$?
+            echo "${label} exit code: ${status}"
+            echo "::endgroup::"
+            if [ "$status" -ne 0 ]; then
+              failures=$((failures + 1))
+            fi
+          }
+
+          run_check "dart format" \
+            dart format --output=none --set-exit-if-changed \
+            tool/release_gate.dart \
+            tool/src/release_audit.dart \
+            test/tool/release_audit_test.dart
+          run_check "flutter analyze" flutter analyze
+          run_check "flutter test" flutter test
+          run_check "release gate" dart run tool/release_gate.dart
+
+          echo "Validation command failures: ${failures}"
+          exit "$failures"
