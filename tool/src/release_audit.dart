@@ -84,8 +84,7 @@ final class ReleaseAuditReport {
 final class ReleaseAudit {
   ReleaseAudit._();
 
-  static const _googleSampleAdMobPublisherId =
-      'ca-app-pub-3940256099942544';
+  static const _googleSampleAdMobPublisherId = 'ca-app-pub-3940256099942544';
 
   static const _requiredPermissions = <String>{
     'android.permission.CAMERA',
@@ -483,7 +482,8 @@ final class ReleaseAudit {
     if (expression == null) return null;
     final numeric = RegExp(r'\b(\d+)\b').firstMatch(expression);
     if (numeric != null) return int.parse(numeric.group(1)!);
-    if (expression.contains('flutter.targetSdkVersion')) return flutterTargetSdk;
+    if (expression.contains('flutter.targetSdkVersion'))
+      return flutterTargetSdk;
     return null;
   }
 
