@@ -1,11 +1,8 @@
-// test/purchase_provider_test.dart
-// PurchaseProvider がストア商品情報を正しく UI 表示へ反映することを検証する。
-// 関連: lib/src/services/purchase_provider.dart, lib/src/screens/settings_screen.dart
-
 import 'dart:async';
 
 import 'package:ashita_motsumono/src/services/app_settings.dart';
 import 'package:ashita_motsumono/src/services/purchase_provider.dart';
+import 'package:ashita_motsumono/src/services/purchase_verification_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,8 +24,10 @@ void main() {
         ),
       ],
     );
-
     final provider = AppPurchaseProvider(settings, gateway: gateway);
+    addTearDown(provider.dispose);
+    addTearDown(gateway.dispose);
+
     await provider.ready;
 
     expect(provider.priceLabel, '買い切り ¥240');
@@ -42,15 +41,19 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final settings = AppSettings(await SharedPreferences.getInstance());
     final gateway = _FakePurchaseGateway(available: false);
-
     final provider = AppPurchaseProvider(settings, gateway: gateway);
+    addTearDown(provider.dispose);
+    addTearDown(gateway.dispose);
+
     await provider.ready;
 
     expect(provider.canPurchase, isFalse);
-    expect(provider.statusMessage, 'ストアに接続できないため、購入は現在利用できません。');
+    expect(
+      provider.statusMessage,
+      'ストアに接続できないため、購入済み情報を確認できません。',
+    );
 
     await provider.purchase();
-
     expect(gateway.buyCount, 0);
   });
 
@@ -60,17 +63,104 @@ void main() {
     final gateway = _FakePurchaseGateway(
       notFoundIDs: [PurchaseProvider.productId],
     );
-
     final provider = AppPurchaseProvider(settings, gateway: gateway);
+    addTearDown(provider.dispose);
+    addTearDown(gateway.dispose);
+
     await provider.ready;
 
     expect(provider.canPurchase, isFalse);
-    expect(provider.statusMessage, '購入アイテムを準備中です。しばらくしてからもう一度お試しください。');
+    expect(
+      provider.statusMessage,
+      '購入アイテムを準備中です。しばらくしてからもう一度お試しください。',
+    );
 
     await provider.purchase();
-
     expect(gateway.buyCount, 0);
   });
+
+  test('grants AI access and completes only after verification', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = AppSettings(await SharedPreferences.getInstance());
+    final gateway = _FakePurchaseGateway();
+    final verifier = _FakeVerifier(
+      const EntitlementVerification.granted(
+        accessToken: 'verified-token',
+      ),
+    );
+    final provider = AppPurchaseProvider(
+      settings,
+      gateway: gateway,
+      verifier: verifier,
+    );
+    addTearDown(provider.dispose);
+    addTearDown(gateway.dispose);
+    await provider.ready;
+
+    final purchase = _purchase(PurchaseProvider.aiProductId);
+    gateway.emit([purchase]);
+    await gateway.purchaseCompleted.future;
+
+    expect(verifier.verifiedProductIds, [PurchaseProvider.aiProductId]);
+    expect(provider.aiAccess, isTrue);
+    expect(gateway.completedPurchases, [purchase]);
+  });
+
+  test('does not grant or complete an unverified purchase', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = AppSettings(await SharedPreferences.getInstance());
+    final gateway = _FakePurchaseGateway();
+    final verifier = _FakeVerifier(
+      const EntitlementVerification.denied('verification failed'),
+    );
+    final provider = AppPurchaseProvider(
+      settings,
+      gateway: gateway,
+      verifier: verifier,
+    );
+    addTearDown(provider.dispose);
+    addTearDown(gateway.dispose);
+    await provider.ready;
+
+    gateway.emit([_purchase(PurchaseProvider.aiProductId)]);
+    await verifier.called.future;
+    await Future<void>.delayed(Duration.zero);
+
+    expect(provider.aiAccess, isFalse);
+    expect(gateway.completedPurchases, isEmpty);
+    expect(provider.statusMessage, 'verification failed');
+  });
+}
+
+PurchaseDetails _purchase(String productId) {
+  final purchase = PurchaseDetails(
+    purchaseID: 'purchase-id',
+    productID: productId,
+    verificationData: PurchaseVerificationData(
+      localVerificationData: 'local',
+      serverVerificationData: 'server',
+      source: 'test',
+    ),
+    transactionDate: '0',
+    status: PurchaseStatus.purchased,
+  );
+  purchase.pendingCompletePurchase = true;
+  return purchase;
+}
+
+class _FakeVerifier implements PurchaseVerifier {
+  _FakeVerifier(this.result);
+
+  final EntitlementVerification result;
+  final List<String> verifiedProductIds = [];
+  final Completer<void> called = Completer<void>();
+
+  @override
+  Future<EntitlementVerification> verify(PurchaseDetails purchase) async {
+    verifiedProductIds.add(purchase.productID);
+    if (!called.isCompleted) called.complete();
+    return result;
+  }
 }
 
 class _FakePurchaseGateway implements PurchaseGateway {
@@ -83,12 +173,20 @@ class _FakePurchaseGateway implements PurchaseGateway {
   final bool available;
   final List<ProductDetails> productDetails;
   final List<String> notFoundIDs;
+  final StreamController<List<PurchaseDetails>> _controller =
+      StreamController<List<PurchaseDetails>>.broadcast();
   final List<Set<String>> queriedIds = [];
+  final List<PurchaseDetails> completedPurchases = [];
+  final Completer<void> purchaseCompleted = Completer<void>();
   int restoreCount = 0;
   int buyCount = 0;
 
   @override
-  Stream<List<PurchaseDetails>> get purchaseStream => const Stream.empty();
+  Stream<List<PurchaseDetails>> get purchaseStream => _controller.stream;
+
+  void emit(List<PurchaseDetails> purchases) => _controller.add(purchases);
+
+  Future<void> dispose() => _controller.close();
 
   @override
   Future<bool> isAvailable() async => available;
@@ -114,5 +212,8 @@ class _FakePurchaseGateway implements PurchaseGateway {
   }
 
   @override
-  Future<void> completePurchase(PurchaseDetails purchase) async {}
+  Future<void> completePurchase(PurchaseDetails purchase) async {
+    completedPurchases.add(purchase);
+    if (!purchaseCompleted.isCompleted) purchaseCompleted.complete();
+  }
 }
