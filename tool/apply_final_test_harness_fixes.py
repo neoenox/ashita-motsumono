@@ -12,13 +12,33 @@ def replace_once(text: str, old: str, new: str, *, label: str) -> str:
     return text.replace(old, new)
 
 
+def replace_function(
+    text: str,
+    *,
+    start_marker: str,
+    end_marker: str,
+    replacement: str,
+    already_applied_marker: str,
+    label: str,
+) -> str:
+    if already_applied_marker in text:
+        return text
+    start = text.find(start_marker)
+    if start < 0:
+        raise RuntimeError(f'{label}: start marker not found')
+    end = text.find(end_marker, start)
+    if end < 0:
+        raise RuntimeError(f'{label}: end marker not found')
+    return text[:start] + replacement + text[end:]
+
+
 def update_widget_tests() -> None:
     path = Path('test/widget_test.dart')
     text = path.read_text(encoding='utf-8')
     text = replace_once(
         text,
-        "import 'package:ashita_motsumono/src/app_state.dart';",
-        "import 'dart:io';\n\nimport 'package:ashita_motsumono/src/app_state.dart';",
+        "import 'dart:io' show Platform;",
+        "import 'dart:io' show Directory, Platform;",
         label='widget test dart io import',
     )
     text = replace_once(
@@ -27,21 +47,8 @@ def update_widget_tests() -> None:
         "import 'package:ashita_motsumono/src/services/purchase_provider.dart';\nimport 'package:ashita_motsumono/src/services/sensitive_data_cleaner.dart';",
         label='widget test sensitive cleaner import',
     )
-    text = replace_once(
-        text,
-        """Future<AppState> _createAppState() async {
-  // ignore: invalid_use_of_visible_for_testing_member
-  SharedPreferences.setMockInitialValues({'notification_info_shown_v1': true});
-  final store = await DriftStore.createInMemory();
-  final state = AppState(
-    store: store,
-    notifications: _FakeNotificationService(),
-  );
-  await state.load();
-  return state;
-}""",
-        """Future<AppState> _createAppState() async {
-  // ignore: invalid_use_of_visible_for_testing_member
+
+    helper = """Future<AppState> _createAppState() async {
   SharedPreferences.setMockInitialValues({'notification_info_shown_v1': true});
   final tempDir = await Directory.systemTemp.createTemp('ashita_widget_test_');
   addTearDown(() async {
@@ -50,18 +57,27 @@ def update_widget_tests() -> None:
     }
   });
   final store = await DriftStore.createInMemory();
-  final state = AppState(
+  final appState = AppState(
     store: store,
     notifications: _FakeNotificationService(),
     sensitiveDataCleaner: SensitiveDataCleaner(
       directoryProvider: () async => tempDir,
     ),
   );
-  await state.load();
-  return state;
-}""",
+  await appState.load();
+  return appState;
+}
+
+"""
+    text = replace_function(
+        text,
+        start_marker='Future<AppState> _createAppState() async {',
+        end_marker='void main() {',
+        replacement=helper,
+        already_applied_marker='ashita_widget_test_',
         label='widget test app state platform isolation',
     )
+
     text = replace_once(
         text,
         "expect(find.text('買い切り ¥190'), findsOneWidget);",
@@ -92,6 +108,7 @@ def update_widget_tests() -> None:
       expect(appState.children, isEmpty);""",
         label='clear-all completion wait',
     )
+
     diagnostic = """      final snackbarTexts = tester
           .widgetList<Text>(
             find.descendant(
@@ -118,6 +135,7 @@ def update_widget_tests() -> None:
       expect(settings.learnedItemLabels, isEmpty);"""
     if diagnostic in text:
         text = text.replace(diagnostic, clean_assertions)
+
     path.write_text(text, encoding='utf-8')
 
 
