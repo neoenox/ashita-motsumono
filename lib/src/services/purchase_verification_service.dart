@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:in_app_purchase/in_app_purchase.dart';
 
+import 'verified_entitlement_cache.dart';
+
 class EntitlementVerification {
   const EntitlementVerification._({
     required this.verified,
@@ -50,6 +52,10 @@ class PurchaseVerificationService implements PurchaseVerifier {
     'GEMINI_PROXY_URL',
     defaultValue: '',
   );
+  static const _aiProductId = String.fromEnvironment(
+    'IAP_AI_ACCESS_PRODUCT_ID',
+    defaultValue: 'ai_analysis',
+  );
 
   final String _baseUrl;
   final http.Client _client;
@@ -58,14 +64,20 @@ class PurchaseVerificationService implements PurchaseVerifier {
   Future<EntitlementVerification> verify(PurchaseDetails purchase) async {
     final endpoint = _endpoint('/entitlements/verify');
     if (endpoint == null) {
-      return const EntitlementVerification.retryable(
-        '購入確認サーバーが設定されていません。',
+      return _failed(
+        purchase,
+        const EntitlementVerification.retryable(
+          '購入確認サーバーが設定されていません。',
+        ),
       );
     }
     final verificationData =
         purchase.verificationData.serverVerificationData.trim();
     if (verificationData.isEmpty) {
-      return const EntitlementVerification.denied('購入証明データがありません。');
+      return _failed(
+        purchase,
+        const EntitlementVerification.denied('購入証明データがありません。'),
+      );
     }
 
     try {
@@ -83,26 +95,65 @@ class PurchaseVerificationService implements PurchaseVerifier {
           .timeout(const Duration(seconds: 30));
       final payload = _decodeObject(response.body);
       if (response.statusCode == 200 && payload['verified'] == true) {
+        final token = payload['accessToken'] as String?;
+        final expiresAt = DateTime.tryParse(
+          payload['expiresAt'] as String? ?? '',
+        );
+        if (purchase.productID == _aiProductId) {
+          if (token == null || expiresAt == null) {
+            return _failed(
+              purchase,
+              const EntitlementVerification.denied(
+                'AI利用権トークンを確認できませんでした。',
+              ),
+            );
+          }
+          VerifiedEntitlementCache.setAiToken(token, expiresAt);
+        }
         return EntitlementVerification.granted(
-          accessToken: payload['accessToken'] as String?,
-          expiresAt: DateTime.tryParse(payload['expiresAt'] as String? ?? ''),
+          accessToken: token,
+          expiresAt: expiresAt,
         );
       }
       final message = payload['error'] as String? ?? '購入を確認できませんでした。';
-      if (response.statusCode >= 500 || response.statusCode == 429) {
-        return EntitlementVerification.retryable(message);
-      }
-      return EntitlementVerification.denied(message);
+      return _failed(
+        purchase,
+        response.statusCode >= 500 || response.statusCode == 429
+            ? EntitlementVerification.retryable(message)
+            : EntitlementVerification.denied(message),
+      );
     } on SocketException {
-      return const EntitlementVerification.retryable('購入確認サーバーに接続できません。');
+      return _failed(
+        purchase,
+        const EntitlementVerification.retryable('購入確認サーバーに接続できません。'),
+      );
     } on TimeoutException {
-      return const EntitlementVerification.retryable('購入確認がタイムアウトしました。');
+      return _failed(
+        purchase,
+        const EntitlementVerification.retryable('購入確認がタイムアウトしました。'),
+      );
     } on FormatException {
-      return const EntitlementVerification.retryable('購入確認サーバーの応答が不正です。');
+      return _failed(
+        purchase,
+        const EntitlementVerification.retryable('購入確認サーバーの応答が不正です。'),
+      );
     } on Object catch (error) {
       if (kDebugMode) debugPrint('Purchase verification failed: $error');
-      return const EntitlementVerification.retryable('購入情報の確認に失敗しました。');
+      return _failed(
+        purchase,
+        const EntitlementVerification.retryable('購入情報の確認に失敗しました。'),
+      );
     }
+  }
+
+  EntitlementVerification _failed(
+    PurchaseDetails purchase,
+    EntitlementVerification result,
+  ) {
+    if (purchase.productID == _aiProductId) {
+      VerifiedEntitlementCache.clearAiToken();
+    }
+    return result;
   }
 
   Uri? _endpoint(String path) {
