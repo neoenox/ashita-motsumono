@@ -13,7 +13,6 @@ import re
 import sys
 from typing import Mapping
 
-
 _VERSION_PATTERN = re.compile(r"^version:\s*([^\s#]+)\s*$", re.MULTILINE)
 _KTS_APPLICATION_ID_PATTERN = re.compile(r'applicationId\s*=\s*"([^"]+)"')
 _GROOVY_APPLICATION_ID_PATTERN = re.compile(
@@ -61,14 +60,8 @@ def read_pubspec_version(path: Path) -> tuple[str, int]:
 
 def read_application_id(root: Path) -> str:
     candidates = (
-        (
-            root / "android/app/build.gradle.kts",
-            _KTS_APPLICATION_ID_PATTERN,
-        ),
-        (
-            root / "android/app/build.gradle",
-            _GROOVY_APPLICATION_ID_PATTERN,
-        ),
+        (root / "android/app/build.gradle.kts", _KTS_APPLICATION_ID_PATTERN),
+        (root / "android/app/build.gradle", _GROOVY_APPLICATION_ID_PATTERN),
     )
     for path, pattern in candidates:
         if not path.exists():
@@ -144,6 +137,7 @@ def build_manifest(
     apk_certificate: Path,
     aab_certificate: Path,
     iap_product_id: str,
+    iap_ai_product_id: str = "ai_analysis",
     apk_artifact_name: str,
     aab_artifact_name: str,
     evidence_artifact_name: str,
@@ -187,16 +181,14 @@ def build_manifest(
         "repository": github["GITHUB_REPOSITORY"],
         "commitSha": github["GITHUB_SHA"],
         "ref": github["GITHUB_REF"],
-        "version": {
-            "name": version_name,
-            "code": version_code,
-        },
+        "version": {"name": version_name, "code": version_code},
         "android": {
             "applicationId": application_id,
             "uploadCertificateSha256": upload_sha256,
         },
         "billing": {
             "removeAdsProductId": iap_product_id,
+            "aiAccessProductId": iap_ai_product_id,
         },
         "artifacts": {
             "apk": {
@@ -235,6 +227,7 @@ def main() -> int:
     parser.add_argument("--apk-certificate", type=Path, required=True)
     parser.add_argument("--aab-certificate", type=Path, required=True)
     parser.add_argument("--iap-product-id", required=True)
+    parser.add_argument("--iap-ai-product-id", required=True)
     parser.add_argument(
         "--apk-artifact-name",
         default="ashita-motsumono-signed-release-apk",
@@ -261,6 +254,7 @@ def main() -> int:
             apk_certificate=args.apk_certificate,
             aab_certificate=args.aab_certificate,
             iap_product_id=args.iap_product_id,
+            iap_ai_product_id=args.iap_ai_product_id,
             apk_artifact_name=args.apk_artifact_name,
             aab_artifact_name=args.aab_artifact_name,
             evidence_artifact_name=args.evidence_artifact_name,
