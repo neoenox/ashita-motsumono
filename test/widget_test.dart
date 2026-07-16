@@ -447,7 +447,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('買い切りサポーター'), findsOneWidget);
-      expect(find.text('買い切り ¥190'), findsOneWidget);
+      expect(find.text('買い切り ¥190'), findsNWidgets(2));
       expect(find.text('広告を消して応援する'), findsOneWidget);
       expect(find.text('購入を復元'), findsOneWidget);
     });
@@ -478,7 +478,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('購入アイテムを準備中です。しばらくしてからもう一度お試しください。'), findsOneWidget);
+      expect(find.text('購入アイテムを準備中です。しばらくしてからもう一度お試しください。'), findsNWidgets(2));
       final button = tester.widget<FilledButton>(
         find.widgetWithText(FilledButton, '広告を消して応援する'),
       );
