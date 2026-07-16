@@ -5,6 +5,7 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 
 import 'app_settings.dart';
 import 'purchase_verification_service.dart';
+import 'verified_entitlement_cache.dart';
 
 abstract class PurchaseGateway {
   Stream<List<PurchaseDetails>> get purchaseStream;
@@ -62,7 +63,6 @@ abstract class PurchaseProvider extends ChangeNotifier {
   Future<void> purchaseAi();
   Future<void> restore();
 
-  /// Test doubles and unavailable stores fail closed by default.
   Future<String?> getAiAccessToken() async => null;
 }
 
@@ -73,6 +73,7 @@ class AppPurchaseProvider extends PurchaseProvider {
     PurchaseVerifier? verifier,
   })  : _purchase = gateway ?? InAppPurchaseGateway(),
         _verifier = verifier ?? PurchaseVerificationService() {
+    VerifiedEntitlementCache.registerAiTokenRefresher(getAiAccessToken);
     _ready = _init();
   }
 
@@ -120,6 +121,8 @@ class AppPurchaseProvider extends PurchaseProvider {
 
   @override
   void dispose() {
+    VerifiedEntitlementCache.clearAiTokenRefresher();
+    VerifiedEntitlementCache.clearAiToken();
     _subscription?.cancel();
     super.dispose();
   }
@@ -206,6 +209,7 @@ class AppPurchaseProvider extends PurchaseProvider {
     _aiPurchase = null;
     _aiAccessToken = null;
     _aiAccessTokenExpiresAt = null;
+    VerifiedEntitlementCache.clearAiToken();
     await _settings.setAiAccess(false);
   }
 
