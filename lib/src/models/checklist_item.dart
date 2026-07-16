@@ -33,9 +33,16 @@ class ChecklistItem {
     if (id is! String || id.trim().isEmpty) {
       throw const FormatException('ChecklistItem.id is invalid');
     }
-    if (label is! String || label.trim().isEmpty || checked is! bool) {
-      throw const FormatException('ChecklistItem fields are invalid');
+    if (label is! String || label.trim().isEmpty) {
+      throw const FormatException('ChecklistItem.label is invalid');
     }
-    return ChecklistItem(id: id, label: label, isChecked: checked);
+    if (checked != null && checked is! bool) {
+      throw const FormatException('ChecklistItem.isChecked is invalid');
+    }
+    return ChecklistItem(
+      id: id,
+      label: label,
+      isChecked: checked as bool? ?? false,
+    );
   }
 }
