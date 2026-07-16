@@ -196,7 +196,7 @@ class GeminiApiService {
   }
 
   static String? _detectMimeType(String path) => switch (
-        path.split('.').last.toLowerCase(),
+        path.split('.').last.toLowerCase()
       ) {
         'png' => 'image/png',
         'jpg' || 'jpeg' => 'image/jpeg',
