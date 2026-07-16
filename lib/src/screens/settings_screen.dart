@@ -3,7 +3,6 @@
 // Stitch デザインに合わせてカードベースのレイアウトに刷新。
 // 関連: app_settings.dart, home_screen.dart, notification_service.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -73,7 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           _SectionCard(
             icon: Icons.notifications_outlined,
-            title: '通知',
+            title: '通知時刻',
             description: '通知時刻とロック画面に表示する内容を設定します',
             child: Column(
               children: [
