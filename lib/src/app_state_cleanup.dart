@@ -8,6 +8,7 @@ extension CleanupAppStateOperations on AppState {
             .pathsFor(documentsToDelete)
             .toList();
 
+        // 主データと副作用キューの登録だけを削除成功の必須境界とする。
         await _store.clearWithSideEffects(
           notificationTodoIds: todosToCancel.map((todo) => todo.id),
           cleanupPaths: cleanupPaths,
@@ -16,10 +17,38 @@ extension CleanupAppStateOperations on AppState {
         _replaceTodos(const []);
         _replaceDocuments(const []);
 
-        await _notificationCoordinator.retryPending(const <AppTodo>[]);
-        await _retryPendingFileCleanup();
-        await _sensitiveDataCleaner.clearResidualFiles();
+        // OS通知取消、画像削除、残留ログ削除は再試行可能な後処理。
+        // 主データ削除後の一時的なプラグイン/I/O障害で、削除済み操作を
+        // ユーザーへ失敗扱いとして返さない。
+        await _runPostDeleteBestEffort(
+          'notification cancellation',
+          () => _notificationCoordinator.retryPending(const <AppTodo>[]),
+        );
+        await _runPostDeleteBestEffort(
+          'document image cleanup',
+          _retryPendingFileCleanup,
+        );
+        await _runPostDeleteBestEffort(
+          'residual file cleanup',
+          _sensitiveDataCleaner.clearResidualFiles,
+        );
       });
+
+  Future<void> _runPostDeleteBestEffort(
+    String operation,
+    Future<void> Function() action,
+  ) async {
+    try {
+      await action();
+    } on Object catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint(
+          'Post-delete $operation failed and will remain best effort: '
+          '$error\n$stackTrace',
+        );
+      }
+    }
+  }
 
   Future<void> tryDeleteDocumentOnDispose({
     required bool saved,
