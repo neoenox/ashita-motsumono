@@ -31,6 +31,11 @@ class AppSettings extends ChangeNotifier {
   /// AI分析購入済みなら true
   bool get aiAccess => _prefs.getBool(_keyAiAccess) ?? false;
 
+  /// ロック画面を含む通知本文にTodoの詳細を表示するか。
+  /// プライバシー保護のため既定値は false。
+  bool get showNotificationDetails =>
+      _prefs.getBool(_keyShowNotificationDetails) ?? false;
+
   List<String> get learnedItemLabels => List.unmodifiable(
     _prefs.getStringList(_keyLearnedItemLabels) ?? const [],
   );
@@ -45,6 +50,7 @@ class AppSettings extends ChangeNotifier {
   static const _keyPreviousNightMinute = 'notification_previous_night_minute';
   static const _keySameMorningHour = 'notification_same_morning_hour';
   static const _keySameMorningMinute = 'notification_same_morning_minute';
+  static const _keyShowNotificationDetails = 'notification_show_details';
   static const _keyAdRemoved = 'purchase_ad_removed';
   static const _keyAiAccess = 'purchase_ai_access';
   static const _keyLearnedItemLabels = 'learned_item_labels_v1';
@@ -58,6 +64,11 @@ class AppSettings extends ChangeNotifier {
   Future<void> setSameMorningTime(int hour, int minute) async {
     await _prefs.setInt(_keySameMorningHour, hour);
     await _prefs.setInt(_keySameMorningMinute, minute);
+    notifyListeners();
+  }
+
+  Future<void> setShowNotificationDetails(bool enabled) async {
+    await _prefs.setBool(_keyShowNotificationDetails, enabled);
     notifyListeners();
   }
 
