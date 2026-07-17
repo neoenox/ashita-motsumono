@@ -97,6 +97,7 @@ class AppPurchaseProvider extends PurchaseProvider {
   PurchaseDetails? _aiPurchase;
   String? _aiAccessToken;
   DateTime? _aiAccessTokenExpiresAt;
+  Future<String?>? _pendingTokenFetch;
 
   @override
   Future<void> get ready => _ready;
@@ -250,7 +251,20 @@ class AppPurchaseProvider extends PurchaseProvider {
   }
 
   @override
-  Future<String?> getAiAccessToken() async {
+  Future<String?> getAiAccessToken() {
+    final pending = _pendingTokenFetch;
+    if (pending != null) return pending;
+
+    final refresh = _getAiAccessTokenImpl();
+    _pendingTokenFetch = refresh;
+    return refresh.whenComplete(() {
+      if (identical(_pendingTokenFetch, refresh)) {
+        _pendingTokenFetch = null;
+      }
+    });
+  }
+
+  Future<String?> _getAiAccessTokenImpl() async {
     final expiry = _aiAccessTokenExpiresAt;
     if (_aiAccess &&
         _aiAccessToken != null &&
