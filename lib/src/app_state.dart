@@ -203,10 +203,13 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> retryPendingSideEffects() async {
+  Future<void> _retryPendingSideEffectsUnlocked() async {
     await _notificationCoordinator.retryPending(todos);
     await _retryPendingFileCleanup();
   }
+
+  Future<void> retryPendingSideEffects() =>
+      _runMutation(_retryPendingSideEffectsUnlocked);
 
   Future<void> close() {
     return _closeFuture ??= _store.close();
