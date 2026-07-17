@@ -11,13 +11,13 @@ class CrashReporter {
   static Future<void> init() async {
     final dir = await getApplicationDocumentsDirectory();
     final logFile = File('${dir.path}/crash.log');
-    await _rotateIfNeeded(logFile);
+    _rotateIfNeededSync(logFile);
 
-    FlutterError.onError = (FlutterErrorDetails details) async {
+    FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
       try {
-        await _rotateIfNeeded(logFile);
-        await logFile.writeAsString(
+        _rotateIfNeededSync(logFile);
+        logFile.writeAsStringSync(
           '${DateTime.now().toUtc().toIso8601String()} [FLUTTER] '
           '${details.exceptionAsString()}\n${details.stack ?? StackTrace.empty}\n\n',
           mode: FileMode.append,
@@ -29,11 +29,7 @@ class CrashReporter {
 
     PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
       try {
-        if (logFile.existsSync() && logFile.lengthSync() > _maxBytes) {
-          final previous = File('${logFile.parent.path}/crash.previous.log');
-          if (previous.existsSync()) previous.deleteSync();
-          logFile.renameSync(previous.path);
-        }
+        _rotateIfNeededSync(logFile);
         logFile.writeAsStringSync(
           '${DateTime.now().toUtc().toIso8601String()} [DART] '
           '${error.runtimeType}: $error\n$stack\n\n',
@@ -46,10 +42,10 @@ class CrashReporter {
     };
   }
 
-  static Future<void> _rotateIfNeeded(File file) async {
-    if (!await file.exists() || await file.length() <= _maxBytes) return;
+  static void _rotateIfNeededSync(File file) {
+    if (!file.existsSync() || file.lengthSync() <= _maxBytes) return;
     final previous = File('${file.parent.path}/crash.previous.log');
-    if (await previous.exists()) await previous.delete();
-    await file.rename(previous.path);
+    if (previous.existsSync()) previous.deleteSync();
+    file.renameSync(previous.path);
   }
 }
