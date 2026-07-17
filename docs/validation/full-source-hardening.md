@@ -4,8 +4,8 @@
 - Pull request: #119
 - Static code and contract changes: implemented
 - Flutter SDK: pinned to `3.44.0` to satisfy the repository's Dart `>=3.12.0` constraint
-- Dependency resolution, Python release checks, and `flutter analyze --no-fatal-infos`: passed in automated validation
-- Full Flutter tests and LP screenshot generation: being revalidated after contract and testability fixes
+- Temporary diagnostic workflows, evidence snapshots, triggers, and test-rewrite scripts: removed
+- Standard validation path: `.github/workflows/ci.yml` only
 - Cloudflare deployment, store purchase verification, real billing, refund, restore, and physical-device tests: external gates
 
-This document deliberately does not classify checks as PASS until their latest-HEAD evidence is available.
+The pull request is ready for review only after the standard CI succeeds on the latest head commit. This document does not classify external deployment or store/device checks as passed.
