@@ -45,7 +45,18 @@ interface EntitlementPayload {
   exp: number;
 }
 
+interface CachedGoogleAccessToken {
+  token: string;
+  expiresAt: number;
+  subject: string;
+}
+
 const encoder = new TextEncoder();
+let cachedGoogleAccessToken: CachedGoogleAccessToken | null = null;
+let pendingGoogleAccessToken: {
+  subject: string;
+  promise: Promise<string>;
+} | null = null;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -267,7 +278,33 @@ async function verifyGooglePlay(
 }
 
 async function googleAccessToken(env: Env): Promise<string> {
+  const subject = env.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL;
   const now = Math.floor(Date.now() / 1000);
+  if (
+    cachedGoogleAccessToken &&
+    cachedGoogleAccessToken.subject === subject &&
+    cachedGoogleAccessToken.expiresAt > now + 60
+  ) {
+    return cachedGoogleAccessToken.token;
+  }
+
+  const pending = pendingGoogleAccessToken;
+  if (pending && pending.subject === subject) {
+    return pending.promise;
+  }
+
+  const promise = fetchGoogleAccessToken(env, now);
+  pendingGoogleAccessToken = { subject, promise };
+  try {
+    return await promise;
+  } finally {
+    if (pendingGoogleAccessToken?.promise === promise) {
+      pendingGoogleAccessToken = null;
+    }
+  }
+}
+
+async function fetchGoogleAccessToken(env: Env, now: number): Promise<string> {
   const assertion = await signRs256Jwt(
     {
       iss: env.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL,
@@ -287,8 +324,19 @@ async function googleAccessToken(env: Env): Promise<string> {
     }),
   });
   if (!response.ok) throw new Error('Google OAuth failed');
-  const payload = await response.json() as { access_token?: string };
+  const payload = await response.json() as {
+    access_token?: string;
+    expires_in?: number;
+  };
   if (!payload.access_token) throw new Error('Google OAuth token missing');
+  const expiresIn = typeof payload.expires_in === 'number' && payload.expires_in > 0
+    ? payload.expires_in
+    : 3600;
+  cachedGoogleAccessToken = {
+    token: payload.access_token,
+    expiresAt: now + expiresIn,
+    subject: env.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL,
+  };
   return payload.access_token;
 }
 
