@@ -9,7 +9,8 @@ permissions:
 
 jobs:
   cancel-stale-runs:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
+    timeout-minutes: 5
     steps:
       - name: Cancel superseded Flutter CI runs
         shell: bash
@@ -18,7 +19,7 @@ jobs:
           REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          for run_id in 29543143664 29549323442 29549935847; do
+          for run_id in 29543143664 29549323442 29549935847 29550413246; do
             status="$(curl \
               --fail-with-body \
               --silent \
