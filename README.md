@@ -41,7 +41,7 @@
 
 ## 必要環境
 
-- Flutter **3.38.1**（`.fvmrc`とCIで固定）
+- Flutter **3.44.0**（`.fvmrc`とCIで固定）
 - Dart SDK 3.12.0以上
 - Java 17
 - Android SDK / Xcode（対象プラットフォームに応じて）
