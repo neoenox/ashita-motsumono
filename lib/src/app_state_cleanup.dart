@@ -1,7 +1,10 @@
 part of 'app_state.dart';
 
 extension CleanupAppStateOperations on AppState {
-  Future<void> clearAllData() => _runMutation(() async {
+  Future<void> clearAllData({
+    bool awaitPostDeleteCleanup = false,
+  }) =>
+      _runMutation(() async {
         final documentsToDelete = List<DocumentRecord>.from(documents);
         final todosToCancel = List<AppTodo>.from(todos);
         final cleanupPaths = _documentImageCleaner
@@ -17,9 +20,14 @@ extension CleanupAppStateOperations on AppState {
         _replaceTodos(const []);
         _replaceDocuments(const []);
 
-        // OS通知取消、画像削除、残留ログ削除は永続キューを起点とした
-        // 再試行可能な後処理。完了を待って設定削除や画面応答をブロックしない。
-        unawaited(_runPostDeleteCleanup());
+        // 通常UIでは設定削除や成功表示をブロックしない。
+        // テストや保守処理など、副作用完了まで必要な呼び出し元は明示的に待機できる。
+        final cleanup = _runPostDeleteCleanup();
+        if (awaitPostDeleteCleanup) {
+          await cleanup;
+        } else {
+          unawaited(cleanup);
+        }
       });
 
   Future<void> _runPostDeleteCleanup() async {
