@@ -120,7 +120,7 @@ void main() {
         documentId: document.id,
       );
 
-      await appState.clearAllData();
+      await appState.clearAllData(awaitPostDeleteCleanup: true);
 
       expect(appState.children, isEmpty);
       expect(appState.todos, isEmpty);
