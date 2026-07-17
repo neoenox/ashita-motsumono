@@ -143,7 +143,7 @@ extension TodoAppStateOperations on AppState {
       });
 
   Future<void> rescheduleAllNotifications() => _runMutation(() async {
-        await retryPendingSideEffects();
+        await _retryPendingSideEffectsUnlocked();
         await _notificationCoordinator.rescheduleAll(todos);
       });
 }
