@@ -1,3 +1,22 @@
 name = "ashita-gemini-proxy"
 main = "src/index.ts"
 compatibility_date = "2026-07-10"
+
+[vars]
+ANDROID_PACKAGE_NAME = "com.ashita_motsumono"
+IOS_BUNDLE_ID = "com.ashita_motsumono"
+REMOVE_ADS_PRODUCT_ID = "remove_ads"
+AI_ACCESS_PRODUCT_ID = "ai_analysis"
+MAX_IMAGE_BYTES = "5242880"
+
+[[unsafe.bindings]]
+name = "AI_RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }
+
+[[unsafe.bindings]]
+name = "ENTITLEMENT_RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 20, period = 60 }

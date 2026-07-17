@@ -1,9 +1,3 @@
-// lib/src/services/image_file_service.dart
-// 撮影または選択した画像ファイルをアプリのドキュメントディレクトリにコピーする。
-// image_picker が返す XFile (content:// URI の場合がある) を読み取り、ローカルファイルに保存する。
-// このMVPは Android/iOS 専用。
-// 関連: services/ocr_service.dart, screens/add_todo_screen.dart
-
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -15,32 +9,40 @@ import 'package:uuid/uuid.dart';
 class ImageFileService {
   ImageFileService({Uuid? uuid}) : _uuid = uuid ?? const Uuid();
 
+  static const maxImageBytes = 5 * 1024 * 1024;
+
   final Uuid _uuid;
 
   Future<File> copyFromXFile(XFile source) async {
+    final sourceLength = await source.length();
+    if (sourceLength <= 0) throw StateError('画像ファイルが空です。');
+    if (sourceLength > maxImageBytes) {
+      throw StateError('画像サイズが5MBを超えています。');
+    }
     final dir = await getApplicationDocumentsDirectory();
     final imageDir = Directory(p.join(dir.path, 'document_images'));
-    if (!await imageDir.exists()) {
-      await imageDir.create(recursive: true);
-    }
-    final extension =
-        p.extension(source.path).isEmpty ? '.jpg' : p.extension(source.path);
+    if (!await imageDir.exists()) await imageDir.create(recursive: true);
+    final rawExtension = p.extension(source.path).toLowerCase();
+    final extension = switch (rawExtension) {
+      '.png' || '.jpg' || '.jpeg' || '.webp' => rawExtension,
+      _ => '.jpg',
+    };
     final dest = File(p.join(imageDir.path, '${_uuid.v4()}$extension'));
     final bytes = await source.readAsBytes();
-    await dest.writeAsBytes(bytes);
+    if (bytes.isEmpty) throw StateError('画像ファイルが空です。');
+    if (bytes.length > maxImageBytes) {
+      throw StateError('画像サイズが5MBを超えています。');
+    }
+    await dest.writeAsBytes(bytes, flush: true);
     return dest;
   }
 
-  /// 呼び出し元が再試行可否を判断できるよう、削除失敗を伝播する。
   static Future<void> deleteIfExistsStrict(String path) async {
     if (path.isEmpty) return;
     final file = File(path);
-    if (await file.exists()) {
-      await file.delete();
-    }
+    if (await file.exists()) await file.delete();
   }
 
-  /// 既存のベストエフォート用途向け。永続再試行が必要な処理ではstrict版を使う。
   static Future<void> deleteIfExists(String path) async {
     try {
       await deleteIfExistsStrict(path);

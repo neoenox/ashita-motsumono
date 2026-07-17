@@ -291,7 +291,7 @@ void main() {
       expect(ok, isFalse);
     });
 
-    test('migrates todo with invalid dueDate gracefully', () async {
+    test('rejects todo with invalid dueDate', () async {
       SharedPreferences.setMockInitialValues({
         'ashita_motsumono_snapshot_v1': '''
         {
@@ -317,8 +317,8 @@ void main() {
       });
       final prefs = await SharedPreferences.getInstance();
       final ok = await AppDatabase.tryMigration(prefs);
-      // dueDate is invalid but DateTime.tryParse returns null gracefully
-      expect(ok, isTrue);
+      // 不正な日付を現在日時やnullへ置換せず、移行全体を保留する。
+      expect(ok, isFalse);
     });
   });
 }

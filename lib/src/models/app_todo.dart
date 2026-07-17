@@ -1,11 +1,7 @@
-// lib/src/models/app_todo.dart
-// Todo本体（タイトル、カテゴリ、ステータス、チェックリスト、締切、通知設定など）。
-// アプリの中心的なドメインモデル。toJson/fromJson で永続化可能。
-// 関連: entities.dart, enums.dart, checklist_item.dart, app_snapshot.dart
-
 import 'package:flutter/foundation.dart';
-import 'enums.dart';
+
 import 'checklist_item.dart';
+import 'enums.dart';
 
 @immutable
 class AppTodo {
@@ -92,31 +88,92 @@ class AppTodo {
         'amount': amount,
         'note': note,
         'status': status.name,
-        'items': items.map((e) => e.toJson()).toList(),
+        'items': items.map((item) => item.toJson()).toList(),
         'notifyPreviousNight': notifyPreviousNight,
         'notifySameMorning': notifySameMorning,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
       };
 
-  factory AppTodo.fromJson(Map<String, dynamic> json) => AppTodo(
-        id: (json['id'] as String?) ?? '',
-        title: (json['title'] as String?) ?? '',
-        personId: json['personId'] as String? ?? json['childId'] as String?,
-        documentId: json['documentId'] as String?,
-        dueDate: (json['dueDate'] as String?) != null
-            ? DateTime.tryParse(json['dueDate'] as String)
-            : null,
-        category: TodoCategory.fromName(json['category'] as String?),
-        amount: json['amount'] as int?,
-        note: json['note'] as String?,
-        status: TodoStatus.fromName(json['status'] as String?),
-        items: (json['items'] as List<dynamic>? ?? const [])
-            .map((e) => ChecklistItem.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        notifyPreviousNight: json['notifyPreviousNight'] as bool? ?? true,
-        notifySameMorning: json['notifySameMorning'] as bool? ?? true,
-        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
-        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
-      );
+  factory AppTodo.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final title = json['title'];
+    final categoryName = json['category'];
+    final statusName = json['status'];
+    final createdAt = DateTime.tryParse(json['createdAt'] as String? ?? '');
+    final updatedAt = DateTime.tryParse(json['updatedAt'] as String? ?? '');
+    final rawItems = json['items'];
+    final previousNightRaw = json['notifyPreviousNight'];
+    final sameMorningRaw = json['notifySameMorning'];
+
+    if (id is! String || id.trim().isEmpty) {
+      throw const FormatException('AppTodo.id is invalid');
+    }
+    if (title is! String || title.trim().isEmpty) {
+      throw const FormatException('AppTodo.title is invalid');
+    }
+
+    final category = switch (categoryName) {
+      null => TodoCategory.other,
+      'submission' => TodoCategory.submit,
+      String value => TodoCategory.values
+          .where((candidate) => candidate.name == value)
+          .firstOrNull,
+      _ => null,
+    };
+    final status = switch (statusName) {
+      null => TodoStatus.active,
+      String value => TodoStatus.values
+          .where((candidate) => candidate.name == value)
+          .firstOrNull,
+      _ => null,
+    };
+    if (category == null || status == null) {
+      throw const FormatException('AppTodo enum value is invalid');
+    }
+    if (createdAt == null || updatedAt == null || rawItems is! List) {
+      throw const FormatException('AppTodo fields are invalid');
+    }
+    if (previousNightRaw != null && previousNightRaw is! bool) {
+      throw const FormatException('AppTodo.notifyPreviousNight is invalid');
+    }
+    if (sameMorningRaw != null && sameMorningRaw is! bool) {
+      throw const FormatException('AppTodo.notifySameMorning is invalid');
+    }
+
+    final dueDateRaw = json['dueDate'];
+    final dueDate = dueDateRaw == null
+        ? null
+        : DateTime.tryParse(dueDateRaw as String? ?? '');
+    if (dueDateRaw != null && dueDate == null) {
+      throw const FormatException('AppTodo.dueDate is invalid');
+    }
+    final amountRaw = json['amount'];
+    if (amountRaw != null && amountRaw is! num) {
+      throw const FormatException('AppTodo.amount is invalid');
+    }
+
+    return AppTodo(
+      id: id,
+      title: title,
+      personId: json['personId'] as String? ?? json['childId'] as String?,
+      documentId: json['documentId'] as String?,
+      dueDate: dueDate,
+      category: category,
+      amount: (amountRaw as num?)?.toInt(),
+      note: json['note'] as String?,
+      status: status,
+      items: rawItems
+          .map(
+            (value) => ChecklistItem.fromJson(
+              value as Map<String, dynamic>,
+            ),
+          )
+          .toList(),
+      notifyPreviousNight: previousNightRaw as bool? ?? true,
+      notifySameMorning: sameMorningRaw as bool? ?? true,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
 }

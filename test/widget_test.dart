@@ -3,7 +3,7 @@
 // 関連: main.dart, src/screens/home_screen.dart, src/screens/add_child_screen.dart,
 //       src/screens/todo_detail_screen.dart, src/app_state.dart
 
-import 'dart:io' show Platform;
+import 'dart:io' show Directory, Platform;
 
 import 'package:ashita_motsumono/main.dart';
 import 'package:ashita_motsumono/src/app_state.dart';
@@ -13,6 +13,7 @@ import 'package:ashita_motsumono/src/services/app_settings.dart';
 import 'package:ashita_motsumono/src/services/export_service.dart';
 import 'package:ashita_motsumono/src/services/notification_service.dart';
 import 'package:ashita_motsumono/src/services/purchase_provider.dart';
+import 'package:ashita_motsumono/src/services/sensitive_data_cleaner.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -96,10 +97,19 @@ class _TestPurchaseProvider extends PurchaseProvider {
 /// 通知説明ダイアログをスキップした AppState を生成する。
 Future<AppState> _createAppState() async {
   SharedPreferences.setMockInitialValues({'notification_info_shown_v1': true});
+  final tempDir = await Directory.systemTemp.createTemp('ashita_widget_test_');
+  addTearDown(() async {
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
+  });
   final store = await DriftStore.createInMemory();
   final appState = AppState(
     store: store,
     notifications: _FakeNotificationService(),
+    sensitiveDataCleaner: SensitiveDataCleaner(
+      directoryProvider: () async => tempDir,
+    ),
   );
   await appState.load();
   return appState;
@@ -129,7 +139,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('あした持つもの'), findsOneWidget);
+      expect(find.text('あしたもつもの'), findsOneWidget);
       expect(find.text('まず人物を登録'), findsOneWidget);
       expect(find.text('Todoは人物別に整理できます。\nログイン不要・端末内保存です。'), findsOneWidget);
     });
@@ -416,6 +426,12 @@ void main() {
       expect(find.text('通知時刻'), findsOneWidget);
       expect(find.text('夜 前日 20:00'), findsOneWidget);
       expect(find.text('朝 当日 07:00'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('サポーター'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
       expect(find.text('サポーター'), findsOneWidget);
     });
 
@@ -433,9 +449,15 @@ void main() {
       await tester.pumpAndSettle();
 
       await _openSettings(tester);
+      await tester.scrollUntilVisible(
+        find.text('買い切りサポーター'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
 
       expect(find.text('買い切りサポーター'), findsOneWidget);
-      expect(find.text('買い切り ¥190'), findsOneWidget);
+      expect(find.text('買い切り ¥190'), findsNWidgets(2));
       expect(find.text('広告を消して応援する'), findsOneWidget);
       expect(find.text('購入を復元'), findsOneWidget);
     });
@@ -459,8 +481,14 @@ void main() {
       await tester.pumpAndSettle();
 
       await _openSettings(tester);
+      await tester.scrollUntilVisible(
+        find.text('購入アイテムを準備中です。しばらくしてからもう一度お試しください。'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
 
-      expect(find.text('購入アイテムを準備中です。しばらくしてからもう一度お試しください。'), findsOneWidget);
+      expect(find.text('購入アイテムを準備中です。しばらくしてからもう一度お試しください。'), findsNWidgets(2));
       final button = tester.widget<FilledButton>(
         find.widgetWithText(FilledButton, '広告を消して応援する'),
       );
@@ -483,6 +511,12 @@ void main() {
       await tester.pumpAndSettle();
 
       await _openSettings(tester);
+      await tester.scrollUntilVisible(
+        find.text('サポーター登録済み'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
 
       expect(find.text('サポーター登録済み'), findsOneWidget);
       expect(find.text('広告なしで使えます。ご購入ありがとうございます。'), findsOneWidget);
@@ -517,13 +551,19 @@ void main() {
       await tester.tap(find.text('登録データをすべて削除'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('削除する'));
+      for (var attempt = 0;
+          attempt < 20 &&
+              find.text('登録データを削除しました').evaluate().isEmpty;
+          attempt++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
       await tester.pumpAndSettle();
 
+      expect(find.text('登録データを削除しました'), findsOneWidget);
       expect(appState.children, isEmpty);
       expect(appState.todos, isEmpty);
       expect(appState.documents, isEmpty);
       expect(settings.learnedItemLabels, isEmpty);
-      expect(find.text('登録データを削除しました'), findsOneWidget);
     });
   });
 

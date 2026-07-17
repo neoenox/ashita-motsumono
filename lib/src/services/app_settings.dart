@@ -6,9 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppSettings extends ChangeNotifier {
-  AppSettings(this._prefs);
+  AppSettings(this._prefs)
+      : _learnedItemLabels = List<String>.of(
+          _prefs.getStringList(_keyLearnedItemLabels) ?? const <String>[],
+        );
 
   final SharedPreferences _prefs;
+  List<String> _learnedItemLabels;
 
   int get previousNightHour =>
       _prefs.getInt(_keyPreviousNightHour) ?? defaultPreviousNightHour;
@@ -31,9 +35,13 @@ class AppSettings extends ChangeNotifier {
   /// AI分析購入済みなら true
   bool get aiAccess => _prefs.getBool(_keyAiAccess) ?? false;
 
-  List<String> get learnedItemLabels => List.unmodifiable(
-    _prefs.getStringList(_keyLearnedItemLabels) ?? const [],
-  );
+  /// ロック画面を含む通知本文にTodoの詳細を表示するか。
+  /// プライバシー保護のため既定値は false。
+  bool get showNotificationDetails =>
+      _prefs.getBool(_keyShowNotificationDetails) ?? false;
+
+  List<String> get learnedItemLabels =>
+      List<String>.unmodifiable(_learnedItemLabels);
 
   static const defaultPreviousNightHour = 20;
   static const defaultPreviousNightMinute = 0;
@@ -45,6 +53,7 @@ class AppSettings extends ChangeNotifier {
   static const _keyPreviousNightMinute = 'notification_previous_night_minute';
   static const _keySameMorningHour = 'notification_same_morning_hour';
   static const _keySameMorningMinute = 'notification_same_morning_minute';
+  static const _keyShowNotificationDetails = 'notification_show_details';
   static const _keyAdRemoved = 'purchase_ad_removed';
   static const _keyAiAccess = 'purchase_ai_access';
   static const _keyLearnedItemLabels = 'learned_item_labels_v1';
@@ -61,6 +70,11 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setShowNotificationDetails(bool enabled) async {
+    await _prefs.setBool(_keyShowNotificationDetails, enabled);
+    notifyListeners();
+  }
+
   Future<void> setAdRemoved(bool removed) async {
     await _prefs.setBool(_keyAdRemoved, removed);
     notifyListeners();
@@ -73,13 +87,12 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> addLearnedItemLabels(Iterable<String> labels) async {
     final merged = <String>{
-      ...learnedItemLabels,
+      ..._learnedItemLabels,
       ...labels.map((label) => label.trim()).where(_isUsefulItemLabel),
-    }.toList(growable: false);
-    await _prefs.setStringList(
-      _keyLearnedItemLabels,
-      merged.take(100).toList(),
-    );
+    }.take(100).toList(growable: false);
+    await _prefs.setStringList(_keyLearnedItemLabels, merged);
+    _learnedItemLabels = merged;
+    notifyListeners();
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
@@ -93,7 +106,16 @@ class AppSettings extends ChangeNotifier {
   }
 
   Future<void> clearLearnedItemLabels() async {
-    await _prefs.remove(_keyLearnedItemLabels);
+    final previous = _learnedItemLabels;
+    _learnedItemLabels = const <String>[];
+    notifyListeners();
+    try {
+      await _prefs.setStringList(_keyLearnedItemLabels, const <String>[]);
+    } on Object {
+      _learnedItemLabels = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   static bool _isUsefulItemLabel(String label) {
