@@ -1,0 +1,45 @@
+name: Cancel Stale PR CI
+
+on:
+  pull_request:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel-stale-runs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel superseded Flutter CI runs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          for run_id in 29543143664 29549323442 29549935847; do
+            status="$(curl \
+              --fail-with-body \
+              --silent \
+              --show-error \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer ${GH_TOKEN}" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "${{ github.api_url }}/repos/${REPOSITORY}/actions/runs/${run_id}" \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')"
+            if [[ "$status" == "queued" || "$status" == "in_progress" || "$status" == "waiting" || "$status" == "pending" ]]; then
+              curl \
+                --fail-with-body \
+                --silent \
+                --show-error \
+                --request POST \
+                --header "Accept: application/vnd.github+json" \
+                --header "Authorization: Bearer ${GH_TOKEN}" \
+                --header "X-GitHub-Api-Version: 2022-11-28" \
+                "${{ github.api_url }}/repos/${REPOSITORY}/actions/runs/${run_id}/cancel"
+              echo "Cancelled stale run ${run_id}."
+            else
+              echo "Run ${run_id} is already ${status}; no cancellation needed."
+            fi
+          done
