@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Apply reviewed fixes and diagnostics
+      - name: Apply reviewed fixes
         shell: bash
         run: |
           python3 - <<'PY'
@@ -76,69 +76,32 @@ jobs:
               "    if (_recoveryStarted || defaultTargetPlatform != TargetPlatform.android) {\n",
               "    if (_recoveryStarted || !Platform.isAndroid) {\n",
           )
-
-          widget = Path('test/widget_test.dart')
-          source = widget.read_text(encoding='utf-8')
-          source = source.replace(
-              "  SharedPreferences.setMockInitialValues({'notification_info_shown_v1': true});\n"
+          replace(
+              'test/widget_test.dart',
               "  final tempDir = await Directory.systemTemp.createTemp('ashita_widget_test_');\n",
-              "  print('DIAG helper before prefs');\n"
-              "  SharedPreferences.setMockInitialValues({'notification_info_shown_v1': true});\n"
-              "  print('DIAG helper before temp dir');\n"
-              "  final tempDir = await Directory.systemTemp.createTemp('ashita_widget_test_');\n"
-              "  print('DIAG helper after temp dir');\n",
-              1,
+              "  final tempDir = Directory(\n"
+              "    'build/widget_test_temp/'\n"
+              "    '${DateTime.now().microsecondsSinceEpoch}',\n"
+              "  );\n"
+              "  await tempDir.create(recursive: true);\n",
           )
-          source = source.replace(
-              "  final store = await DriftStore.createInMemory();\n"
-              "  final appState = AppState(\n",
-              "  print('DIAG helper before store');\n"
-              "  final store = await DriftStore.createInMemory();\n"
-              "  print('DIAG helper after store');\n"
-              "  final appState = AppState(\n",
-              1,
-          )
-          source = source.replace(
-              "  await appState.load();\n  return appState;\n",
-              "  print('DIAG helper before load');\n"
-              "  await appState.load();\n"
-              "  print('DIAG helper after load');\n"
-              "  return appState;\n",
-              1,
-          )
-          source = source.replace(
-              "      final appState = await _createAppState();\n"
-              "      final settings = await _createSettings();\n"
-              "      await appState.addChild('長女');\n\n"
-              "      await tester.pumpWidget(\n",
-              "      print('DIAG test before create app state');\n"
-              "      final appState = await _createAppState();\n"
-              "      print('DIAG test after create app state');\n"
-              "      final settings = await _createSettings();\n"
-              "      print('DIAG test after create settings');\n"
-              "      await appState.addChild('長女');\n"
-              "      print('DIAG test after add child');\n\n"
-              "      await tester.pumpWidget(\n",
-              1,
-          )
-          widget.write_text(source, encoding='utf-8')
           PY
           dart format lib/src/screens/home_screen.dart lib/src/screens/home_screen_scope.dart test/widget_test.dart
 
-      - name: Run targeted diagnostic test
+      - name: Run targeted widget test
         shell: bash
         run: |
           set -o pipefail
           mkdir -p build/review-fix-validation
-          timeout 90s flutter test test/widget_test.dart \
+          timeout 120s flutter test test/widget_test.dart \
             --plain-name 'HomeScreen shows empty state when children exist but no todos' \
-            --reporter expanded 2>&1 | tee build/review-fix-validation/widget-diagnostic.log
+            --reporter expanded 2>&1 | tee build/review-fix-validation/widget-targeted.log
 
-      - name: Upload diagnostic log
+      - name: Upload targeted log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: full-review-widget-diagnostic
+          name: full-review-widget-targeted
           path: build/review-fix-validation
           if-no-files-found: warn
           retention-days: 7
