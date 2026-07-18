@@ -14,32 +14,37 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Cancel stale Flutter CI runs on review branch
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPOSITORY: ${{ github.repository }}
-          BRANCH: ${{ github.ref_name }}
-          API_URL: ${{ github.api_url }}
-        run: |
-          $headers = @{
-            Authorization = "Bearer $env:GH_TOKEN"
-            Accept = "application/vnd.github+json"
-            "X-GitHub-Api-Version" = "2022-11-28"
-          }
-          $uri = "$env:API_URL/repos/$env:REPOSITORY/actions/runs?branch=$([uri]::EscapeDataString($env:BRANCH))&per_page=100"
-          $response = Invoke-RestMethod -Uri $uri -Headers $headers -Method Get
-          $runs = $response.workflow_runs | Where-Object {
-            $_.name -eq 'Flutter CI' -and
-            ($_.status -eq 'queued' -or $_.status -eq 'in_progress')
-          }
-          foreach ($run in $runs) {
-            Write-Host "Cancelling Flutter CI run $($run.id) ($($run.status))"
-            try {
-              Invoke-RestMethod \
-                -Uri "$env:API_URL/repos/$env:REPOSITORY/actions/runs/$($run.id)/cancel" \
-                -Headers $headers \
-                -Method Post
-            } catch {
-              Write-Warning "Could not cancel run $($run.id): $($_.Exception.Message)"
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const branch = context.ref.replace('refs/heads/', '');
+            const runs = await github.paginate(
+              github.rest.actions.listWorkflowRunsForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch,
+                per_page: 100,
+              },
+            );
+
+            for (const run of runs) {
+              if (
+                run.name === 'Flutter CI' &&
+                (run.status === 'queued' || run.status === 'in_progress')
+              ) {
+                core.info(`Cancelling Flutter CI run ${run.id} (${run.status})`);
+                try {
+                  await github.rest.actions.cancelWorkflowRun({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: run.id,
+                  });
+                } catch (error) {
+                  core.warning(
+                    `Could not cancel run ${run.id}: ${error.message}`,
+                  );
+                }
+              }
             }
-          }
