@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
-import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_state.dart';
@@ -15,9 +14,15 @@ import '../services/ad_service.dart';
 import '../services/app_settings.dart';
 import '../services/export_service.dart';
 import '../services/purchase_provider.dart';
+<<<<<<< HEAD
 import '../theme/app_theme.dart';
+=======
+import '../services/receive_share_handler.dart';
+>>>>>>> 1c5c0f0 (feat: add Android share menu integration and improve duplicate detection)
 import 'add_child_screen.dart';
 import 'add_todo_screen.dart';
+import 'review_extraction_screen.dart';
+import 'review_extractions_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/home_status_cards.dart';
 import 'widgets/todo_section.dart';
@@ -38,52 +43,100 @@ class _HomeScreenState extends State<HomeScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String? _filterPersonId;
-  StreamSubscription<List<SharedMediaFile>>? _shareIntentSubscription;
+  ReceiveShareHandler? _receiveShareHandler;
+  bool _shareListenerInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _initShareIntentListener();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _initShareIntentListener();
+      }
+    });
   }
 
   void _initShareIntentListener() {
-    try {
-      _shareIntentSubscription =
-          ReceiveSharingIntent.instance.getMediaStream().listen(
-        _handleShareIntent,
-        onError: (Object error) {
-          if (kDebugMode) debugPrint('Share intent stream error: $error');
+    if (_shareListenerInitialized) return;
+    _shareListenerInitialized = true;
+
+    final handler = ReceiveShareHandler(
+      appState: context.read<AppState>(),
+      appSettings: widget.settings,
+    );
+
+    _receiveShareHandler = handler;
+
+    unawaited(
+      handler.start(
+        onResult: _handleShareResult,
+        onError: (error, stackTrace) {
+          if (kDebugMode) {
+            debugPrint(
+              'Share intent error: '
+              '$error\n$stackTrace',
+            );
+          }
+
+          if (!mounted) return;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('共有データを受信できませんでした。'),
+            ),
+          );
         },
-      );
-      ReceiveSharingIntent.instance.getInitialMedia().then(
-        _handleShareIntent,
-        onError: (Object error) {
-          if (kDebugMode) debugPrint('Share intent initial error: $error');
-        },
-      );
-    } on Object catch (error) {
-      if (kDebugMode) debugPrint('Share intent init error: $error');
-    }
+      ),
+    );
   }
 
-  void _handleShareIntent(List<SharedMediaFile> files) {
-    for (final file in files) {
-      if (file.type != SharedMediaType.text) continue;
-      final text = file.path.trim();
-      if (text.isEmpty) continue;
-      if (!mounted) return;
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => AddTodoScreen(initialText: text),
-        ),
-      );
-      break;
+  Future<void> _handleShareResult(
+    ReceiveShareResult result,
+  ) async {
+    if (!mounted) return;
+
+    switch (result) {
+      case ReceiveShareFailure():
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message),
+            duration: const Duration(seconds: 8),
+          ),
+        );
+
+      case ReceiveShareSuccess():
+        final navigator = Navigator.of(context);
+
+        navigator.popUntil((route) => route.isFirst);
+
+        final Widget reviewScreen;
+
+        if (result.drafts.length == 1) {
+          reviewScreen = ReviewExtractionScreen(
+            draft: result.drafts.single,
+            documentId: result.documentId,
+          );
+        } else {
+          reviewScreen = ReviewExtractionsScreen(
+            drafts: result.drafts,
+            documentId: result.documentId,
+          );
+        }
+
+        await navigator.push(
+          MaterialPageRoute<void>(
+            builder: (_) => reviewScreen,
+          ),
+        );
     }
   }
 
   @override
   void dispose() {
-    _shareIntentSubscription?.cancel();
+    final handler = _receiveShareHandler;
+    if (handler != null) {
+      unawaited(handler.dispose());
+    }
     _searchController.dispose();
     super.dispose();
   }
