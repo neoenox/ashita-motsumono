@@ -13,7 +13,7 @@ class SensitiveDataCleaner {
   final DocumentsDirectoryProvider _directoryProvider;
 
   static final _residualName = RegExp(
-    r'^(crash(?:\.previous)?\.log|ashita_motsumono_(?:legacy_backup_.*\.json|corrupt_.*\.db))$',
+    r'^(crash(?:\.previous)?\.log|ashita_motsumono_(?:legacy_backup_.*\.json|corrupt_.*\.db(?:-(?:wal|shm|journal))?))$',
   );
 
   /// 補助ログや退避ファイルを可能な範囲で削除する。
