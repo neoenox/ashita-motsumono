@@ -86,9 +86,12 @@ class AppSettings extends ChangeNotifier {
   }
 
   Future<void> addLearnedItemLabels(Iterable<String> labels) async {
+    final incoming = labels
+        .map((label) => label.trim())
+        .where(_isUsefulItemLabel);
     final merged = <String>{
+      ...incoming,
       ..._learnedItemLabels,
-      ...labels.map((label) => label.trim()).where(_isUsefulItemLabel),
     }.take(100).toList(growable: false);
     await _prefs.setStringList(_keyLearnedItemLabels, merged);
     _learnedItemLabels = merged;
