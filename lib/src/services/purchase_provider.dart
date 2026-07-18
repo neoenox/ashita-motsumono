@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
+import '../utils/async_mutex.dart';
 import 'app_settings.dart';
 import 'purchase_verification_service.dart';
 import 'verified_entitlement_cache.dart';
@@ -80,6 +81,7 @@ class AppPurchaseProvider extends PurchaseProvider {
   final AppSettings _settings;
   final PurchaseGateway _purchase;
   final PurchaseVerifier _verifier;
+  final AsyncMutex _purchaseEventMutex = AsyncMutex();
   StreamSubscription<List<PurchaseDetails>>? _subscription;
   late final Future<void> _ready;
 
@@ -140,7 +142,7 @@ class AppPurchaseProvider extends PurchaseProvider {
         return;
       }
       _subscription = _purchase.purchaseStream.listen(
-        (details) => unawaited(_processPurchases(details)),
+        _enqueuePurchases,
         onError: (Object error, StackTrace stackTrace) {
           _statusMessage = '購入情報の受信に失敗しました。';
           notifyListeners();
@@ -158,6 +160,23 @@ class AppPurchaseProvider extends PurchaseProvider {
         debugPrint('PurchaseProvider: init failed - $error\n$stackTrace');
       }
     }
+  }
+
+  void _enqueuePurchases(List<PurchaseDetails> details) {
+    unawaited(
+      _purchaseEventMutex
+          .protect(() => _processPurchases(details))
+          .catchError((Object error, StackTrace stackTrace) {
+        _statusMessage = '購入情報の処理に失敗しました。時間をおいてもう一度お試しください。';
+        notifyListeners();
+        if (kDebugMode) {
+          debugPrint(
+            'PurchaseProvider: queued processing failed - '
+            '$error\n$stackTrace',
+          );
+        }
+      }),
+    );
   }
 
   Future<void> _processPurchases(List<PurchaseDetails> details) async {
