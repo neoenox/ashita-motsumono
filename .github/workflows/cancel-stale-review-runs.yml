@@ -11,7 +11,13 @@ permissions:
 
 jobs:
   cancel-stale-flutter-ci:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - windows-latest
+          - macos-latest
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Cancel stale Flutter CI runs on review branch
         uses: actions/github-script@v7
