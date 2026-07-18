@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -28,7 +28,7 @@ class _HomeScreenScopeState extends State<HomeScreenScope> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_recoveryStarted || defaultTargetPlatform != TargetPlatform.android) {
+    if (_recoveryStarted || !Platform.isAndroid) {
       return;
     }
     _recoveryStarted = true;
