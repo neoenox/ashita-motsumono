@@ -12,7 +12,7 @@ jobs:
   apply-and-validate:
     if: github.head_ref == 'agent/complete-source-review-fixes-v2'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
     steps:
       - name: Check out review branch
         uses: actions/checkout@v4
@@ -20,18 +20,7 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
-      - name: Check one-shot guard
-        id: guard
-        shell: bash
-        run: |
-          if [[ -f .review-fixes-applied ]]; then
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Set up Flutter
-        if: steps.guard.outputs.run == 'true'
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.44.0'
@@ -39,11 +28,9 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        if: steps.guard.outputs.run == 'true'
         run: flutter pub get
 
-      - name: Apply reviewed fixes
-        if: steps.guard.outputs.run == 'true'
+      - name: Apply reviewed fixes and diagnostics
         shell: bash
         run: |
           python3 - <<'PY'
@@ -89,120 +76,52 @@ jobs:
               "    if (_recoveryStarted || defaultTargetPlatform != TargetPlatform.android) {\n",
               "    if (_recoveryStarted || !Platform.isAndroid) {\n",
           )
-          replace(
-              'test/widget_test.dart',
-              "  await appState.load();\n  return appState;\n",
-              "  await appState.load();\n"
-              "  addTearDown(() async {\n"
-              "    await appState.close();\n"
-              "    appState.dispose();\n"
-              "  });\n"
-              "  return appState;\n",
-          )
-          replace(
-              'test/widget_test.dart',
-              "      SharedPreferences.setMockInitialValues({});\n",
-              "      SharedPreferences.setMockInitialValues({\n"
-              "        'notification_info_shown_v1': true,\n"
-              "      });\n",
-          )
-          replace(
-              'test/widget_test.dart',
-              "      await appState.load();\n\n      await tester.pumpWidget(\n",
-              "      await appState.load();\n"
-              "      addTearDown(() async {\n"
-              "        await appState.close();\n"
-              "        appState.dispose();\n"
-              "      });\n\n"
+
+          widget = Path('test/widget_test.dart')
+          source = widget.read_text(encoding='utf-8')
+          source = source.replace(
+              "      final appState = await _createAppState();\n"
+              "      final settings = await _createSettings();\n"
+              "      await appState.addChild('長女');\n\n"
               "      await tester.pumpWidget(\n",
+              "      print('DIAG before create app state');\n"
+              "      final appState = await _createAppState();\n"
+              "      print('DIAG after create app state');\n"
+              "      final settings = await _createSettings();\n"
+              "      print('DIAG after create settings');\n"
+              "      await appState.addChild('長女');\n"
+              "      print('DIAG after add child');\n\n"
+              "      await tester.pumpWidget(\n",
+              1,
           )
+          source = source.replace(
+              "      );\n      await tester.pumpAndSettle();\n\n"
+              "      expect(find.text('まず人物を登録'), findsNothing);\n",
+              "      );\n"
+              "      print('DIAG after pump widget');\n"
+              "      await tester.pumpAndSettle();\n"
+              "      print('DIAG after pump and settle');\n\n"
+              "      expect(find.text('まず人物を登録'), findsNothing);\n",
+              1,
+          )
+          widget.write_text(source, encoding='utf-8')
           PY
+          dart format lib/src/screens/home_screen.dart lib/src/screens/home_screen_scope.dart test/widget_test.dart
 
-      - name: Format all Dart sources
-        if: steps.guard.outputs.run == 'true'
-        run: dart format .
-
-      - name: Run release tooling tests
-        if: steps.guard.outputs.run == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -m unittest tool/test_enforce_android_release_signing.py
-          python3 -m unittest tool/test_verify_android_certificate_fingerprint.py
-          python3 -m unittest tool/test_generate_release_manifest.py
-          python3 -m unittest tool/test_configure_android_privacy.py
-          python3 -m unittest tool/test_release_workflow.py
-
-      - name: Analyze
-        if: steps.guard.outputs.run == 'true'
+      - name: Run targeted diagnostic test
         shell: bash
         run: |
           set -o pipefail
           mkdir -p build/review-fix-validation
-          python3 tool/run_flutter_analyze.py 2>&1 | tee build/review-fix-validation/analyze.log
+          timeout 90s flutter test test/widget_test.dart \
+            --plain-name 'HomeScreen shows empty state when children exist but no todos' \
+            --reporter expanded 2>&1 | tee build/review-fix-validation/widget-diagnostic.log
 
-      - name: Run Flutter tests by file
-        if: steps.guard.outputs.run == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          log=build/review-fix-validation/flutter-test.log
-          : > "$log"
-          while IFS= read -r -d '' test_file; do
-            echo "===== $test_file =====" | tee -a "$log"
-            timeout 180s flutter test "$test_file" --reporter expanded 2>&1 | tee -a "$log"
-          done < <(find test -type f -name '*_test.dart' -print0 | sort -z)
-
-      - name: Generate LP screenshots
-        if: steps.guard.outputs.run == 'true'
-        shell: bash
-        run: |
-          set -o pipefail
-          flutter test tool/generate_lp_screenshots_test.dart --reporter expanded 2>&1 | tee build/review-fix-validation/lp-screenshots.log
-
-      - name: Validate LP screenshots
-        if: steps.guard.outputs.run == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import struct
-
-          expected = {
-              'home-tomorrow.png': (1080, 1920),
-              'review-extraction.png': (1080, 1920),
-              'all-complete.png': (1080, 1920),
-          }
-
-          for name, dimensions in expected.items():
-              path = Path('build/lp-screenshots') / name
-              data = path.read_bytes()
-              assert data[:8] == b'\x89PNG\r\n\x1a\n', f'{name}: PNG signature mismatch'
-              width, height = struct.unpack('>II', data[16:24])
-              assert (width, height) == dimensions, (
-                  f'{name}: expected {dimensions}, got {(width, height)}'
-              )
-              assert len(data) > 10_000, f'{name}: file is unexpectedly small'
-          PY
-
-      - name: Commit validated changes
-        if: steps.guard.outputs.run == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --stat
-          git commit -m "fix: apply complete source review findings"
-          git push origin "HEAD:${{ github.head_ref }}"
-
-      - name: Upload validation logs
-        if: always() && steps.guard.outputs.run == 'true'
+      - name: Upload diagnostic log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: full-review-fix-validation-v2
+          name: full-review-widget-diagnostic
           path: build/review-fix-validation
           if-no-files-found: warn
           retention-days: 7
