@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -43,7 +44,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _initShareIntentListener();
+    if (Platform.isAndroid || Platform.isIOS) {
+      _initShareIntentListener();
+    }
   }
 
   void _initShareIntentListener() {
