@@ -22,7 +22,9 @@ extension CleanupAppStateOperations on AppState {
 
         // 通常UIでは設定削除や成功表示をブロックしない。
         // テストや保守処理など、副作用完了まで必要な呼び出し元は明示的に待機できる。
-        final cleanup = _runPostDeleteCleanup();
+        final cleanup = _runPostDeleteCleanup(
+          todosToCancel.map((todo) => todo.id).toList(growable: false),
+        );
         if (awaitPostDeleteCleanup) {
           await cleanup;
         } else {
@@ -30,10 +32,14 @@ extension CleanupAppStateOperations on AppState {
         }
       });
 
-  Future<void> _runPostDeleteCleanup() async {
+  Future<void> _runPostDeleteCleanup(Iterable<String> todoIds) async {
     await _runPostDeleteBestEffort(
       'notification cancellation',
-      () => _notificationCoordinator.retryPending(const <AppTodo>[]),
+      () async {
+        for (final todoId in todoIds) {
+          await _notificationCoordinator.executeCanceledTodo(todoId);
+        }
+      },
     );
     await _runPostDeleteBestEffort(
       'document image cleanup',
