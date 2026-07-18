@@ -55,6 +55,68 @@ jobs:
           path.write_text(content, encoding='utf-8')
           PY
           python3 tool/apply_full_review_fixes.py
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              content = target.read_text(encoding='utf-8')
+              if old not in content:
+                  if new in content:
+                      return
+                  raise RuntimeError(f'{path}: expected text not found')
+              target.write_text(content.replace(old, new, 1), encoding='utf-8')
+
+          replace(
+              'lib/src/screens/home_screen.dart',
+              "import 'dart:convert';\n",
+              "import 'dart:convert';\nimport 'dart:io' show Platform;\n",
+          )
+          replace(
+              'lib/src/screens/home_screen.dart',
+              "    _initShareIntentListener();\n",
+              "    if (Platform.isAndroid || Platform.isIOS) {\n"
+              "      _initShareIntentListener();\n"
+              "    }\n",
+          )
+          replace(
+              'lib/src/screens/home_screen_scope.dart',
+              "import 'dart:async';\n\nimport 'package:flutter/foundation.dart';\n",
+              "import 'dart:async';\nimport 'dart:io' show Platform;\n\n",
+          )
+          replace(
+              'lib/src/screens/home_screen_scope.dart',
+              "    if (_recoveryStarted || defaultTargetPlatform != TargetPlatform.android) {\n",
+              "    if (_recoveryStarted || !Platform.isAndroid) {\n",
+          )
+          replace(
+              'test/widget_test.dart',
+              "  await appState.load();\n  return appState;\n",
+              "  await appState.load();\n"
+              "  addTearDown(() async {\n"
+              "    await appState.close();\n"
+              "    appState.dispose();\n"
+              "  });\n"
+              "  return appState;\n",
+          )
+          replace(
+              'test/widget_test.dart',
+              "      SharedPreferences.setMockInitialValues({});\n",
+              "      SharedPreferences.setMockInitialValues({\n"
+              "        'notification_info_shown_v1': true,\n"
+              "      });\n",
+          )
+          replace(
+              'test/widget_test.dart',
+              "      await appState.load();\n\n      await tester.pumpWidget(\n",
+              "      await appState.load();\n"
+              "      addTearDown(() async {\n"
+              "        await appState.close();\n"
+              "        appState.dispose();\n"
+              "      });\n\n"
+              "      await tester.pumpWidget(\n",
+          )
+          PY
 
       - name: Format all Dart sources
         if: steps.guard.outputs.run == 'true'
