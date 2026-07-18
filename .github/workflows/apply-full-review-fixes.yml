@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   apply-and-validate:
-    if: github.head_ref == 'agent/complete-source-review-fixes'
+    if: github.head_ref == 'agent/complete-source-review-fixes-v2'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -79,12 +79,17 @@ jobs:
           mkdir -p build/review-fix-validation
           python3 tool/run_flutter_analyze.py 2>&1 | tee build/review-fix-validation/analyze.log
 
-      - name: Run full Flutter test suite
+      - name: Run Flutter tests by file
         if: steps.guard.outputs.run == 'true'
         shell: bash
         run: |
-          set -o pipefail
-          flutter test --reporter expanded 2>&1 | tee build/review-fix-validation/flutter-test.log
+          set -euo pipefail
+          log=build/review-fix-validation/flutter-test.log
+          : > "$log"
+          while IFS= read -r -d '' test_file; do
+            echo "===== $test_file =====" | tee -a "$log"
+            timeout 180s flutter test "$test_file" --reporter expanded 2>&1 | tee -a "$log"
+          done < <(find test -type f -name '*_test.dart' -print0 | sort -z)
 
       - name: Generate LP screenshots
         if: steps.guard.outputs.run == 'true'
@@ -135,7 +140,7 @@ jobs:
         if: always() && steps.guard.outputs.run == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: full-review-fix-validation
+          name: full-review-fix-validation-v2
           path: build/review-fix-validation
           if-no-files-found: warn
           retention-days: 7
