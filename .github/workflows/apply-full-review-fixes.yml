@@ -12,7 +12,7 @@ jobs:
   apply-and-validate:
     if: github.head_ref == 'agent/complete-source-review-fixes-v2'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - name: Check out review branch
         uses: actions/checkout@v4
@@ -20,7 +20,18 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
+      - name: Check one-shot guard
+        id: guard
+        shell: bash
+        run: |
+          if [[ -f .review-fixes-applied ]]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Flutter
+        if: steps.guard.outputs.run == 'true'
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.44.0'
@@ -28,18 +39,20 @@ jobs:
           cache: true
 
       - name: Install dependencies
+        if: steps.guard.outputs.run == 'true'
         run: flutter pub get
 
       - name: Apply reviewed fixes
+        if: steps.guard.outputs.run == 'true'
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
-          path = Path('tool/apply_full_review_fixes.py')
-          content = path.read_text(encoding='utf-8')
+          script = Path('tool/apply_full_review_fixes.py')
+          content = script.read_text(encoding='utf-8')
           content = content.replace('pendingSuccess!);', 'pendingSuccess);')
-          path.write_text(content, encoding='utf-8')
+          script.write_text(content, encoding='utf-8')
           PY
           python3 tool/apply_full_review_fixes.py
           python3 - <<'PY'
@@ -86,22 +99,111 @@ jobs:
               "  await tempDir.create(recursive: true);\n",
           )
           PY
-          dart format lib/src/screens/home_screen.dart lib/src/screens/home_screen_scope.dart test/widget_test.dart
 
-      - name: Run targeted widget test
+      - name: Format all Dart sources
+        if: steps.guard.outputs.run == 'true'
+        run: dart format .
+
+      - name: Run release tooling tests
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest tool/test_enforce_android_release_signing.py
+          python3 -m unittest tool/test_verify_android_certificate_fingerprint.py
+          python3 -m unittest tool/test_generate_release_manifest.py
+          python3 -m unittest tool/test_configure_android_privacy.py
+          python3 -m unittest tool/test_release_workflow.py
+
+      - name: Analyze
+        if: steps.guard.outputs.run == 'true'
         shell: bash
         run: |
           set -o pipefail
           mkdir -p build/review-fix-validation
+          python3 tool/run_flutter_analyze.py 2>&1 \
+            | tee build/review-fix-validation/analyze.log
+
+      - name: Verify previously hanging widget test
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -o pipefail
           timeout 120s flutter test test/widget_test.dart \
             --plain-name 'HomeScreen shows empty state when children exist but no todos' \
-            --reporter expanded 2>&1 | tee build/review-fix-validation/widget-targeted.log
+            --reporter expanded 2>&1 \
+            | tee build/review-fix-validation/widget-targeted.log
 
-      - name: Upload targeted log
-        if: always()
+      - name: Run Flutter tests by file
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          log=build/review-fix-validation/flutter-test.log
+          : > "$log"
+          while IFS= read -r -d '' test_file; do
+            echo "===== $test_file =====" | tee -a "$log"
+            timeout 180s flutter test "$test_file" --reporter expanded 2>&1 \
+              | tee -a "$log"
+          done < <(find test -type f -name '*_test.dart' -print0 | sort -z)
+
+      - name: Generate LP screenshots
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout 300s flutter test tool/generate_lp_screenshots_test.dart \
+            --reporter expanded 2>&1 \
+            | tee build/review-fix-validation/lp-screenshots.log
+
+      - name: Validate LP screenshots
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct
+
+          expected = {
+              'home-tomorrow.png': (1080, 1920),
+              'review-extraction.png': (1080, 1920),
+              'all-complete.png': (1080, 1920),
+          }
+
+          for name, dimensions in expected.items():
+              path = Path('build/lp-screenshots') / name
+              data = path.read_bytes()
+              assert data[:8] == b'\x89PNG\r\n\x1a\n', (
+                  f'{name}: PNG signature mismatch'
+              )
+              width, height = struct.unpack('>II', data[16:24])
+              assert (width, height) == dimensions, (
+                  f'{name}: expected {dimensions}, got {(width, height)}'
+              )
+              assert len(data) > 10_000, (
+                  f'{name}: file is unexpectedly small'
+              )
+          PY
+
+      - name: Commit validated changes
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --stat
+          git commit -m "fix: apply complete source review findings"
+          git push origin "HEAD:${{ github.head_ref }}"
+
+      - name: Upload validation logs
+        if: always() && steps.guard.outputs.run == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: full-review-widget-targeted
+          name: full-review-fix-validation-v2
           path: build/review-fix-validation
           if-no-files-found: warn
           retention-days: 7
