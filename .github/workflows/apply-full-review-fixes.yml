@@ -80,28 +80,45 @@ jobs:
           widget = Path('test/widget_test.dart')
           source = widget.read_text(encoding='utf-8')
           source = source.replace(
+              "  SharedPreferences.setMockInitialValues({'notification_info_shown_v1': true});\n"
+              "  final tempDir = await Directory.systemTemp.createTemp('ashita_widget_test_');\n",
+              "  print('DIAG helper before prefs');\n"
+              "  SharedPreferences.setMockInitialValues({'notification_info_shown_v1': true});\n"
+              "  print('DIAG helper before temp dir');\n"
+              "  final tempDir = await Directory.systemTemp.createTemp('ashita_widget_test_');\n"
+              "  print('DIAG helper after temp dir');\n",
+              1,
+          )
+          source = source.replace(
+              "  final store = await DriftStore.createInMemory();\n"
+              "  final appState = AppState(\n",
+              "  print('DIAG helper before store');\n"
+              "  final store = await DriftStore.createInMemory();\n"
+              "  print('DIAG helper after store');\n"
+              "  final appState = AppState(\n",
+              1,
+          )
+          source = source.replace(
+              "  await appState.load();\n  return appState;\n",
+              "  print('DIAG helper before load');\n"
+              "  await appState.load();\n"
+              "  print('DIAG helper after load');\n"
+              "  return appState;\n",
+              1,
+          )
+          source = source.replace(
               "      final appState = await _createAppState();\n"
               "      final settings = await _createSettings();\n"
               "      await appState.addChild('長女');\n\n"
               "      await tester.pumpWidget(\n",
-              "      print('DIAG before create app state');\n"
+              "      print('DIAG test before create app state');\n"
               "      final appState = await _createAppState();\n"
-              "      print('DIAG after create app state');\n"
+              "      print('DIAG test after create app state');\n"
               "      final settings = await _createSettings();\n"
-              "      print('DIAG after create settings');\n"
+              "      print('DIAG test after create settings');\n"
               "      await appState.addChild('長女');\n"
-              "      print('DIAG after add child');\n\n"
+              "      print('DIAG test after add child');\n\n"
               "      await tester.pumpWidget(\n",
-              1,
-          )
-          source = source.replace(
-              "      );\n      await tester.pumpAndSettle();\n\n"
-              "      expect(find.text('まず人物を登録'), findsNothing);\n",
-              "      );\n"
-              "      print('DIAG after pump widget');\n"
-              "      await tester.pumpAndSettle();\n"
-              "      print('DIAG after pump and settle');\n\n"
-              "      expect(find.text('まず人物を登録'), findsNothing);\n",
               1,
           )
           widget.write_text(source, encoding='utf-8')
