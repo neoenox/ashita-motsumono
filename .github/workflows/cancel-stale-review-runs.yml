@@ -19,6 +19,7 @@ jobs:
           github-token: ${{ github.token }}
           script: |
             const branch = context.ref.replace('refs/heads/', '');
+            core.info(`Checking stale Flutter CI runs for ${branch}`);
             const runs = await github.paginate(
               github.rest.actions.listWorkflowRunsForRepo,
               {
