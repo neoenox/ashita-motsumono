@@ -44,7 +44,17 @@ jobs:
 
       - name: Apply reviewed fixes
         if: steps.guard.outputs.run == 'true'
-        run: python3 tool/apply_full_review_fixes.py
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('tool/apply_full_review_fixes.py')
+          content = path.read_text(encoding='utf-8')
+          content = content.replace('pendingSuccess!);', 'pendingSuccess);')
+          path.write_text(content, encoding='utf-8')
+          PY
+          python3 tool/apply_full_review_fixes.py
 
       - name: Format all Dart sources
         if: steps.guard.outputs.run == 'true'
