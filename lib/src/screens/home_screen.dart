@@ -14,11 +14,8 @@ import '../services/ad_service.dart';
 import '../services/app_settings.dart';
 import '../services/export_service.dart';
 import '../services/purchase_provider.dart';
-<<<<<<< HEAD
-import '../theme/app_theme.dart';
-=======
 import '../services/receive_share_handler.dart';
->>>>>>> 1c5c0f0 (feat: add Android share menu integration and improve duplicate detection)
+import '../theme/app_theme.dart';
 import 'add_child_screen.dart';
 import 'add_todo_screen.dart';
 import 'review_extraction_screen.dart';
