@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feat/adaptive-navigation-motion
+  pull_request:
+    branches:
+      - master
 
 permissions:
   contents: write
