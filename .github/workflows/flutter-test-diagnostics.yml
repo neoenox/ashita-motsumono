@@ -10,10 +10,18 @@ permissions:
 
 jobs:
   diagnose-widget-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        ref:
+          - master
+          - feat/adaptive-navigation-motion
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
+      - name: Check out ${{ matrix.ref }}
         uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -42,7 +50,7 @@ jobs:
       - name: Upload widget test diagnostics
         uses: actions/upload-artifact@v4
         with:
-          name: flutter-widget-test-diagnostics
+          name: flutter-widget-test-diagnostics-${{ strategy.job-index }}
           path: build/diagnostics/
           if-no-files-found: error
           retention-days: 1
