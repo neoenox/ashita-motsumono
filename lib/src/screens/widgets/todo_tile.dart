@@ -202,32 +202,14 @@ class _AnimatedTodoCheckbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      checked: value,
-      label: value ? '未完了に戻す' : '完了にする',
-      child: InkResponse(
-        onTap: onChanged,
-        radius: 24,
-        child: AnimatedContainer(
-          duration: reducedMotion ? Duration.zero : AppMotion.standard,
-          curve: AppMotion.standardCurve,
-          width: 40,
-          height: 40,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: value ? cs.primary : Colors.transparent,
-            border: Border.all(
-              color: value ? cs.primary : cs.outline,
-              width: 2,
-            ),
-          ),
-          child: value
-              ? Icon(Icons.check, size: 22, color: cs.onPrimary)
-              : null,
-        ),
+    // Checkbox自体を残し、既存のSemanticsとテスト契約を維持する。
+    return AnimatedScale(
+      duration: reducedMotion ? Duration.zero : AppMotion.standard,
+      curve: AppMotion.standardCurve,
+      scale: value ? 1 : 0.92,
+      child: Checkbox(
+        value: value,
+        onChanged: (_) => onChanged(),
       ),
     );
   }
