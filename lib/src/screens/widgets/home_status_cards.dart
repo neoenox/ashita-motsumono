@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../app_navigation.dart';
 import '../../theme/app_theme.dart';
 import '../add_child_screen.dart';
 
@@ -21,11 +22,14 @@ class FirstRunCard extends StatelessWidget {
         padding: const EdgeInsets.all(Spacing.md),
         child: Column(
           children: [
-            Icon(Icons.fact_check_outlined,
-              size: 40, color: cs.primary.withValues(alpha: 0.6),
+            Icon(
+              Icons.fact_check_outlined,
+              size: 40,
+              color: cs.primary.withValues(alpha: 0.6),
             ),
             const SizedBox(height: Spacing.sm),
-            Text('まず人物を登録',
+            Text(
+              'まず人物を登録',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: Spacing.xs),
@@ -36,9 +40,11 @@ class FirstRunCard extends StatelessWidget {
             ),
             const SizedBox(height: Spacing.md),
             FilledButton.icon(
-              onPressed: onAddPerson ?? () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AddChildScreen()),
-              ),
+              onPressed: onAddPerson ??
+                  () => pushAdaptive<void>(
+                        context,
+                        (_) => const AddChildScreen(),
+                      ),
               icon: const Icon(Icons.add),
               label: const Text('人物を追加'),
             ),
@@ -60,16 +66,21 @@ class EmptyState extends StatelessWidget {
       child: Center(
         child: Column(
           children: [
-            Icon(Icons.checklist, size: 48, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
+            Icon(
+              Icons.checklist,
+              size: 48,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+            ),
             const SizedBox(height: Spacing.md),
-            Text('Todoがありません',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(color: cs.onSurfaceVariant),
+            Text(
+              'Todoがありません',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
             ),
             const SizedBox(height: Spacing.sm),
-            Text('「追加」ボタンから新しくTodoを作成できます',
+            Text(
+              '「追加」ボタンから新しくTodoを作成できます',
               style: TextStyle(
                 color: cs.onSurfaceVariant.withValues(alpha: 0.7),
               ),
@@ -94,9 +105,14 @@ class NoSearchResults extends StatelessWidget {
       child: Center(
         child: Column(
           children: [
-            Icon(Icons.search_off, size: 48, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
+            Icon(
+              Icons.search_off,
+              size: 48,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+            ),
             const SizedBox(height: Spacing.md),
-            Text('「$query」に一致するTodoはありません',
+            Text(
+              '「$query」に一致するTodoはありません',
               style: TextStyle(color: cs.onSurfaceVariant),
             ),
           ],
@@ -123,12 +139,17 @@ class CorruptDataCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.warning_amber, size: 18, color: cs.onErrorContainer),
+                Icon(
+                  Icons.warning_amber,
+                  size: 18,
+                  color: cs.onErrorContainer,
+                ),
                 const SizedBox(width: Spacing.sm),
-                Text('保存データの読み込みに失敗しました',
+                Text(
+                  '保存データの読み込みに失敗しました',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: cs.onErrorContainer,
-                  ),
+                        color: cs.onErrorContainer,
+                      ),
                 ),
               ],
             ),
