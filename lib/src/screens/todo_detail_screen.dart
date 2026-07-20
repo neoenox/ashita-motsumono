@@ -148,6 +148,9 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
 
     final child = state.personById(todo.personId);
     final document = state.documentById(todo.documentId);
+    final content = _isEditing
+        ? _buildEditForm()
+        : _buildDetail(todo, child, document);
 
     return Scaffold(
       appBar: AppBar(
@@ -171,7 +174,17 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
           ],
         ],
       ),
-      body: _isEditing ? _buildEditForm() : _buildDetail(todo, child, document),
+      body: context.isReducedMotion
+          ? content
+          : AnimatedSwitcher(
+              duration: AppMotion.standard,
+              switchInCurve: AppMotion.standardCurve,
+              switchOutCurve: AppMotion.standardCurve,
+              child: KeyedSubtree(
+                key: ValueKey(_isEditing),
+                child: content,
+              ),
+            ),
     );
   }
 
@@ -257,7 +270,10 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
     return SizedBox(
       width: double.infinity,
       child: FilledButton.icon(
-        onPressed: () => context.read<AppState>().toggleTodoDone(todo.id),
+        onPressed: () {
+          HapticFeedback.selectionClick();
+          context.read<AppState>().toggleTodoDone(todo.id);
+        },
         icon: Icon(todo.isDone ? Icons.undo : Icons.check_circle),
         label: Text(todo.isDone ? '未完了に戻す' : '完了にする'),
       ),
@@ -276,7 +292,8 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
               children: [
                 const Icon(Icons.checklist, size: 18),
                 const SizedBox(width: Spacing.sm),
-                Text('チェック項目',
+                Text(
+                  'チェック項目',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const Spacer(),
@@ -314,7 +331,8 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
               children: [
                 const Icon(Icons.description_outlined, size: 18),
                 const SizedBox(width: Spacing.sm),
-                Text('メモ・OCR全文',
+                Text(
+                  'メモ・OCR全文',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ],
@@ -355,7 +373,8 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                 children: [
                   const Icon(Icons.image_outlined, size: 18),
                   const SizedBox(width: Spacing.sm),
-                  Text('元画像',
+                  Text(
+                    '元画像',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ],
@@ -406,7 +425,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
       width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: () => _confirmDelete(todo),
-        icon: Icon(Icons.delete_outline, size: 16),
+        icon: const Icon(Icons.delete_outline, size: 16),
         label: const Text('削除'),
         style: OutlinedButton.styleFrom(
           foregroundColor: cs.error,
