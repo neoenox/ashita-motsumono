@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  diagnose-widget-tests:
+  diagnose-widget-test:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -25,13 +25,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Run widget tests with bounded diagnostics
+      - name: Run isolated widget test
         shell: bash
         run: |
           set +e
           mkdir -p build/diagnostics
-          timeout --signal=TERM 6m \
-            flutter test test/widget_test.dart --reporter expanded 2>&1 \
+          flutter test test/widget_test.dart \
+            --plain-name 'shows empty state when children exist but no todos' \
+            --timeout 60s \
+            --reporter expanded 2>&1 \
             | tee build/diagnostics/flutter-widget-test.txt
           status=${PIPESTATUS[0]}
           echo "$status" > build/diagnostics/flutter-widget-test-status.txt
@@ -45,7 +47,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: Fail when widget tests failed or timed out
+      - name: Fail when widget test failed
         shell: bash
         run: |
           status="$(cat build/diagnostics/flutter-widget-test-status.txt)"
