@@ -1,8 +1,3 @@
-// test/flutter_test_config.dart
-// ウィジェットテスト全体で使うプラットフォームチャンネルのモックを設定する。
-// receive_sharing_intent のチャンネルをテスト実行前に fake で上書きし、
-// どのテストもプラットフォーム依存の呼び出しで失敗しないようにする。
-
 import 'dart:async';
 
 import 'package:flutter/services.dart';
