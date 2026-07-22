@@ -1,20 +1,16 @@
 // lib/src/release_audit.dart
 //
-// Release Gate 監査ロジック
-// リリース前の設定ミスを静的に検出する純粋なDartロジック。
-// CLIの表示処理や終了コード制御を含めず、監査結果のみを返す。
-
+// Release Gate 逶｣譟ｻ繝ｭ繧ｸ繝・け
+// 繝ｪ繝ｪ繝ｼ繧ｹ蜑阪・險ｭ螳壹Α繧ｹ繧帝撕逧・↓讀懷・縺吶ｋ邏皮ｲ九↑Dart繝ｭ繧ｸ繝・け縲・// CLI縺ｮ陦ｨ遉ｺ蜃ｦ逅・ｄ邨ゆｺ・さ繝ｼ繝牙宛蠕｡繧貞性繧√★縲∫屮譟ｻ邨先棡縺ｮ縺ｿ繧定ｿ斐☆縲・
 import 'dart:io';
 
-/// リリース監査結果の重要度。
-enum ReleaseCheckSeverity {
+/// 繝ｪ繝ｪ繝ｼ繧ｹ逶｣譟ｻ邨先棡縺ｮ驥崎ｦ∝ｺｦ縲・enum ReleaseCheckSeverity {
   error,
   warning,
   info,
 }
 
-/// 1件のリリース監査結果。
-class ReleaseCheckResult {
+/// 1莉ｶ縺ｮ繝ｪ繝ｪ繝ｼ繧ｹ逶｣譟ｻ邨先棡縲・class ReleaseCheckResult {
   const ReleaseCheckResult({
     required this.id,
     required this.severity,
@@ -33,17 +29,14 @@ class ReleaseCheckResult {
   bool get isWarning => severity == ReleaseCheckSeverity.warning;
 }
 
-/// Flutter/Androidプロジェクトのリリース可否を静的に監査する。
-///
-/// CLIの表示処理や終了コード制御を含めず、監査結果のみを返す。
-class ReleaseAudit {
+/// Flutter/Android繝励Ο繧ｸ繧ｧ繧ｯ繝医・繝ｪ繝ｪ繝ｼ繧ｹ蜿ｯ蜷ｦ繧帝撕逧・↓逶｣譟ｻ縺吶ｋ縲・///
+/// CLI縺ｮ陦ｨ遉ｺ蜃ｦ逅・ｄ邨ゆｺ・さ繝ｼ繝牙宛蠕｡繧貞性繧√★縲∫屮譟ｻ邨先棡縺ｮ縺ｿ繧定ｿ斐☆縲・class ReleaseAudit {
   ReleaseAudit({Set<String>? localhostAllowlist})
       : localhostAllowlist = Set<String>.unmodifiable(
           localhostAllowlist ?? defaultLocalhostAllowlist,
         );
 
-  /// localhost参照を意図的な安全ガードとして許可する本番ファイル。
-  static const Set<String> defaultLocalhostAllowlist = <String>{
+  /// localhost蜿ら・繧呈э蝗ｳ逧・↑螳牙・繧ｬ繝ｼ繝峨→縺励※險ｱ蜿ｯ縺吶ｋ譛ｬ逡ｪ繝輔ぃ繧､繝ｫ縲・  static const Set<String> defaultLocalhostAllowlist = <String>{
     'lib/src/services/gemini_api_service.dart',
   };
 
@@ -51,8 +44,7 @@ class ReleaseAudit {
 
   final Set<String> localhostAllowlist;
 
-  /// プロジェクト全体を監査する。
-  List<ReleaseCheckResult> auditProject(Directory projectRoot) {
+  /// 繝励Ο繧ｸ繧ｧ繧ｯ繝亥・菴薙ｒ逶｣譟ｻ縺吶ｋ縲・  List<ReleaseCheckResult> auditProject(Directory projectRoot) {
     final root = projectRoot.absolute;
     final results = <ReleaseCheckResult>[];
 
@@ -62,7 +54,7 @@ class ReleaseAudit {
         const ReleaseCheckResult(
           id: 'project.pubspec',
           severity: ReleaseCheckSeverity.error,
-          message: 'pubspec.yaml が見つかりません。',
+          message: 'pubspec.yaml 縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縲・,
           file: 'pubspec.yaml',
         ),
       );
@@ -84,7 +76,7 @@ class ReleaseAudit {
         const ReleaseCheckResult(
           id: 'android.app_gradle',
           severity: ReleaseCheckSeverity.error,
-          message: 'AndroidアプリのGradle設定が見つかりません。',
+          message: 'Android繧｢繝励Μ縺ｮGradle險ｭ螳壹′隕九▽縺九ｊ縺ｾ縺帙ｓ縲・,
           file: 'android/app/build.gradle.kts',
         ),
       );
@@ -110,7 +102,7 @@ class ReleaseAudit {
         const ReleaseCheckResult(
           id: 'android.manifest',
           severity: ReleaseCheckSeverity.error,
-          message: 'メインのAndroidManifest.xmlが見つかりません。',
+          message: '繝｡繧､繝ｳ縺ｮAndroidManifest.xml縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縲・,
           file: 'android/app/src/main/AndroidManifest.xml',
         ),
       );
@@ -176,8 +168,7 @@ class ReleaseAudit {
     return results;
   }
 
-  /// applicationIdが仮値でないか確認する。
-  List<ReleaseCheckResult> checkApplicationId(
+  /// applicationId縺御ｻｮ蛟､縺ｧ縺ｪ縺・°遒ｺ隱阪☆繧九・  List<ReleaseCheckResult> checkApplicationId(
     String gradleContent, {
     String file = 'android/app/build.gradle.kts',
   }) {
@@ -192,7 +183,7 @@ class ReleaseAudit {
           id: 'android.application_id',
           severity: ReleaseCheckSeverity.error,
           message:
-              'applicationIdを解決できません。文字列リテラルで指定してください。',
+              'applicationId繧定ｧ｣豎ｺ縺ｧ縺阪∪縺帙ｓ縲よ枚蟄怜・繝ｪ繝・Λ繝ｫ縺ｧ謖・ｮ壹＠縺ｦ縺上□縺輔＞縲・,
           file: file,
         ),
       ];
@@ -216,7 +207,7 @@ class ReleaseAudit {
           id: 'android.application_id',
           severity: ReleaseCheckSeverity.error,
           message:
-              'applicationId "$applicationId" は仮値です。正式なIDへ変更してください。',
+              'applicationId "$applicationId" 縺ｯ莉ｮ蛟､縺ｧ縺吶よｭ｣蠑上↑ID縺ｸ螟画峩縺励※縺上□縺輔＞縲・,
           file: file,
           line: _lineNumberAt(gradleContent, match.start),
         ),
@@ -227,15 +218,14 @@ class ReleaseAudit {
       ReleaseCheckResult(
         id: 'android.application_id',
         severity: ReleaseCheckSeverity.info,
-        message: 'applicationIdは正式値です: $applicationId',
+        message: 'applicationId縺ｯ豁｣蠑丞､縺ｧ縺・ $applicationId',
         file: file,
         line: _lineNumberAt(gradleContent, match.start),
       ),
     ];
   }
 
-  /// pubspec.yamlのversion形式を確認する。
-  List<ReleaseCheckResult> checkPubspecVersion(
+  /// pubspec.yaml縺ｮversion蠖｢蠑上ｒ遒ｺ隱阪☆繧九・  List<ReleaseCheckResult> checkPubspecVersion(
     String pubspecContent, {
     String file = 'pubspec.yaml',
   }) {
@@ -249,7 +239,7 @@ class ReleaseAudit {
         ReleaseCheckResult(
           id: 'pubspec.version',
           severity: ReleaseCheckSeverity.error,
-          message: 'pubspec.yamlにversionがありません。',
+          message: 'pubspec.yaml縺ｫversion縺後≠繧翫∪縺帙ｓ縲・,
           file: file,
         ),
       ];
@@ -263,7 +253,7 @@ class ReleaseAudit {
           id: 'pubspec.version',
           severity: ReleaseCheckSeverity.error,
           message:
-              'version "$version" は major.minor.patch+build 形式ではありません。',
+              'version "$version" 縺ｯ major.minor.patch+build 蠖｢蠑上〒縺ｯ縺ゅｊ縺ｾ縺帙ｓ縲・,
           file: file,
           line: _lineNumberAt(pubspecContent, match.start),
         ),
@@ -274,15 +264,14 @@ class ReleaseAudit {
       ReleaseCheckResult(
         id: 'pubspec.version',
         severity: ReleaseCheckSeverity.info,
-        message: 'version形式は正常です: $version',
+        message: 'version蠖｢蠑上・豁｣蟶ｸ縺ｧ縺・ $version',
         file: file,
         line: _lineNumberAt(pubspecContent, match.start),
       ),
     ];
   }
 
-  /// Gradle設定からtargetSdkを解決して監査する。
-  List<ReleaseCheckResult> checkTargetSdkConfiguration(
+  /// Gradle險ｭ螳壹°繧液argetSdk繧定ｧ｣豎ｺ縺励※逶｣譟ｻ縺吶ｋ縲・  List<ReleaseCheckResult> checkTargetSdkConfiguration(
     String gradleContent, {
     required Directory projectRoot,
     String file = 'android/app/build.gradle.kts',
@@ -310,7 +299,7 @@ class ReleaseAudit {
           int.parse(match.group(1)!),
           file: file,
           line: _lineNumberAt(gradleContent, match.start),
-          source: 'Gradleの明示指定',
+          source: 'Gradle縺ｮ譏守､ｺ謖・ｮ・,
         );
       }
     }
@@ -325,8 +314,8 @@ class ReleaseAudit {
             id: 'android.target_sdk',
             severity: ReleaseCheckSeverity.error,
             message:
-                'flutter.targetSdkVersionの実値をFlutter SDKから解決できません。'
-                ' android/local.propertiesのflutter.sdk、FLUTTER_ROOT、またはPATHを確認してください。',
+                'flutter.targetSdkVersion縺ｮ螳溷､繧巽lutter SDK縺九ｉ隗｣豎ｺ縺ｧ縺阪∪縺帙ｓ縲・
+                ' android/local.properties縺ｮflutter.sdk縲：LUTTER_ROOT縲√∪縺溘・PATH繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞縲・,
             file: file,
             line:
                 match == null ? null : _lineNumberAt(gradleContent, match.start),
@@ -346,27 +335,26 @@ class ReleaseAudit {
       ReleaseCheckResult(
         id: 'android.target_sdk',
         severity: ReleaseCheckSeverity.error,
-        message: 'targetSdkをGradle設定から解決できません。',
+        message: 'targetSdk繧竪radle險ｭ螳壹°繧芽ｧ｣豎ｺ縺ｧ縺阪∪縺帙ｓ縲・,
         file: file,
       ),
     ];
   }
 
-  /// 解決済みtargetSdk値を判定する。
-  List<ReleaseCheckResult> checkTargetSdkValue(
+  /// 隗｣豎ｺ貂医∩targetSdk蛟､繧貞愛螳壹☆繧九・  List<ReleaseCheckResult> checkTargetSdkValue(
     int targetSdk, {
     String? file,
     int? line,
     String? source,
   }) {
-    final sourceSuffix = source == null ? '' : '（$source）';
+    final sourceSuffix = source == null ? '' : '・・source・・;
     if (targetSdk <= 34) {
       return <ReleaseCheckResult>[
         ReleaseCheckResult(
           id: 'android.target_sdk',
           severity: ReleaseCheckSeverity.error,
           message:
-              'targetSdk=$targetSdk は34以下です。35以上へ更新してください$sourceSuffix。',
+              'targetSdk=$targetSdk 縺ｯ34莉･荳九〒縺吶・5莉･荳翫∈譖ｴ譁ｰ縺励※縺上□縺輔＞$sourceSuffix縲・,
           file: file,
           line: line,
         ),
@@ -379,7 +367,7 @@ class ReleaseAudit {
           id: 'android.target_sdk',
           severity: ReleaseCheckSeverity.warning,
           message:
-              'targetSdk=35です。要件は満たしますが、36以上への更新を推奨します$sourceSuffix。',
+              'targetSdk=35縺ｧ縺吶りｦ∽ｻｶ縺ｯ貅縺溘＠縺ｾ縺吶′縲・6莉･荳翫∈縺ｮ譖ｴ譁ｰ繧呈耳螂ｨ縺励∪縺・sourceSuffix縲・,
           file: file,
           line: line,
         ),
@@ -390,15 +378,14 @@ class ReleaseAudit {
       ReleaseCheckResult(
         id: 'android.target_sdk',
         severity: ReleaseCheckSeverity.info,
-        message: 'targetSdk=$targetSdk は合格です$sourceSuffix。',
+        message: 'targetSdk=$targetSdk 縺ｯ蜷域ｼ縺ｧ縺・sourceSuffix縲・,
         file: file,
         line: line,
       ),
     ];
   }
 
-  /// Flutter SDK内のFlutterExtensionからtargetSdkVersionを解決する。
-  ResolvedFlutterTargetSdk? resolveFlutterTargetSdk(Directory projectRoot) {
+  /// Flutter SDK蜀・・FlutterExtension縺九ｉtargetSdkVersion繧定ｧ｣豎ｺ縺吶ｋ縲・  ResolvedFlutterTargetSdk? resolveFlutterTargetSdk(Directory projectRoot) {
     final flutterRoot = _resolveFlutterSdkRoot(projectRoot.absolute);
     if (flutterRoot == null) {
       return null;
@@ -441,8 +428,7 @@ class ReleaseAudit {
     return null;
   }
 
-  /// releaseに影響する設定にdebuggable=trueがないか確認する。
-  List<ReleaseCheckResult> checkDebuggable(Map<String, String> files) {
+  /// release縺ｫ蠖ｱ髻ｿ縺吶ｋ險ｭ螳壹↓debuggable=true縺後↑縺・°遒ｺ隱阪☆繧九・  List<ReleaseCheckResult> checkDebuggable(Map<String, String> files) {
     final patterns = <RegExp>[
       RegExp(
         r'''android:debuggable\s*=\s*["']true["']''',
@@ -466,7 +452,7 @@ class ReleaseAudit {
             ReleaseCheckResult(
               id: 'android.debuggable',
               severity: ReleaseCheckSeverity.error,
-              message: 'リリース設定にdebuggable=trueがあります。',
+              message: '繝ｪ繝ｪ繝ｼ繧ｹ險ｭ螳壹↓debuggable=true縺後≠繧翫∪縺吶・,
               file: entry.key,
               line: _lineNumberAt(entry.value, match.start),
             ),
@@ -484,13 +470,12 @@ class ReleaseAudit {
         id: 'android.debuggable',
         severity: ReleaseCheckSeverity.info,
         message:
-            'release対象にdebuggable=trueはありません。未指定時の既定値はfalseです。',
+            'release蟇ｾ雎｡縺ｫdebuggable=true縺ｯ縺ゅｊ縺ｾ縺帙ｓ縲よ悴謖・ｮ壽凾縺ｮ譌｢螳壼､縺ｯfalse縺ｧ縺吶・,
       ),
     ];
   }
 
-  /// usesCleartextTraffic=trueがないか確認する。
-  List<ReleaseCheckResult> checkUsesCleartextTraffic(
+  /// usesCleartextTraffic=true縺後↑縺・°遒ｺ隱阪☆繧九・  List<ReleaseCheckResult> checkUsesCleartextTraffic(
     Map<String, String> files,
   ) {
     final patterns = <RegExp>[
@@ -513,7 +498,7 @@ class ReleaseAudit {
               id: 'android.cleartext_traffic',
               severity: ReleaseCheckSeverity.error,
               message:
-                  'usesCleartextTraffic=trueがあります。HTTPS通信へ限定してください。',
+                  'usesCleartextTraffic=true縺後≠繧翫∪縺吶・TTPS騾壻ｿ｡縺ｸ髯仙ｮ壹＠縺ｦ縺上□縺輔＞縲・,
               file: entry.key,
               line: _lineNumberAt(entry.value, match.start),
             ),
@@ -530,13 +515,12 @@ class ReleaseAudit {
       ReleaseCheckResult(
         id: 'android.cleartext_traffic',
         severity: ReleaseCheckSeverity.info,
-        message: 'release対象にusesCleartextTraffic=trueはありません。',
+        message: 'release蟇ｾ雎｡縺ｫusesCleartextTraffic=true縺ｯ縺ゅｊ縺ｾ縺帙ｓ縲・,
       ),
     ];
   }
 
-  /// lib/配下のローカル接続先を検出する。
-  List<ReleaseCheckResult> checkLocalhostReferences(
+  /// lib/驟堺ｸ九・繝ｭ繝ｼ繧ｫ繝ｫ謗･邯壼・繧呈､懷・縺吶ｋ縲・  List<ReleaseCheckResult> checkLocalhostReferences(
     Map<String, String> files,
   ) {
     final endpointPattern = RegExp(
@@ -569,7 +553,7 @@ class ReleaseAudit {
             id: 'source.local_endpoint',
             severity: ReleaseCheckSeverity.error,
             message:
-                '本番コードにローカル接続先 "${match.group(0)}" があります。',
+                '譛ｬ逡ｪ繧ｳ繝ｼ繝峨↓繝ｭ繝ｼ繧ｫ繝ｫ謗･邯壼・ "${match.group(0)}" 縺後≠繧翫∪縺吶・,
             file: normalizedPath,
             line: _lineNumberAt(entry.value, match.start),
           ),
@@ -583,7 +567,7 @@ class ReleaseAudit {
           ReleaseCheckResult(
             id: 'source.local_endpoint_allowlist',
             severity: ReleaseCheckSeverity.info,
-            message: 'allowlist対象のローカル接続先を$allowedCount件許可しました。',
+            message: 'allowlist蟇ｾ雎｡縺ｮ繝ｭ繝ｼ繧ｫ繝ｫ謗･邯壼・繧・allowedCount莉ｶ險ｱ蜿ｯ縺励∪縺励◆縲・,
           ),
         );
       }
@@ -592,18 +576,17 @@ class ReleaseAudit {
 
     final allowlistMessage = allowedCount == 0
         ? ''
-        : ' allowlist対象の$allowedCount件は意図的なガードとして許可しました。';
+        : ' allowlist蟇ｾ雎｡縺ｮ$allowedCount莉ｶ縺ｯ諢丞峙逧・↑繧ｬ繝ｼ繝峨→縺励※險ｱ蜿ｯ縺励∪縺励◆縲・;
     return <ReleaseCheckResult>[
       ReleaseCheckResult(
         id: 'source.local_endpoint',
         severity: ReleaseCheckSeverity.info,
-        message: '未許可のlocalhost系参照はありません。$allowlistMessage',
+        message: '譛ｪ險ｱ蜿ｯ縺ｮlocalhost邉ｻ蜿ら・縺ｯ縺ゅｊ縺ｾ縺帙ｓ縲・allowlistMessage',
       ),
     ];
   }
 
-  /// AdMobの公式サンプルIDを検出する。
-  List<ReleaseCheckResult> checkAdMobSampleIds(Map<String, String> files) {
+  /// AdMob縺ｮ蜈ｬ蠑上し繝ｳ繝励ΝID繧呈､懷・縺吶ｋ縲・  List<ReleaseCheckResult> checkAdMobSampleIds(Map<String, String> files) {
     final findings = <ReleaseCheckResult>[];
 
     for (final entry in files.entries) {
@@ -618,7 +601,7 @@ class ReleaseAudit {
             id: 'admob.sample_id',
             severity: ReleaseCheckSeverity.error,
             message:
-                'AdMobサンプルID $_adMobSampleId が本番ファイルにあります。',
+                'AdMob繧ｵ繝ｳ繝励ΝID $_adMobSampleId 縺梧悽逡ｪ繝輔ぃ繧､繝ｫ縺ｫ縺ゅｊ縺ｾ縺吶・,
             file: _normalizePath(entry.key),
             line: _lineNumberAt(entry.value, index),
           ),
@@ -635,13 +618,12 @@ class ReleaseAudit {
       ReleaseCheckResult(
         id: 'admob.sample_id',
         severity: ReleaseCheckSeverity.info,
-        message: '本番ファイルにAdMobサンプルIDはありません。',
+        message: '譛ｬ逡ｪ繝輔ぃ繧､繝ｫ縺ｫAdMob繧ｵ繝ｳ繝励ΝID縺ｯ縺ゅｊ縺ｾ縺帙ｓ縲・,
       ),
     ];
   }
 
-  /// AndroidManifest.xmlのlabelとiconを確認する。
-  List<ReleaseCheckResult> checkManifestLabelAndIcon(
+  /// AndroidManifest.xml縺ｮlabel縺ｨicon繧堤｢ｺ隱阪☆繧九・  List<ReleaseCheckResult> checkManifestLabelAndIcon(
     String manifestContent, {
     String file = 'android/app/src/main/AndroidManifest.xml',
   }) {
@@ -657,7 +639,7 @@ class ReleaseAudit {
         ReleaseCheckResult(
           id: 'android.manifest_identity',
           severity: ReleaseCheckSeverity.error,
-          message: 'AndroidManifest.xmlにapplication要素がありません。',
+          message: 'AndroidManifest.xml縺ｫapplication隕∫ｴ縺後≠繧翫∪縺帙ｓ縲・,
           file: file,
         ),
       ];
@@ -690,7 +672,7 @@ class ReleaseAudit {
           id: 'android.manifest_identity',
           severity: ReleaseCheckSeverity.error,
           message:
-              'application要素に${missing.join(' と ')}がありません。',
+              'application隕∫ｴ縺ｫ${missing.join(' 縺ｨ ')}縺後≠繧翫∪縺帙ｓ縲・,
           file: file,
           line: _lineNumberAt(manifestContent, applicationMatch.start),
         ),
@@ -702,15 +684,14 @@ class ReleaseAudit {
         id: 'android.manifest_identity',
         severity: ReleaseCheckSeverity.info,
         message:
-            'Manifestのlabel=$labelValue、icon=$iconValueです。',
+            'Manifest縺ｮlabel=$labelValue縲（con=$iconValue縺ｧ縺吶・,
         file: file,
         line: _lineNumberAt(manifestContent, applicationMatch.start),
       ),
     ];
   }
 
-  /// AndroidManifest.xmlの宣言権限を情報として一覧化する。
-  List<ReleaseCheckResult> listManifestPermissions(
+  /// AndroidManifest.xml縺ｮ螳｣險讓ｩ髯舌ｒ諠・ｱ縺ｨ縺励※荳隕ｧ蛹悶☆繧九・  List<ReleaseCheckResult> listManifestPermissions(
     String manifestContent, {
     String file = 'android/app/src/main/AndroidManifest.xml',
   }) {
@@ -728,8 +709,8 @@ class ReleaseAudit {
       ..sort();
 
     final message = permissions.isEmpty
-        ? 'Manifestにuses-permission宣言はありません。'
-        : 'Manifest宣言権限 (${permissions.length}件): ${permissions.join(', ')}';
+        ? 'Manifest縺ｫuses-permission螳｣險縺ｯ縺ゅｊ縺ｾ縺帙ｓ縲・
+        : 'Manifest螳｣險讓ｩ髯・(${permissions.length}莉ｶ): ${permissions.join(', ')}';
     return <ReleaseCheckResult>[
       ReleaseCheckResult(
         id: 'android.permissions',
@@ -868,8 +849,7 @@ class ReleaseAudit {
       try {
         result[relativePath] = entity.readAsStringSync();
       } on FileSystemException {
-        // 読み取れない生成物やバイナリ相当ファイルは監査対象外とする。
-      }
+        // 隱ｭ縺ｿ蜿悶ｌ縺ｪ縺・函謌千黄繧・ヰ繧､繝翫Μ逶ｸ蠖薙ヵ繧｡繧､繝ｫ縺ｯ逶｣譟ｻ蟇ｾ雎｡螟悶→縺吶ｋ縲・      }
     }
     return result;
   }
@@ -911,8 +891,7 @@ class ReleaseAudit {
   static String _normalizePath(String path) => path.replaceAll('\\', '/');
 }
 
-/// Flutter SDKから解決したtargetSdkVersionの詳細。
-class ResolvedFlutterTargetSdk {
+/// Flutter SDK縺九ｉ隗｣豎ｺ縺励◆targetSdkVersion縺ｮ隧ｳ邏ｰ縲・class ResolvedFlutterTargetSdk {
   const ResolvedFlutterTargetSdk({
     required this.value,
     required this.flutterSdkPath,
