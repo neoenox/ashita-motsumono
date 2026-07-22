@@ -8,6 +8,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../app_navigation.dart';
 import '../app_state.dart';
 import '../models/entities.dart';
 import '../services/ad_service.dart';
@@ -42,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _filterPersonId;
   ReceiveShareHandler? _receiveShareHandler;
   bool _shareListenerInitialized = false;
+  bool _fabPressed = false;
 
   @override
   void initState() {
@@ -120,11 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
 
-        await navigator.push(
-          MaterialPageRoute<void>(
-            builder: (_) => reviewScreen,
-          ),
-        );
+        await pushAdaptive<void>(context, (_) => reviewScreen);
     }
   }
 
@@ -292,8 +290,9 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             tooltip: '人物を追加',
             icon: const Icon(Icons.person_add_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AddChildScreen()),
+            onPressed: () => pushAdaptive<void>(
+              context,
+              (_) => const AddChildScreen(),
             ),
           ),
           PopupMenuButton<String>(
@@ -318,7 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Column(
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(
+            padding: const EdgeInsets.fromLTRB(
               Spacing.md,
               Spacing.sm,
               Spacing.md,
@@ -345,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           if (state.children.length > 1)
             Padding(
-              padding: EdgeInsets.fromLTRB(
+              padding: const EdgeInsets.fromLTRB(
                 Spacing.md,
                 Spacing.sm,
                 Spacing.md,
@@ -389,7 +388,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           Expanded(
             child: ListView(
-              padding: EdgeInsets.fromLTRB(
+              padding: const EdgeInsets.fromLTRB(
                 Spacing.md,
                 Spacing.sm,
                 Spacing.md,
@@ -404,10 +403,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
                 if (state.children.isEmpty)
                   FirstRunCard(
-                    onAddPerson: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const AddChildScreen(),
-                      ),
+                    onAddPerson: () => pushAdaptive<void>(
+                      context,
+                      (_) => const AddChildScreen(),
                     ),
                   ),
                 if (state.children.isNotEmpty &&
@@ -439,14 +437,37 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomSheet: context.watch<PurchaseProvider>().adRemoved
           ? null
           : const SafeArea(bottom: true, child: _AdBanner()),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AddTodoScreen()),
-        ),
-        icon: const Icon(Icons.add),
-        label: const Text('追加'),
+      floatingActionButton: _buildFab(context),
+    );
+  }
+
+  Widget _buildFab(BuildContext context) {
+    final button = FloatingActionButton.extended(
+      onPressed: () => pushAdaptive<void>(
+        context,
+        (_) => const AddTodoScreen(),
+      ),
+      icon: const Icon(Icons.add),
+      label: const Text('追加'),
+    );
+    if (context.isReducedMotion) return button;
+
+    return Listener(
+      onPointerDown: (_) => _setFabPressed(true),
+      onPointerUp: (_) => _setFabPressed(false),
+      onPointerCancel: (_) => _setFabPressed(false),
+      child: AnimatedScale(
+        duration: AppMotion.quick,
+        curve: AppMotion.standardCurve,
+        scale: _fabPressed ? 0.96 : 1,
+        child: button,
       ),
     );
+  }
+
+  void _setFabPressed(bool pressed) {
+    if (!mounted || _fabPressed == pressed) return;
+    setState(() => _fabPressed = pressed);
   }
 }
 
@@ -461,11 +482,10 @@ class _MainBottomNav extends StatelessWidget {
       currentIndex: selectedIndex,
       onTap: (index) {
         if (index == 1 && selectedIndex != 1) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => SettingsScreen(
-                settings: context.read<AppSettings>(),
-              ),
+          pushAdaptive<void>(
+            context,
+            (_) => SettingsScreen(
+              settings: context.read<AppSettings>(),
             ),
           );
         }

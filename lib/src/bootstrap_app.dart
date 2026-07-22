@@ -254,33 +254,83 @@ class _BootstrapAppState extends State<BootstrapApp> {
       home: switch (_phase) {
         _BootstrapPhase.loading => const _BootstrapLoadingScreen(),
         _BootstrapPhase.recoverableFailure => _DatabaseRecoveryScreen(
-          backupInfo: _loadFailure?.backupInfo ?? _store?.loadCorruptBackup(),
-          onRetry: _retryLoad,
-          onReset: _confirmAndResetLocalDatabase,
-        ),
+            backupInfo: _loadFailure?.backupInfo ?? _store?.loadCorruptBackup(),
+            onRetry: _retryLoad,
+            onReset: _confirmAndResetLocalDatabase,
+          ),
         _BootstrapPhase.fatalFailure => _BootstrapFailureScreen(
-          error: _fatalError,
-          onRetry: _restartBootstrap,
-        ),
+            error: _fatalError,
+            onRetry: _restartBootstrap,
+          ),
         _BootstrapPhase.ready => const SizedBox.shrink(),
       },
     );
   }
 }
 
-class _BootstrapLoadingScreen extends StatelessWidget {
+class _BootstrapLoadingScreen extends StatefulWidget {
   const _BootstrapLoadingScreen();
 
   @override
+  State<_BootstrapLoadingScreen> createState() =>
+      _BootstrapLoadingScreenState();
+}
+
+class _BootstrapLoadingScreenState extends State<_BootstrapLoadingScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: AppMotion.standard,
+    )..repeat(reverse: true);
+    _pulseScale = Tween<double>(begin: 0.92, end: 1).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: AppMotion.standardCurve,
+      ),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (context.isReducedMotion) {
+      _pulseController
+        ..stop()
+        ..value = 1;
+    } else if (!_pulseController.isAnimating) {
+      _pulseController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    final indicator = context.isReducedMotion
+        ? const CircularProgressIndicator()
+        : ScaleTransition(
+            scale: _pulseScale,
+            child: const CircularProgressIndicator(),
+          );
+
+    return Scaffold(
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('端末内データを確認しています…'),
+            indicator,
+            const SizedBox(height: 16),
+            const Text('端末内データを確認しています…'),
           ],
         ),
       ),

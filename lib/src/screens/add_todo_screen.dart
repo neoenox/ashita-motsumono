@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../app_navigation.dart';
 import '../app_state.dart';
 import '../models/entities.dart';
 import '../theme/app_theme.dart';
@@ -154,7 +155,10 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
           const SizedBox(height: Spacing.lg),
 
           // 画像・スクショから登録
-          Text('画像・スクショから登録', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            '画像・スクショから登録',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: Spacing.sm),
           if (Platform.isWindows)
             const Padding(
@@ -203,9 +207,9 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
                 onPressed: _busy
                     ? null
                     : () => requestAiImageAnalysisWithDisclosure(
-                        context,
-                        startAnalysis: _pickAndOcrWithAi,
-                      ),
+                          context,
+                          startAnalysis: _pickAndOcrWithAi,
+                        ),
                 icon: const Icon(Icons.auto_awesome),
                 label: const Text('AIで解析（手書きも対応）'),
               ),
@@ -221,10 +225,10 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
           const SizedBox(height: Spacing.sm),
           TextField(
             controller: _pasteController,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               hintText: '園アプリやLINE連絡の文面を貼り付け',
               prefixIcon: Padding(
-                padding: const EdgeInsets.only(bottom: 48),
+                padding: EdgeInsets.only(bottom: 48),
                 child: Icon(Icons.content_paste, size: 20),
               ),
             ),
@@ -456,10 +460,9 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
       ocrText: trimmed,
     );
     if (!mounted) return;
-    await navigator.pushReplacement(
-      MaterialPageRoute(
-        builder: (_) =>
-            _reviewScreenFor(drafts: drafts, documentId: document.id),
+    await navigator.pushReplacement<void, void>(
+      adaptivePageRoute<void>(
+        (_) => _reviewScreenFor(drafts: drafts, documentId: document.id),
       ),
     );
   }
@@ -503,9 +506,9 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
             );
             return;
           }
-          await Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (_) => _reviewScreenFor(
+          await Navigator.of(context).pushReplacement<void, void>(
+            adaptivePageRoute<void>(
+              (_) => _reviewScreenFor(
                 drafts: result.drafts,
                 documentId: result.document.id,
               ),
@@ -533,8 +536,12 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
 <<<<<<< HEAD
       final proxyUrl = GeminiApiService.defaultInstance().proxyUrl ?? '';
 =======
+<<<<<<< HEAD
+      final proxyUrl = GeminiApiService.defaultInstance().proxyUrl ?? '';
+=======
       final proxyUrl =
           GeminiApiService.defaultInstance().proxyUrl ?? '';
+>>>>>>> origin/master
 >>>>>>> origin/master
       final result = await service.pickAndProcessWithAi(proxyUrl);
       if (result == null) return;
@@ -554,10 +561,12 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
             ocrText: doc.ocrText,
           );
           if (!mounted) return;
-          await Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (_) =>
-                  _reviewScreenFor(drafts: drafts, documentId: document.id),
+          await Navigator.of(context).pushReplacement<void, void>(
+            adaptivePageRoute<void>(
+              (_) => _reviewScreenFor(
+                drafts: drafts,
+                documentId: document.id,
+              ),
             ),
           );
       }
@@ -592,4 +601,5 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
     return ReviewExtractionsScreen(drafts: drafts, documentId: documentId);
   }
 }
+
 

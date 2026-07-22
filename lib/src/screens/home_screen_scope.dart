@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../app_navigation.dart';
 import '../app_state.dart';
 import '../services/app_settings.dart';
 import '../services/ocr_pick_service.dart';
@@ -69,9 +70,7 @@ class _HomeScreenScopeState extends State<HomeScreenScope> {
                   drafts: result.drafts,
                   documentId: result.document.id,
                 );
-          await Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => screen),
-          );
+          await pushAdaptive<void>(context, (_) => screen);
       }
     } on OcrException catch (error) {
       if (!mounted) return;

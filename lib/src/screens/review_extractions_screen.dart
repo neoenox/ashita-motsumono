@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../app_navigation.dart';
 import '../app_state.dart';
 import '../models/bulk_extraction_review_state.dart';
 import '../models/entities.dart';
@@ -87,7 +88,10 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
                     children: [
                       Icon(Icons.person_outline, size: 18, color: cs.primary),
                       const SizedBox(width: Spacing.sm),
-                      Text('対象', style: Theme.of(context).textTheme.titleSmall),
+                      Text(
+                        '対象',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
                     ],
                   ),
                   const SizedBox(height: Spacing.sm),
@@ -162,12 +166,11 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
   }
 
   Future<void> _editDraft(int index) async {
-    final edited = await Navigator.of(context).push<ExtractionDraft>(
-      MaterialPageRoute(
-        builder: (_) => ReviewExtractionScreen(
-          draft: _reviewState.draftAt(index),
-          editOnly: true,
-        ),
+    final edited = await pushAdaptive<ExtractionDraft>(
+      context,
+      (_) => ReviewExtractionScreen(
+        draft: _reviewState.draftAt(index),
+        editOnly: true,
       ),
     );
     if (!mounted || edited == null) return;

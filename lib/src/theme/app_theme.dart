@@ -3,9 +3,25 @@
 // Stitch デザインシステム (Smart Aesthetic Enhancer) のトークンを反映
 // 関連: main.dart, todo_tile.dart, todo_section.dart
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../models/enums.dart';
+
+class AppMotion {
+  AppMotion._();
+
+  static const quick = Duration(milliseconds: 120);
+  static const standard = Duration(milliseconds: 200);
+  static const emphasized = Duration(milliseconds: 300);
+  static const standardCurve = Curves.easeOutCubic;
+  static const emphasizedCurve = Curves.fastOutSlowIn;
+}
+
+extension BuildContextMotion on BuildContext {
+  /// OSの「アニメーションを減らす」設定を画面側で参照する。
+  bool get isReducedMotion => MediaQuery.of(this).disableAnimations;
+}
 
 class AppTheme {
   AppTheme._();
@@ -26,6 +42,16 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: cs,
       fontFamily: 'NotoSansJP',
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: AppBarTheme(
         centerTitle: false,
         elevation: 0,
@@ -82,9 +108,9 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          shape: StadiumBorder(),
+          shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          textStyle: TextStyle(
+          textStyle: const TextStyle(
             fontFamily: 'NotoSansJP',
             fontWeight: FontWeight.w600,
             letterSpacing: 0.05,
@@ -93,21 +119,24 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          shape: StadiumBorder(),
+          shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           side: BorderSide(color: cs.outline),
-          textStyle: TextStyle(
+          textStyle: const TextStyle(
             fontFamily: 'NotoSansJP',
             fontWeight: FontWeight.w500,
           ),
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        shape: StadiumBorder(),
+        shape: const StadiumBorder(),
         elevation: 2,
         backgroundColor: cs.primary,
         foregroundColor: cs.onPrimary,
-        extendedPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        extendedPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 14,
+        ),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: cs.surface,
@@ -115,12 +144,12 @@ class AppTheme {
         unselectedItemColor: cs.onSurfaceVariant,
         type: BottomNavigationBarType.fixed,
         elevation: 0,
-        selectedLabelStyle: TextStyle(
+        selectedLabelStyle: const TextStyle(
           fontFamily: 'NotoSansJP',
           fontWeight: FontWeight.w600,
           fontSize: 12,
         ),
-        unselectedLabelStyle: TextStyle(
+        unselectedLabelStyle: const TextStyle(
           fontFamily: 'NotoSansJP',
           fontWeight: FontWeight.w400,
           fontSize: 12,
@@ -131,7 +160,7 @@ class AppTheme {
           side: BorderSide(color: cs.outlineVariant),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        labelStyle: TextStyle(
+        labelStyle: const TextStyle(
           fontFamily: 'NotoSansJP',
           fontSize: 13,
           fontWeight: FontWeight.w500,
@@ -143,7 +172,7 @@ class AppTheme {
         thickness: 0.5,
       ),
       checkboxTheme: CheckboxThemeData(
-        shape: CircleBorder(),
+        shape: const CircleBorder(),
         side: BorderSide(color: cs.outline),
         fillColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return cs.primary;
@@ -167,12 +196,12 @@ class CategoryColors {
 
 extension TodoCategoryColor on TodoCategory {
   Color get color => switch (this) {
-    TodoCategory.payment => CategoryColors.payment,
-    TodoCategory.submit => CategoryColors.submit,
-    TodoCategory.event => CategoryColors.event,
-    TodoCategory.item => CategoryColors.item,
-    TodoCategory.other => CategoryColors.other,
-  };
+        TodoCategory.payment => CategoryColors.payment,
+        TodoCategory.submit => CategoryColors.submit,
+        TodoCategory.event => CategoryColors.event,
+        TodoCategory.item => CategoryColors.item,
+        TodoCategory.other => CategoryColors.other,
+      };
 }
 
 class Spacing {
