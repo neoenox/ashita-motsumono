@@ -1,14 +1,11 @@
 // tool/release_gate.dart
 //
-// Release Gate CLIエントリポイント
-// Play Console提出前の設定ミスを自動検出する。
-
+// Release Gate CLI繧ｨ繝ｳ繝医Μ繝昴う繝ｳ繝・// Play Console謠仙・蜑阪・險ｭ螳壹Α繧ｹ繧定・蜍墓､懷・縺吶ｋ縲・
 import 'dart:io';
 
 import 'src/release_audit.dart';
 
-/// Release Gate CLIのエントリポイント。
-void main(List<String> arguments) {
+/// Release Gate CLI縺ｮ繧ｨ繝ｳ繝医Μ繝昴う繝ｳ繝医・void main(List<String> arguments) {
   try {
     final options = _parseArguments(arguments);
     if (options.showHelp) {
@@ -18,7 +15,7 @@ void main(List<String> arguments) {
 
     final root = Directory(options.rootPath).absolute;
     if (!root.existsSync()) {
-      stderr.writeln('ERROR: プロジェクトルートが見つかりません: ${root.path}');
+      stderr.writeln('ERROR: 繝励Ο繧ｸ繧ｧ繧ｯ繝医Ν繝ｼ繝医′隕九▽縺九ｊ縺ｾ縺帙ｓ: ${root.path}');
       exitCode = 2;
       return;
     }
@@ -60,10 +57,10 @@ void main(List<String> arguments) {
     _printUsage();
     exitCode = 64;
   } on FileSystemException catch (error) {
-    stderr.writeln('ERROR: ファイルを読み取れません: ${error.message}');
+    stderr.writeln('ERROR: 繝輔ぃ繧､繝ｫ繧定ｪｭ縺ｿ蜿悶ｌ縺ｾ縺帙ｓ: ${error.message}');
     exitCode = 2;
   } catch (error) {
-    stderr.writeln('ERROR: Release Gateの実行に失敗しました: $error');
+    stderr.writeln('ERROR: Release Gate縺ｮ螳溯｡後↓螟ｱ謨励＠縺ｾ縺励◆: $error');
     exitCode = 2;
   }
 }
@@ -81,24 +78,24 @@ _CliOptions _parseArguments(List<String> arguments) {
     if (argument.startsWith('--root=')) {
       final value = argument.substring('--root='.length).trim();
       if (value.isEmpty) {
-        throw const FormatException('--rootにはパスを指定してください。');
+        throw const FormatException('--root縺ｫ縺ｯ繝代せ繧呈欠螳壹＠縺ｦ縺上□縺輔＞縲・);
       }
       rootPath = value;
       continue;
     }
     if (argument == '--root') {
       if (index + 1 >= arguments.length) {
-        throw const FormatException('--rootの後にパスを指定してください。');
+        throw const FormatException('--root縺ｮ蠕後↓繝代せ繧呈欠螳壹＠縺ｦ縺上□縺輔＞縲・);
       }
       index++;
       final value = arguments[index].trim();
       if (value.isEmpty) {
-        throw const FormatException('--rootにはパスを指定してください。');
+        throw const FormatException('--root縺ｫ縺ｯ繝代せ繧呈欠螳壹＠縺ｦ縺上□縺輔＞縲・);
       }
       rootPath = value;
       continue;
     }
-    throw FormatException('不明なオプションです: $argument');
+    throw FormatException('荳肴・縺ｪ繧ｪ繝励す繝ｧ繝ｳ縺ｧ縺・ $argument');
   }
 
   return _CliOptions(rootPath: rootPath, showHelp: showHelp);
@@ -131,9 +128,9 @@ void _printUsage() {
   stdout.writeln('');
   stdout.writeln('Options:');
   stdout.writeln(
-    '  --root=<path>  Flutterプロジェクトのルート。既定値は現在のディレクトリ。',
+    '  --root=<path>  Flutter繝励Ο繧ｸ繧ｧ繧ｯ繝医・繝ｫ繝ｼ繝医よ里螳壼､縺ｯ迴ｾ蝨ｨ縺ｮ繝・ぅ繝ｬ繧ｯ繝医Μ縲・,
   );
-  stdout.writeln('  --help, -h     このヘルプを表示。');
+  stdout.writeln('  --help, -h     縺薙・繝倥Ν繝励ｒ陦ｨ遉ｺ縲・);
 }
 
 class _CliOptions {

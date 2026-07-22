@@ -530,8 +530,12 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
         appState: context.read<AppState>(),
         appSettings: context.read<AppSettings>(),
       );
+<<<<<<< HEAD
+      final proxyUrl = GeminiApiService.defaultInstance().proxyUrl ?? '';
+=======
       final proxyUrl =
           GeminiApiService.defaultInstance().proxyUrl ?? '';
+>>>>>>> origin/master
       final result = await service.pickAndProcessWithAi(proxyUrl);
       if (result == null) return;
       if (!mounted) return;
@@ -588,3 +592,4 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
     return ReviewExtractionsScreen(drafts: drafts, documentId: documentId);
   }
 }
+
