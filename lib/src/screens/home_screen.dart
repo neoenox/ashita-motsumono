@@ -1,13 +1,7 @@
-// lib/src/screens/home_screen.dart
-// ホーム画面。今日・明日・未設定・今後のTodoをセクション分けして表示。
-// FABからTodo追加、BottomNavigationBar で設定画面へ遷移。
-// 初回起動時に通知説明ダイアログを表示。
-// 関連: screens/add_todo_screen.dart, screens/add_child_screen.dart,
-//       screens/todo_detail_screen.dart, app_state.dart
-
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart' hide AppState;
@@ -16,13 +10,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_state.dart';
 import '../models/entities.dart';
-import '../theme/app_theme.dart';
 import '../services/ad_service.dart';
 import '../services/app_settings.dart';
 import '../services/export_service.dart';
 import '../services/purchase_provider.dart';
+import '../services/receive_share_handler.dart';
+import '../theme/app_theme.dart';
 import 'add_child_screen.dart';
 import 'add_todo_screen.dart';
+import 'review_extraction_screen.dart';
+import 'review_extractions_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/home_status_cards.dart';
 import 'widgets/todo_section.dart';
@@ -43,9 +40,100 @@ class _HomeScreenState extends State<HomeScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String? _filterPersonId;
+  ReceiveShareHandler? _receiveShareHandler;
+  bool _shareListenerInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _initShareIntentListener();
+      }
+    });
+  }
+
+  void _initShareIntentListener() {
+    if (_shareListenerInitialized) return;
+    _shareListenerInitialized = true;
+
+    final handler = ReceiveShareHandler(
+      appState: context.read<AppState>(),
+      appSettings: widget.settings,
+    );
+
+    _receiveShareHandler = handler;
+
+    unawaited(
+      handler.start(
+        onResult: _handleShareResult,
+        onError: (error, stackTrace) {
+          if (kDebugMode) {
+            debugPrint(
+              'Share intent error: '
+              '$error\n$stackTrace',
+            );
+          }
+
+          if (!mounted) return;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('共有データを受信できませんでした。'),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _handleShareResult(
+    ReceiveShareResult result,
+  ) async {
+    if (!mounted) return;
+
+    switch (result) {
+      case ReceiveShareFailure():
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message),
+            duration: const Duration(seconds: 8),
+          ),
+        );
+
+      case ReceiveShareSuccess():
+        final navigator = Navigator.of(context);
+
+        navigator.popUntil((route) => route.isFirst);
+
+        final Widget reviewScreen;
+
+        if (result.drafts.length == 1) {
+          reviewScreen = ReviewExtractionScreen(
+            draft: result.drafts.single,
+            documentId: result.documentId,
+          );
+        } else {
+          reviewScreen = ReviewExtractionsScreen(
+            drafts: result.drafts,
+            documentId: result.documentId,
+          );
+        }
+
+        await navigator.push(
+          MaterialPageRoute<void>(
+            builder: (_) => reviewScreen,
+          ),
+        );
+    }
+  }
 
   @override
   void dispose() {
+    final handler = _receiveShareHandler;
+    if (handler != null) {
+      unawaited(handler.dispose());
+    }
     _searchController.dispose();
     super.dispose();
   }
@@ -57,9 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (loaded && !_notificationDialogShown) {
       _notificationDialogShown = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          unawaited(_showNotificationInfoIfNeeded());
-        }
+        if (mounted) unawaited(_showNotificationInfoIfNeeded());
       });
     }
   }
@@ -70,46 +156,60 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final appState = context.read<AppState>();
     final messenger = ScaffoldMessenger.of(context);
+    final previousNight = _fmtNotificationTime(
+      widget.settings.previousNightHour,
+      widget.settings.previousNightMinute,
+    );
+    final sameMorning = _fmtNotificationTime(
+      widget.settings.sameMorningHour,
+      widget.settings.sameMorningMinute,
+    );
 
     final enableNotifications = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('通知について'),
-        content: const Text(
-          '前日20:00と当日7:00にTodoのリマインド通知をお送りします。'
+        content: Text(
+          '前日$previousNightと当日$sameMorningにTodoのリマインド通知をお送りします。'
           '通知を有効にする場合は、次に表示される端末の通知許可で「許可」を選んでください。',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('あとで'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('通知を有効にする'),
           ),
         ],
       ),
     );
 
-    if (!mounted) return;
-    await prefs.setBool(_notificationInfoShownKey, true);
+    // "あとで" is a true deferral: do not persist the shown flag.
     if (!mounted || enableNotifications != true) return;
+    await prefs.setBool(_notificationInfoShownKey, true);
+    if (!mounted) return;
 
     try {
       await appState.requestNotificationPermissions();
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('通知設定を確認しました')));
-    } on Object catch (e) {
+    } on Object {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('通知設定を確認できませんでした: $e')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('通知設定を確認できませんでした')),
+      );
     }
   }
+
+  String _fmtNotificationTime(int hour, int minute) =>
+      '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
 
   Future<void> _exportData(AppState state) async {
     final shouldExport = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('データをエクスポート'),
         content: const Text(
           '人物名、Todo、OCR全文を含むJSONをクリップボードにコピーします。'
@@ -118,11 +218,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('キャンセル'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('コピーする'),
           ),
         ],
@@ -134,53 +234,40 @@ class _HomeScreenState extends State<HomeScreen> {
     final json = const JsonEncoder.withIndent('  ').convert(sanitized.toJson());
     await Clipboard.setData(ClipboardData(text: json));
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('データをクリップボードにコピーしました')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('データをクリップボードにコピーしました')),
+    );
   }
 
   Future<void> _copyCorruptBackup(AppState state) async {
     final backup = state.loadCorruptBackup();
     if (backup == null || backup.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('退避データが見つかりませんでした')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('退避データが見つかりませんでした')),
+      );
       return;
     }
     await Clipboard.setData(ClipboardData(text: backup));
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('退避データをクリップボードにコピーしました')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('退避データをクリップボードにコピーしました')),
+    );
   }
 
   List<AppTodo> _filter(List<AppTodo> todos, List<PersonProfile> children) {
-    final childMap = {for (final c in children) c.id: c};
-    return todos.where((t) {
-      if (_filterPersonId != null && t.personId != _filterPersonId) {
+    final childMap = {for (final child in children) child.id: child};
+    return todos.where((todo) {
+      if (_filterPersonId != null && todo.personId != _filterPersonId) {
         return false;
       }
-      if (_searchQuery.isEmpty) {
-        return true;
-      }
-      final q = _searchQuery.toLowerCase();
-      if (t.title.toLowerCase().contains(q)) {
-        return true;
-      }
-      if (t.category.label.contains(q)) {
-        return true;
-      }
-      if (t.note?.toLowerCase().contains(q) == true) {
-        return true;
-      }
-      if (t.amount?.toString().contains(q) == true) {
-        return true;
-      }
-      final child = childMap[t.personId];
-      if (child?.name.toLowerCase().contains(q) == true) {
-        return true;
-      }
-      return false;
+      if (_searchQuery.isEmpty) return true;
+      final query = _searchQuery.toLowerCase();
+      if (todo.title.toLowerCase().contains(query)) return true;
+      if (todo.category.label.contains(query)) return true;
+      if (todo.note?.toLowerCase().contains(query) == true) return true;
+      if (todo.amount?.toString().contains(query) == true) return true;
+      final child = childMap[todo.personId];
+      return child?.name.toLowerCase().contains(query) == true;
     }).toList();
   }
 
@@ -193,29 +280,26 @@ class _HomeScreenState extends State<HomeScreen> {
     final tomorrowTodos = _filter(state.todosForDate(tomorrow), state.children);
     final undated = _filter(state.undatedTodos(), state.children);
     final upcoming = _filter(state.futureTodos(), state.children);
-    final allFiltered =
-        todayTodos.isEmpty &&
+    final allFiltered = todayTodos.isEmpty &&
         tomorrowTodos.isEmpty &&
         undated.isEmpty &&
         upcoming.isEmpty;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('あした持つもの'),
+        title: const Text('あしたもつもの'),
         actions: [
           IconButton(
             tooltip: '人物を追加',
             icon: const Icon(Icons.person_add_outlined),
-            onPressed: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const AddChildScreen())),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AddChildScreen()),
+            ),
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
-              if (value == 'export') {
-                unawaited(_exportData(state));
-              }
+              if (value == 'export') unawaited(_exportData(state));
             },
             itemBuilder: (_) => [
               const PopupMenuItem(
@@ -234,7 +318,12 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Column(
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(Spacing.md, Spacing.sm, Spacing.md, 0),
+            padding: EdgeInsets.fromLTRB(
+              Spacing.md,
+              Spacing.sm,
+              Spacing.md,
+              0,
+            ),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
@@ -250,38 +339,51 @@ class _HomeScreenState extends State<HomeScreen> {
                       )
                     : null,
               ),
-              onChanged: (v) => setState(() => _searchQuery = v.trim()),
+              onChanged: (value) =>
+                  setState(() => _searchQuery = value.trim()),
             ),
           ),
           if (state.children.length > 1)
             Padding(
-              padding: EdgeInsets.fromLTRB(Spacing.md, Spacing.sm, Spacing.md, 0),
+              padding: EdgeInsets.fromLTRB(
+                Spacing.md,
+                Spacing.sm,
+                Spacing.md,
+                0,
+              ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
-                  children: state.children.map(
-                    (c) => Padding(
-                      padding: const EdgeInsets.only(right: Spacing.sm),
-                      child: FilterChip(
-                        label: Text(c.name),
-                        selected: _filterPersonId == c.id,
-                        onSelected: (selected) {
-                          setState(() => _filterPersonId = selected ? c.id : null);
-                        },
-                        selectedColor: Theme.of(context).colorScheme.primary,
-                        labelStyle: TextStyle(
-                          color: _filterPersonId == c.id
-                              ? Theme.of(context).colorScheme.onPrimary
-                              : null,
+                  children: state.children
+                      .map(
+                        (child) => Padding(
+                          padding: const EdgeInsets.only(right: Spacing.sm),
+                          child: FilterChip(
+                            label: Text(child.name),
+                            selected: _filterPersonId == child.id,
+                            onSelected: (selected) {
+                              setState(
+                                () => _filterPersonId =
+                                    selected ? child.id : null,
+                              );
+                            },
+                            selectedColor:
+                                Theme.of(context).colorScheme.primary,
+                            labelStyle: TextStyle(
+                              color: _filterPersonId == child.id
+                                  ? Theme.of(context).colorScheme.onPrimary
+                                  : null,
+                            ),
+                            checkmarkColor:
+                                Theme.of(context).colorScheme.onPrimary,
+                            avatar: CircleAvatar(
+                              radius: 10,
+                              backgroundColor: Color(child.colorValue),
+                            ),
+                          ),
                         ),
-                        checkmarkColor: Theme.of(context).colorScheme.onPrimary,
-                        avatar: CircleAvatar(
-                          radius: 10,
-                          backgroundColor: Color(c.colorValue),
-                        ),
-                      ),
-                    ),
-                  ).toList(),
+                      )
+                      .toList(),
                 ),
               ),
             ),
@@ -303,7 +405,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (state.children.isEmpty)
                   FirstRunCard(
                     onAddPerson: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AddChildScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const AddChildScreen(),
+                      ),
                     ),
                   ),
                 if (state.children.isNotEmpty &&
@@ -334,11 +438,11 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: const _MainBottomNav(selectedIndex: 0),
       bottomSheet: context.watch<PurchaseProvider>().adRemoved
           ? null
-          : SafeArea(bottom: true, child: const _AdBanner()),
+          : const SafeArea(bottom: true, child: _AdBanner()),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const AddTodoScreen())),
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AddTodoScreen()),
+        ),
         icon: const Icon(Icons.add),
         label: const Text('追加'),
       ),
@@ -400,9 +504,8 @@ class _AdBannerState extends State<_AdBanner> {
   }
 
   void _load() {
-    final size = AdSize.fullBanner;
     final ad = AdService.createBannerAd(
-      size: size,
+      size: AdSize.fullBanner,
       onLoaded: (loadedAd) {
         if (!mounted) {
           loadedAd.dispose();
@@ -422,7 +525,6 @@ class _AdBannerState extends State<_AdBanner> {
       },
     );
     if (ad == null) return;
-
     _loadingAd = ad;
     ad.load();
   }

@@ -1,23 +1,64 @@
 part of 'app_state.dart';
 
 extension CleanupAppStateOperations on AppState {
-  Future<void> clearAllData() async {
-    final documentsToDelete = List<DocumentRecord>.from(documents);
-    final todosToCancel = List<AppTodo>.from(todos);
-    final cleanupPaths = _documentImageCleaner
-        .pathsFor(documentsToDelete)
-        .toList();
+  Future<void> clearAllData({
+    bool awaitPostDeleteCleanup = false,
+  }) =>
+      _runMutation(() async {
+        final documentsToDelete = List<DocumentRecord>.from(documents);
+        final todosToCancel = List<AppTodo>.from(todos);
+        final cleanupPaths = _documentImageCleaner
+            .pathsFor(documentsToDelete)
+            .toList();
 
-    await _store.clearWithSideEffects(
-      notificationTodoIds: todosToCancel.map((todo) => todo.id),
-      cleanupPaths: cleanupPaths,
+        // 主データと副作用キューの登録だけを削除成功の必須境界とする。
+        await _store.clearWithSideEffects(
+          notificationTodoIds: todosToCancel.map((todo) => todo.id),
+          cleanupPaths: cleanupPaths,
+        );
+        _replaceChildren(const []);
+        _replaceTodos(const []);
+        _replaceDocuments(const []);
+
+        // 通常UIでは設定削除や成功表示をブロックしない。
+        // テストや保守処理など、副作用完了まで必要な呼び出し元は明示的に待機できる。
+        final cleanup = _runPostDeleteCleanup();
+        if (awaitPostDeleteCleanup) {
+          await cleanup;
+        } else {
+          unawaited(cleanup);
+        }
+      });
+
+  Future<void> _runPostDeleteCleanup() async {
+    await _runPostDeleteBestEffort(
+      'notification cancellation',
+      () => _notificationCoordinator.retryPending(const <AppTodo>[]),
     );
-    _replaceChildren(const []);
-    _replaceTodos(const []);
-    _replaceDocuments(const []);
+    await _runPostDeleteBestEffort(
+      'document image cleanup',
+      _retryPendingFileCleanup,
+    );
+    await _runPostDeleteBestEffort(
+      'residual file cleanup',
+      _sensitiveDataCleaner.clearResidualFiles,
+    );
+  }
 
-    await _notificationCoordinator.retryPending(const <AppTodo>[]);
-    await _retryPendingFileCleanup();
+  Future<void> _runPostDeleteBestEffort(
+    String operation,
+    Future<void> Function() action,
+  ) async {
+    try {
+      await action();
+    } on Object catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint(
+          'Post-delete $operation failed and will remain best effort: '
+          '$error\n$stackTrace',
+        );
+      }
+    }
   }
 
   Future<void> tryDeleteDocumentOnDispose({

@@ -19,6 +19,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.44.0'
           channel: stable
           cache: true
 
@@ -44,7 +45,7 @@ jobs:
         run: python3 -m unittest tool/test_release_workflow.py
 
       - name: Analyze
-        run: flutter analyze --no-fatal-infos
+        run: python3 tool/run_flutter_analyze.py
 
       - name: Test
         run: flutter test
@@ -133,7 +134,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
-      IAP_REMOVE_ADS_PRODUCT_ID: ${{ vars.IAP_REMOVE_ADS_PRODUCT_ID || 'remove_ads' }}
+      IAP_REMOVE_ADS_PRODUCT_ID: ${{ vars.IAP_REMOVE_ADS_PRODUCT_ID }}
+      IAP_AI_ACCESS_PRODUCT_ID: ${{ vars.IAP_AI_ACCESS_PRODUCT_ID }}
       ANDROID_UPLOAD_CERT_SHA256: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 }}
     steps:
       - name: Check out repository
@@ -148,6 +150,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.44.0'
           channel: stable
           cache: true
 
@@ -168,6 +171,8 @@ jobs:
           if [ -z "${{ secrets.ADMOB_APP_ID }}" ]; then missing+=("ADMOB_APP_ID"); fi
           if [ -z "${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}" ]; then missing+=("ADMOB_BANNER_AD_UNIT_ID"); fi
           if [ -z "${{ secrets.GEMINI_PROXY_URL }}" ]; then missing+=("GEMINI_PROXY_URL"); fi
+          if [ -z "$IAP_REMOVE_ADS_PRODUCT_ID" ]; then missing+=("IAP_REMOVE_ADS_PRODUCT_ID variable"); fi
+          if [ -z "$IAP_AI_ACCESS_PRODUCT_ID" ]; then missing+=("IAP_AI_ACCESS_PRODUCT_ID variable"); fi
           if [ -z "$ANDROID_UPLOAD_CERT_SHA256" ]; then missing+=("ANDROID_UPLOAD_CERT_SHA256 variable"); fi
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::Missing required release configuration: ${missing[*]}"
@@ -178,13 +183,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           echo "::add-mask::${{ secrets.KEYSTORE_STORE_PASSWORD }}"
           echo "::add-mask::${{ secrets.KEYSTORE_KEY_PASSWORD }}"
           echo "::add-mask::${{ secrets.KEYSTORE_KEY_ALIAS }}"
-
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
-
           cat > android/key.properties <<EOF
           storeFile=app/upload-keystore.jks
           storePassword=${{ secrets.KEYSTORE_STORE_PASSWORD }}
@@ -202,7 +204,6 @@ jobs:
           output_dir="build/release-verification"
           certificate_der="$RUNNER_TEMP/upload-certificate.der"
           mkdir -p "$output_dir"
-
           keytool -exportcert \
             -keystore android/app/upload-keystore.jks \
             -alias "$KEYSTORE_KEY_ALIAS" \
@@ -210,7 +211,6 @@ jobs:
             -file "$certificate_der"
           actual_fingerprint="$(sha256sum "$certificate_der" | awk '{print $1}')"
           rm -f "$certificate_der"
-
           python3 tool/verify_android_certificate_fingerprint.py \
             --expected "$ANDROID_UPLOAD_CERT_SHA256" \
             --actual "$actual_fingerprint" \
@@ -231,6 +231,7 @@ jobs:
           flutter build apk --release
           --dart-define=ADMOB_BANNER_AD_UNIT_ID=${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
           --dart-define=IAP_REMOVE_ADS_PRODUCT_ID=${IAP_REMOVE_ADS_PRODUCT_ID}
+          --dart-define=IAP_AI_ACCESS_PRODUCT_ID=${IAP_AI_ACCESS_PRODUCT_ID}
           --dart-define=GEMINI_PROXY_URL=${{ secrets.GEMINI_PROXY_URL }}
 
       - name: Verify signed APK
@@ -240,13 +241,11 @@ jobs:
           apk="build/app/outputs/flutter-apk/app-release.apk"
           output_dir="build/release-verification"
           mkdir -p "$output_dir"
-
           apksigner_path="$(find "${ANDROID_HOME}/build-tools" -maxdepth 2 -type f -name apksigner -print | sort -V | tail -n 1)"
           if [[ -z "$apksigner_path" ]]; then
             echo "::error::apksigner was not found under ${ANDROID_HOME}/build-tools"
             exit 1
           fi
-
           "$apksigner_path" verify --verbose --print-certs "$apk" 2>&1 \
             | tee "$output_dir/apk-signature-verification.txt"
           apk_fingerprint="$(sed -n 's/.*certificate SHA-256 digest: //p' "$output_dir/apk-signature-verification.txt" | head -n 1)"
@@ -268,6 +267,7 @@ jobs:
           flutter build appbundle --release
           --dart-define=ADMOB_BANNER_AD_UNIT_ID=${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
           --dart-define=IAP_REMOVE_ADS_PRODUCT_ID=${IAP_REMOVE_ADS_PRODUCT_ID}
+          --dart-define=IAP_AI_ACCESS_PRODUCT_ID=${IAP_AI_ACCESS_PRODUCT_ID}
           --dart-define=GEMINI_PROXY_URL=${{ secrets.GEMINI_PROXY_URL }}
 
       - name: Verify signed AAB
@@ -277,7 +277,6 @@ jobs:
           aab="build/app/outputs/bundle/release/app-release.aab"
           output_dir="build/release-verification"
           mkdir -p "$output_dir"
-
           jarsigner -verify -verbose -certs "$aab" 2>&1 \
             | tee "$output_dir/aab-signature-verification.txt"
           keytool -printcert -jarfile "$aab" 2>&1 \
@@ -308,6 +307,7 @@ jobs:
             --apk-certificate build/release-verification/apk-certificate.json \
             --aab-certificate build/release-verification/aab-certificate.json \
             --iap-product-id "$IAP_REMOVE_ADS_PRODUCT_ID" \
+            --iap-ai-product-id "$IAP_AI_ACCESS_PRODUCT_ID" \
             --output build/release-verification/release-manifest.json
 
       - name: Upload signed APK artifact

@@ -68,6 +68,22 @@ class _TestPurchaseProvider extends PurchaseProvider {
   Future<void> restore() async {}
 }
 
+class _ScreenshotNotificationService extends NotificationService {
+  _ScreenshotNotificationService() : super(timezoneName: 'Asia/Tokyo');
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> requestPermissions() async {}
+
+  @override
+  Future<void> scheduleTodo(AppTodo todo) async {}
+
+  @override
+  Future<void> cancelTodo(String todoId) async {}
+}
+
 Future<AppSettings> _createSettings() async {
   final prefs = await SharedPreferences.getInstance();
   return AppSettings(prefs);
@@ -77,7 +93,7 @@ Future<AppState> _createAppState() async {
   final store = await DriftStore.createInMemory();
   final appState = AppState(
     store: store,
-    notifications: NotificationService(timezoneName: 'Asia/Tokyo'),
+    notifications: _ScreenshotNotificationService(),
   );
   await appState.load();
   return appState;
@@ -208,6 +224,27 @@ void main() {
   });
 
   setUp(() {
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const messagesChannel = MethodChannel(
+      'receive_sharing_intent/messages',
+    );
+    const eventsChannel = MethodChannel(
+      'receive_sharing_intent/events-media',
+    );
+    messenger.setMockMethodCallHandler(
+      messagesChannel,
+      (call) async => <dynamic>[],
+    );
+    messenger.setMockMethodCallHandler(
+      eventsChannel,
+      (call) async => null,
+    );
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(messagesChannel, null);
+      messenger.setMockMethodCallHandler(eventsChannel, null);
+    });
+
     // このファイルはtool配下だが、CIではflutter testから実行するテスト専用コード。
     // ignore: invalid_use_of_visible_for_testing_member
     SharedPreferences.setMockInitialValues({

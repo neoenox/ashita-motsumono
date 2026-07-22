@@ -29,7 +29,7 @@ void main() {
 
     expect(
       privacyPolicy,
-      contains('ログイン機能、家族共有機能、独自サーバーとのデータ同期機能はありません'),
+      contains('ログイン機能、家族共有機能、独自サーバーとのTodo同期機能はありません'),
     );
     expect(privacyPolicy, contains('通常の文字認識'));
     expect(privacyPolicy, contains('Cloudflare Workers'));

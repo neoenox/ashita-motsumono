@@ -1,8 +1,3 @@
-// lib/src/models/person_profile.dart
-// 人物のプロフィール（ID、名前、カラー、タイムスタンプ）を保持するモデル。
-// スナップショット内で複数の人物を管理するために存在する。
-// 関連: entities.dart, app_snapshot.dart
-
 import 'package:flutter/foundation.dart';
 
 @immutable
@@ -45,11 +40,27 @@ class PersonProfile {
         'updatedAt': updatedAt.toIso8601String(),
       };
 
-  factory PersonProfile.fromJson(Map<String, dynamic> json) => PersonProfile(
-        id: (json['id'] as String?) ?? '',
-        name: (json['name'] as String?) ?? '',
-        colorValue: (json['colorValue'] as int?) ?? 0,
-        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
-        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
-      );
+  factory PersonProfile.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final name = json['name'];
+    final colorValue = json['colorValue'];
+    final createdAt = DateTime.tryParse(json['createdAt'] as String? ?? '');
+    final updatedAt = DateTime.tryParse(json['updatedAt'] as String? ?? '');
+    if (id is! String || id.trim().isEmpty) {
+      throw const FormatException('PersonProfile.id is invalid');
+    }
+    if (name is! String || name.trim().isEmpty) {
+      throw const FormatException('PersonProfile.name is invalid');
+    }
+    if (colorValue is! int || createdAt == null || updatedAt == null) {
+      throw const FormatException('PersonProfile fields are invalid');
+    }
+    return PersonProfile(
+      id: id,
+      name: name,
+      colorValue: colorValue,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
 }

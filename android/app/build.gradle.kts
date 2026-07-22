@@ -10,7 +10,7 @@ plugins {
 @Suppress("UnstableApiUsage")
 android {
     namespace = "com.ashita_motsumono"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

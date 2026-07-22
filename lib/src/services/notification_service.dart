@@ -239,6 +239,10 @@ class NotificationService {
   }
 
   String _buildBody(AppTodo todo) {
+    if (!(settings?.showNotificationDetails ?? false)) {
+      return 'アプリを開いて内容を確認してください。';
+    }
+
     final parts = <String>[];
     if (todo.items.isNotEmpty) {
       parts.add(todo.items.map((e) => e.label).join('・'));

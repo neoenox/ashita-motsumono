@@ -1,21 +1,15 @@
-// lib/src/screens/review_extraction_screen.dart
-// OCR抽出結果の確認・修正画面。タイトル・種類・期限・項目・通知設定を編集して登録。
-// OCRは間違う前提で設計。ユーザーが必ず確認してから登録する。
-// 関連: screens/add_todo_screen.dart, services/extraction_service.dart, app_state.dart
-
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../app_state.dart';
+import '../models/entities.dart';
+import '../services/app_settings.dart';
+import '../theme/app_theme.dart';
 import '../utils/amount.dart';
 import '../utils/date_picker.dart';
 import '../utils/string_utils.dart';
-import '../app_state.dart';
-import '../services/app_settings.dart';
-import '../theme/app_theme.dart';
-
-import '../models/entities.dart';
 import 'widgets/child_dropdown.dart';
 
 class ReviewExtractionScreen extends StatefulWidget {
@@ -28,12 +22,11 @@ class ReviewExtractionScreen extends StatefulWidget {
 
   final ExtractionDraft draft;
   final String? documentId;
-
-  /// true の場合はTodoを登録せず、編集した下書きをNavigatorの結果として返す。
   final bool editOnly;
 
   @override
-  State<ReviewExtractionScreen> createState() => _ReviewExtractionScreenState();
+  State<ReviewExtractionScreen> createState() =>
+      _ReviewExtractionScreenState();
 }
 
 String _fmtTime(int hour, int minute) =>
@@ -51,6 +44,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   bool _notifyPreviousNight = true;
   bool _notifySameMorning = true;
   bool _saved = false;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -139,12 +133,15 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
             ChildDropdown(
               value: _personId,
               children: children,
-              onChanged: (value) => setState(() => _personId = value),
+              onChanged: _saving
+                  ? null
+                  : (value) => setState(() => _personId = value),
             ),
           ],
           const SizedBox(height: Spacing.md),
           TextField(
             controller: _titleController,
+            enabled: !_saving,
             decoration: const InputDecoration(labelText: 'タイトル'),
           ),
           const SizedBox(height: Spacing.md),
@@ -159,15 +156,17 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
                   ),
                 )
                 .toList(),
-            onChanged: (value) =>
-                setState(() => _category = value ?? TodoCategory.other),
+            onChanged: _saving
+                ? null
+                : (value) =>
+                    setState(() => _category = value ?? TodoCategory.other),
           ),
           const SizedBox(height: Spacing.md),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _selectDueDate,
+                  onPressed: _saving ? null : _selectDueDate,
                   icon: const Icon(Icons.event),
                   label: Text(
                     _dueDate == null
@@ -180,7 +179,9 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
                 const SizedBox(width: Spacing.sm),
                 IconButton.outlined(
                   tooltip: '期限をクリア',
-                  onPressed: () => setState(() => _dueDate = null),
+                  onPressed: _saving
+                      ? null
+                      : () => setState(() => _dueDate = null),
                   icon: const Icon(Icons.clear),
                 ),
               ],
@@ -189,6 +190,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
           const SizedBox(height: Spacing.md),
           TextField(
             controller: _itemsController,
+            enabled: !_saving,
             decoration: const InputDecoration(
               labelText: '持ち物・チェック項目',
               hintText: '水筒、体操着、集金袋',
@@ -197,6 +199,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
           const SizedBox(height: Spacing.md),
           TextField(
             controller: _amountController,
+            enabled: !_saving,
             decoration: const InputDecoration(
               labelText: '金額',
               hintText: '500',
@@ -217,8 +220,10 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
                       ),
                       subtitle: const Text('前日夜にリマインド'),
                       value: _notifyPreviousNight,
-                      onChanged: (value) =>
-                          setState(() => _notifyPreviousNight = value),
+                      onChanged: _saving
+                          ? null
+                          : (value) =>
+                              setState(() => _notifyPreviousNight = value),
                     ),
                     const Divider(),
                     SwitchListTile(
@@ -228,8 +233,10 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
                       ),
                       subtitle: const Text('当日朝にリマインド'),
                       value: _notifySameMorning,
-                      onChanged: (value) =>
-                          setState(() => _notifySameMorning = value),
+                      onChanged: _saving
+                          ? null
+                          : (value) =>
+                              setState(() => _notifySameMorning = value),
                     ),
                   ],
                 ),
@@ -239,6 +246,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
           const SizedBox(height: Spacing.md),
           TextField(
             controller: _noteController,
+            enabled: !_saving,
             decoration: const InputDecoration(labelText: 'OCR全文・メモ'),
             minLines: 6,
             maxLines: 12,
@@ -249,9 +257,20 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
         child: Padding(
           padding: const EdgeInsets.all(Spacing.md),
           child: FilledButton.icon(
-            onPressed: _save,
-            icon: Icon(widget.editOnly ? Icons.save_outlined : Icons.check),
-            label: Text(widget.editOnly ? '変更を反映' : '登録する'),
+            onPressed: _saving ? null : _save,
+            icon: _saving
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(widget.editOnly ? Icons.save_outlined : Icons.check),
+            label: Text(
+              _saving
+                  ? '保存中…'
+                  : widget.editOnly
+                      ? '変更を反映'
+                      : '登録する',
+            ),
           ),
         ),
       ),
@@ -265,6 +284,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   }
 
   Future<void> _save() async {
+    if (_saving) return;
     final title = _titleController.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(
@@ -299,18 +319,28 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
       return;
     }
 
-    final appState = context.read<AppState>();
-    final settings = context.read<AppSettings>();
-    await appState.addTodoFromDraft(
-      draft: draft,
-      personId: _personId,
-      documentId: widget.documentId,
-      notifyPreviousNight: _notifyPreviousNight,
-      notifySameMorning: _notifySameMorning,
-    );
-    await settings.addLearnedItemLabels(items);
-    _saved = true;
-    if (!mounted) return;
-    navigator.popUntil((route) => route.isFirst);
+    setState(() => _saving = true);
+    try {
+      final appState = context.read<AppState>();
+      final settings = context.read<AppSettings>();
+      await appState.addTodoFromDraft(
+        draft: draft,
+        personId: _personId,
+        documentId: widget.documentId,
+        notifyPreviousNight: _notifyPreviousNight,
+        notifySameMorning: _notifySameMorning,
+      );
+      await settings.addLearnedItemLabels(items);
+      _saved = true;
+      if (!mounted) return;
+      navigator.popUntil((route) => route.isFirst);
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('登録に失敗しました: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 }
