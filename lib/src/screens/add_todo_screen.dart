@@ -468,9 +468,9 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
     final text = await getClipboardText();
     if (text == null || text.trim().isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('クリップボードにテキストがありません')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('クリップボードにテキストがありません')));
       return;
     }
     _pasteController.text = text;
@@ -530,8 +530,7 @@ class _AddTodoScreenState extends State<AddTodoScreen> {
         appState: context.read<AppState>(),
         appSettings: context.read<AppSettings>(),
       );
-      final proxyUrl =
-          GeminiApiService.defaultInstance().proxyUrl ?? '';
+      final proxyUrl = GeminiApiService.defaultInstance().proxyUrl ?? '';
       final result = await service.pickAndProcessWithAi(proxyUrl);
       if (result == null) return;
       if (!mounted) return;

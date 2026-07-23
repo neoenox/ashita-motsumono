@@ -37,10 +37,7 @@ sealed class ReceiveShareResult {
 }
 
 final class ReceiveShareSuccess extends ReceiveShareResult {
-  const ReceiveShareSuccess({
-    required this.drafts,
-    required this.documentId,
-  });
+  const ReceiveShareSuccess({required this.drafts, required this.documentId});
 
   final List<ExtractionDraft> drafts;
   final String documentId;
@@ -53,14 +50,11 @@ final class ReceiveShareFailure extends ReceiveShareResult {
   final ReceiveShareFailureKind? kind;
 }
 
-typedef ReceiveShareResultCallback = Future<void> Function(
-  ReceiveShareResult result,
-);
+typedef ReceiveShareResultCallback =
+    Future<void> Function(ReceiveShareResult result);
 
-typedef ReceiveShareErrorCallback = void Function(
-  Object error,
-  StackTrace stackTrace,
-);
+typedef ReceiveShareErrorCallback =
+    void Function(Object error, StackTrace stackTrace);
 
 class _CompletedFingerprint {
   const _CompletedFingerprint(this.value, this.expiresAt);
@@ -75,10 +69,10 @@ class ReceiveShareHandler {
     required AppSettings appSettings,
     ImageFileService? imageFileService,
     OcrService? ocrService,
-  })  : _appState = appState,
-        _appSettings = appSettings,
-        _imageFileService = imageFileService ?? ImageFileService(),
-        _ocrService = ocrService ?? OcrService();
+  }) : _appState = appState,
+       _appSettings = appSettings,
+       _imageFileService = imageFileService ?? ImageFileService(),
+       _ocrService = ocrService ?? OcrService();
 
   final AppState _appState;
   final AppSettings _appSettings;
@@ -108,14 +102,9 @@ class ReceiveShareHandler {
     if (_started || _disposed) return;
     _started = true;
 
-    _subscription =
-        ReceiveSharingIntent.instance.getMediaStream().listen(
+    _subscription = ReceiveSharingIntent.instance.getMediaStream().listen(
       (files) {
-        _enqueue(
-          files,
-          onResult: onResult,
-          onError: onError,
-        );
+        _enqueue(files, onResult: onResult, onError: onError);
       },
       onError: (Object error) {
         onError(error, StackTrace.current);
@@ -123,14 +112,10 @@ class ReceiveShareHandler {
     );
 
     try {
-      final initialFiles =
-          await ReceiveSharingIntent.instance.getInitialMedia();
+      final initialFiles = await ReceiveSharingIntent.instance
+          .getInitialMedia();
 
-      _enqueue(
-        initialFiles,
-        onResult: onResult,
-        onError: onError,
-      );
+      _enqueue(initialFiles, onResult: onResult, onError: onError);
 
       await _queue;
     } on Object catch (error, stackTrace) {
@@ -147,10 +132,7 @@ class ReceiveShareHandler {
       if (_disposed) return;
 
       try {
-        await _processIncoming(
-          files,
-          onResult: onResult,
-        );
+        await _processIncoming(files, onResult: onResult);
       } on Object catch (error, stackTrace) {
         onError(error, stackTrace);
       }
@@ -168,7 +150,8 @@ class ReceiveShareHandler {
         .join('\u001f');
     final now = DateTime.now();
 
-    final recentDuplicate = _lastPayloadKey == payloadKey &&
+    final recentDuplicate =
+        _lastPayloadKey == payloadKey &&
         _lastPayloadAt != null &&
         now.difference(_lastPayloadAt!) < const Duration(seconds: 2);
 
@@ -182,10 +165,12 @@ class ReceiveShareHandler {
 
     if (_isProcessing) {
       await _resetSafely();
-      await onResult(const ReceiveShareFailure(
-        '現在処理中の共有があります。完了してから再度お試しください。',
-        kind: ReceiveShareFailureKind.busy,
-      ));
+      await onResult(
+        const ReceiveShareFailure(
+          '現在処理中の共有があります。完了してから再度お試しください。',
+          kind: ReceiveShareFailureKind.busy,
+        ),
+      );
       return;
     }
 
@@ -202,9 +187,7 @@ class ReceiveShareHandler {
     }
   }
 
-  Future<ReceiveShareResult?> process(
-    List<SharedMediaFile> files,
-  ) async {
+  Future<ReceiveShareResult?> process(List<SharedMediaFile> files) async {
     SharedMediaFile? supportedFile;
     String? mimeType;
 
@@ -214,7 +197,9 @@ class ReceiveShareHandler {
       if (file.type == SharedMediaType.image ||
           file.type == SharedMediaType.text) {
         supportedFile = file;
-        mimeType = file.type == SharedMediaType.image ? 'image/*' : 'text/plain';
+        mimeType = file.type == SharedMediaType.image
+            ? 'image/*'
+            : 'text/plain';
         break;
       }
     }
@@ -237,9 +222,15 @@ class ReceiveShareHandler {
 
       return await _processText(supportedFile.path);
     } on OcrException catch (error) {
-      return ReceiveShareFailure(error.message, kind: ReceiveShareFailureKind.ocrEmpty);
+      return ReceiveShareFailure(
+        error.message,
+        kind: ReceiveShareFailureKind.ocrEmpty,
+      );
     } on StateError catch (error) {
-      return ReceiveShareFailure(error.message, kind: ReceiveShareFailureKind.unexpected);
+      return ReceiveShareFailure(
+        error.message,
+        kind: ReceiveShareFailureKind.unexpected,
+      );
     } on Object catch (error, stackTrace) {
       if (kDebugMode) {
         debugPrint(
@@ -295,10 +286,7 @@ class ReceiveShareHandler {
 
       _recordCompleted(fingerprint);
 
-      return ReceiveShareSuccess(
-        drafts: drafts,
-        documentId: document.id,
-      );
+      return ReceiveShareSuccess(drafts: drafts, documentId: document.id);
     } on Object catch (error, stackTrace) {
       if (kDebugMode) {
         debugPrint(
@@ -398,10 +386,7 @@ class ReceiveShareHandler {
 
         _recordCompleted(ocrFingerprint);
 
-        return ReceiveShareSuccess(
-          drafts: drafts,
-          documentId: document.id,
-        );
+        return ReceiveShareSuccess(drafts: drafts, documentId: document.id);
       } on Object catch (error, stackTrace) {
         await ImageFileService.deleteIfExists(copiedImage.path);
         if (kDebugMode) {
@@ -430,10 +415,9 @@ class ReceiveShareHandler {
   }
 
   void _recordCompleted(String fingerprint) {
-    _completedFingerprints.add(_CompletedFingerprint(
-      fingerprint,
-      DateTime.now().add(_fingerprintTtl),
-    ));
+    _completedFingerprints.add(
+      _CompletedFingerprint(fingerprint, DateTime.now().add(_fingerprintTtl)),
+    );
 
     while (_completedFingerprints.length > _maxCompletedFingerprints) {
       _completedFingerprints.removeAt(0);

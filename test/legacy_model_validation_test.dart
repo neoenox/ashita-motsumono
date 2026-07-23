@@ -3,18 +3,18 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   Map<String, dynamic> validTodoJson() => {
-        'id': 'todo-1',
-        'title': '水筒を持参',
-        'category': 'item',
-        'status': 'active',
-        'items': [
-          {'id': 'item-1', 'label': '水筒', 'isChecked': false},
-        ],
-        'notifyPreviousNight': true,
-        'notifySameMorning': true,
-        'createdAt': '2026-07-16T00:00:00.000Z',
-        'updatedAt': '2026-07-16T00:00:00.000Z',
-      };
+    'id': 'todo-1',
+    'title': '水筒を持参',
+    'category': 'item',
+    'status': 'active',
+    'items': [
+      {'id': 'item-1', 'label': '水筒', 'isChecked': false},
+    ],
+    'notifyPreviousNight': true,
+    'notifySameMorning': true,
+    'createdAt': '2026-07-16T00:00:00.000Z',
+    'updatedAt': '2026-07-16T00:00:00.000Z',
+  };
 
   test('known missing legacy fields use documented defaults', () {
     final json = validTodoJson()
@@ -37,19 +37,13 @@ void main() {
   test('unknown enum values are rejected instead of activated', () {
     final json = validTodoJson()..['status'] = 'unexpected';
 
-    expect(
-      () => AppTodo.fromJson(json),
-      throwsA(isA<FormatException>()),
-    );
+    expect(() => AppTodo.fromJson(json), throwsA(isA<FormatException>()));
   });
 
   test('invalid timestamps are rejected instead of replaced with now', () {
     final json = validTodoJson()..['createdAt'] = 'not-a-date';
 
-    expect(
-      () => AppTodo.fromJson(json),
-      throwsA(isA<FormatException>()),
-    );
+    expect(() => AppTodo.fromJson(json), throwsA(isA<FormatException>()));
   });
 
   test('person and document records require stable identifiers and dates', () {

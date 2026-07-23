@@ -48,10 +48,7 @@ void main() {
     await provider.ready;
 
     expect(provider.canPurchase, isFalse);
-    expect(
-      provider.statusMessage,
-      'ストアに接続できないため、購入済み情報を確認できません。',
-    );
+    expect(provider.statusMessage, 'ストアに接続できないため、購入済み情報を確認できません。');
 
     await provider.purchase();
     expect(gateway.buyCount, 0);
@@ -70,10 +67,7 @@ void main() {
     await provider.ready;
 
     expect(provider.canPurchase, isFalse);
-    expect(
-      provider.statusMessage,
-      '購入アイテムを準備中です。しばらくしてからもう一度お試しください。',
-    );
+    expect(provider.statusMessage, '購入アイテムを準備中です。しばらくしてからもう一度お試しください。');
 
     await provider.purchase();
     expect(gateway.buyCount, 0);
@@ -84,9 +78,7 @@ void main() {
     final settings = AppSettings(await SharedPreferences.getInstance());
     final gateway = _FakePurchaseGateway();
     final verifier = _FakeVerifier(
-      const EntitlementVerification.granted(
-        accessToken: 'verified-token',
-      ),
+      const EntitlementVerification.granted(accessToken: 'verified-token'),
     );
     final provider = AppPurchaseProvider(
       settings,
@@ -151,10 +143,7 @@ void main() {
 
     expect(provider.aiAccess, isFalse);
     expect(gateway.completedPurchases, isEmpty);
-    expect(
-      provider.statusMessage,
-      '購入情報を確認できませんでした。通信状態を確認して、もう一度お試しください。',
-    );
+    expect(provider.statusMessage, '購入情報を確認できませんでした。通信状態を確認して、もう一度お試しください。');
   });
 
   test('keeps verified access and retries completion on redelivery', () async {
@@ -162,9 +151,7 @@ void main() {
     final settings = AppSettings(await SharedPreferences.getInstance());
     final gateway = _FakePurchaseGateway(completeFailures: 1);
     final verifier = _FakeVerifier(
-      const EntitlementVerification.granted(
-        accessToken: 'verified-token',
-      ),
+      const EntitlementVerification.granted(accessToken: 'verified-token'),
     );
     final provider = AppPurchaseProvider(
       settings,
@@ -182,10 +169,7 @@ void main() {
 
     expect(provider.aiAccess, isTrue);
     expect(gateway.completedPurchases, isEmpty);
-    expect(
-      provider.statusMessage,
-      '購入は確認済みですが、ストア処理を完了できませんでした。再起動後に再試行します。',
-    );
+    expect(provider.statusMessage, '購入は確認済みですが、ストア処理を完了できませんでした。再起動後に再試行します。');
 
     gateway.emit([purchase]);
     await gateway.purchaseCompleted.future;

@@ -98,7 +98,10 @@ class _TokenTestGateway implements PurchaseGateway {
 
   @override
   Future<ProductDetailsResponse> queryProductDetails(Set<String> ids) async {
-    return ProductDetailsResponse(productDetails: const [], notFoundIDs: const []);
+    return ProductDetailsResponse(
+      productDetails: const [],
+      notFoundIDs: const [],
+    );
   }
 
   @override

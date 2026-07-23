@@ -26,11 +26,11 @@ class OcrPickService {
     ImagePicker? picker,
     ImageFileService? imageFileService,
     OcrService? ocrService,
-  })  : _appState = appState,
-        _appSettings = appSettings,
-        _picker = picker ?? ImagePicker(),
-        _imageFileService = imageFileService ?? ImageFileService(),
-        _ocrService = ocrService ?? OcrService();
+  }) : _appState = appState,
+       _appSettings = appSettings,
+       _picker = picker ?? ImagePicker(),
+       _imageFileService = imageFileService ?? ImageFileService(),
+       _ocrService = ocrService ?? OcrService();
 
   final AppState _appState;
   final AppSettings _appSettings;
@@ -58,10 +58,7 @@ class OcrPickService {
     final response = await _picker.retrieveLostData();
     if (response.isEmpty) return null;
     if (response.exception != null) {
-      throw OcrException(
-        '中断された画像選択を復旧できませんでした。',
-        cause: response.exception,
-      );
+      throw OcrException('中断された画像選択を復旧できませんでした。', cause: response.exception);
     }
     final files = response.files;
     if (files == null || files.isEmpty) return null;
@@ -102,7 +99,8 @@ class OcrPickService {
     String proxyUrl, {
     String? accessToken,
   }) async {
-    final verifiedToken = accessToken ?? await VerifiedEntitlementCache.getAiToken();
+    final verifiedToken =
+        accessToken ?? await VerifiedEntitlementCache.getAiToken();
     if (verifiedToken == null) {
       throw const OcrException('AI分析の購入情報を確認できませんでした。購入情報を復元してください。');
     }

@@ -27,7 +27,9 @@ void main() {
     });
 
     test('NotificationScheduleFailure has user message', () {
-      const failure = NotificationScheduleFailure(message: 'notification error');
+      const failure = NotificationScheduleFailure(
+        message: 'notification error',
+      );
       expect(failure.userMessage, contains('通知'));
       expect(failure.suggestedAction, contains('利用'));
     });

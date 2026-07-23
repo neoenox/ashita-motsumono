@@ -50,8 +50,8 @@ class SharedTextImportController extends ChangeNotifier {
   SharedTextImportController({
     required AppState appState,
     required List<String> learnedItemLabels,
-  })  : _appState = appState,
-        _service = TextImportService(learnedItemLabels: learnedItemLabels);
+  }) : _appState = appState,
+       _service = TextImportService(learnedItemLabels: learnedItemLabels);
 
   final AppState _appState;
   final TextImportService _service;

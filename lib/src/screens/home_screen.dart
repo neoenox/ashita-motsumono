@@ -79,19 +79,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
           if (!mounted) return;
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('共有データを受信できませんでした。'),
-            ),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('共有データを受信できませんでした。')));
         },
       ),
     );
   }
 
-  Future<void> _handleShareResult(
-    ReceiveShareResult result,
-  ) async {
+  Future<void> _handleShareResult(ReceiveShareResult result) async {
     if (!mounted) return;
 
     switch (result) {
@@ -195,9 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
       messenger.showSnackBar(const SnackBar(content: Text('通知設定を確認しました')));
     } on Object {
       if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(content: Text('通知設定を確認できませんでした')),
-      );
+      messenger.showSnackBar(const SnackBar(content: Text('通知設定を確認できませんでした')));
     }
   }
 
@@ -232,24 +226,24 @@ class _HomeScreenState extends State<HomeScreen> {
     final json = const JsonEncoder.withIndent('  ').convert(sanitized.toJson());
     await Clipboard.setData(ClipboardData(text: json));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('データをクリップボードにコピーしました')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('データをクリップボードにコピーしました')));
   }
 
   Future<void> _copyCorruptBackup(AppState state) async {
     final backup = state.loadCorruptBackup();
     if (backup == null || backup.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('退避データが見つかりませんでした')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('退避データが見つかりませんでした')));
       return;
     }
     await Clipboard.setData(ClipboardData(text: backup));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('退避データをクリップボードにコピーしました')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('退避データをクリップボードにコピーしました')));
   }
 
   List<AppTodo> _filter(List<AppTodo> todos, List<PersonProfile> children) {
@@ -278,7 +272,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final tomorrowTodos = _filter(state.todosForDate(tomorrow), state.children);
     final undated = _filter(state.undatedTodos(), state.children);
     final upcoming = _filter(state.futureTodos(), state.children);
-    final allFiltered = todayTodos.isEmpty &&
+    final allFiltered =
+        todayTodos.isEmpty &&
         tomorrowTodos.isEmpty &&
         undated.isEmpty &&
         upcoming.isEmpty;
@@ -290,10 +285,8 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             tooltip: '人物を追加',
             icon: const Icon(Icons.person_add_outlined),
-            onPressed: () => pushAdaptive<void>(
-              context,
-              (_) => const AddChildScreen(),
-            ),
+            onPressed: () =>
+                pushAdaptive<void>(context, (_) => const AddChildScreen()),
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
@@ -338,8 +331,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       )
                     : null,
               ),
-              onChanged: (value) =>
-                  setState(() => _searchQuery = value.trim()),
+              onChanged: (value) => setState(() => _searchQuery = value.trim()),
             ),
           ),
           if (state.children.length > 1)
@@ -362,19 +354,22 @@ class _HomeScreenState extends State<HomeScreen> {
                             selected: _filterPersonId == child.id,
                             onSelected: (selected) {
                               setState(
-                                () => _filterPersonId =
-                                    selected ? child.id : null,
+                                () => _filterPersonId = selected
+                                    ? child.id
+                                    : null,
                               );
                             },
-                            selectedColor:
-                                Theme.of(context).colorScheme.primary,
+                            selectedColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
                             labelStyle: TextStyle(
                               color: _filterPersonId == child.id
                                   ? Theme.of(context).colorScheme.onPrimary
                                   : null,
                             ),
-                            checkmarkColor:
-                                Theme.of(context).colorScheme.onPrimary,
+                            checkmarkColor: Theme.of(
+                              context,
+                            ).colorScheme.onPrimary,
                             avatar: CircleAvatar(
                               radius: 10,
                               backgroundColor: Color(child.colorValue),
@@ -443,10 +438,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFab(BuildContext context) {
     final button = FloatingActionButton.extended(
-      onPressed: () => pushAdaptive<void>(
-        context,
-        (_) => const AddTodoScreen(),
-      ),
+      onPressed: () =>
+          pushAdaptive<void>(context, (_) => const AddTodoScreen()),
       icon: const Icon(Icons.add),
       label: const Text('追加'),
     );
@@ -484,9 +477,7 @@ class _MainBottomNav extends StatelessWidget {
         if (index == 1 && selectedIndex != 1) {
           pushAdaptive<void>(
             context,
-            (_) => SettingsScreen(
-              settings: context.read<AppSettings>(),
-            ),
+            (_) => SettingsScreen(settings: context.read<AppSettings>()),
           );
         }
       },

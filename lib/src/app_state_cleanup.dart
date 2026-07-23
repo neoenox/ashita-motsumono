@@ -1,9 +1,7 @@
 part of 'app_state.dart';
 
 extension CleanupAppStateOperations on AppState {
-  Future<void> clearAllData({
-    bool awaitPostDeleteCleanup = false,
-  }) =>
+  Future<void> clearAllData({bool awaitPostDeleteCleanup = false}) =>
       _runMutation(() async {
         final documentsToDelete = List<DocumentRecord>.from(documents);
         final todosToCancel = List<AppTodo>.from(todos);

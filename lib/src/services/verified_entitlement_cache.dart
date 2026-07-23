@@ -32,9 +32,7 @@ class VerifiedEntitlementCache {
     }
   }
 
-  static void registerAiTokenRefresher(
-    Future<String?> Function() refresher,
-  ) {
+  static void registerAiTokenRefresher(Future<String?> Function() refresher) {
     _aiTokenRefresher = refresher;
   }
 

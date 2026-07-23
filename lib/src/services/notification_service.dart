@@ -55,7 +55,8 @@ class NotificationService {
     tzdata.initializeTimeZones();
     try {
       final id =
-          _timezoneName ?? (await FlutterTimezone.getLocalTimezone()).identifier;
+          _timezoneName ??
+          (await FlutterTimezone.getLocalTimezone()).identifier;
       tz.setLocalLocation(tz.getLocation(id));
     } on Object {
       if (kDebugMode) {
@@ -134,16 +135,11 @@ class NotificationService {
     if (todo.notifyPreviousNight) {
       final h =
           settings?.previousNightHour ?? AppSettings.defaultPreviousNightHour;
-      final m = settings?.previousNightMinute ??
+      final m =
+          settings?.previousNightMinute ??
           AppSettings.defaultPreviousNightMinute;
       // ここでは「端末の壁時計時刻」を表す。実際のTZ変換は登録直前に行う。
-      final when = DateTime(
-        due.year,
-        due.month,
-        due.day - 1,
-        h,
-        m,
-      );
+      final when = DateTime(due.year, due.month, due.day - 1, h, m);
       if (when.isAfter(referenceTime)) {
         requests.add(
           NotificationScheduleRequest(
@@ -160,13 +156,7 @@ class NotificationService {
       final h = settings?.sameMorningHour ?? AppSettings.defaultSameMorningHour;
       final m =
           settings?.sameMorningMinute ?? AppSettings.defaultSameMorningMinute;
-      final when = DateTime(
-        due.year,
-        due.month,
-        due.day,
-        h,
-        m,
-      );
+      final when = DateTime(due.year, due.month, due.day, h, m);
       if (when.isAfter(referenceTime)) {
         requests.add(
           NotificationScheduleRequest(
@@ -224,9 +214,7 @@ class NotificationService {
         importance: Importance.high,
         priority: Priority.high,
       ),
-      iOS: DarwinNotificationDetails(
-        threadIdentifier: 'preparation_reminders',
-      ),
+      iOS: DarwinNotificationDetails(threadIdentifier: 'preparation_reminders'),
     );
     await _plugin.zonedSchedule(
       id: id,

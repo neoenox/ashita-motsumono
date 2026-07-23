@@ -19,10 +19,7 @@ void main() {
 
         final result = await resultFuture;
         expect(result, isA<TextImportEmpty>());
-        expect(
-          (result as TextImportEmpty).source,
-          ImportSource.clipboard,
-        );
+        expect((result as TextImportEmpty).source, ImportSource.clipboard);
       } finally {
         service.dispose();
       }
@@ -38,19 +35,14 @@ void main() {
 
         final result = await resultFuture;
         expect(result, isA<TextImportEmpty>());
-        expect(
-          (result as TextImportEmpty).source,
-          ImportSource.clipboard,
-        );
+        expect((result as TextImportEmpty).source, ImportSource.clipboard);
       } finally {
         service.dispose();
       }
     });
 
     test('正常なテキストの場合はTextImportSuccessを通知する', () async {
-      final service = TextImportService(
-        learnedItemLabels: const ['体操着'],
-      );
+      final service = TextImportService(learnedItemLabels: const ['体操着']);
       const input = '  明日\n持ち物：体操着  ';
       const expectedRawText = '明日\n持ち物：体操着';
 
@@ -66,10 +58,7 @@ void main() {
         expect(success.source, ImportSource.clipboard);
         expect(success.rawText, expectedRawText);
         expect(success.drafts, isNotEmpty);
-        expect(
-          success.fingerprint,
-          TextFingerprint.calculate(expectedRawText),
-        );
+        expect(success.fingerprint, TextFingerprint.calculate(expectedRawText));
       } finally {
         service.dispose();
       }

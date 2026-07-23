@@ -18,7 +18,7 @@ abstract class PurchaseGateway {
 
 class InAppPurchaseGateway implements PurchaseGateway {
   InAppPurchaseGateway([InAppPurchase? purchase])
-      : _purchase = purchase ?? InAppPurchase.instance;
+    : _purchase = purchase ?? InAppPurchase.instance;
 
   final InAppPurchase _purchase;
 
@@ -71,8 +71,8 @@ class AppPurchaseProvider extends PurchaseProvider {
     this._settings, {
     PurchaseGateway? gateway,
     PurchaseVerifier? verifier,
-  })  : _purchase = gateway ?? InAppPurchaseGateway(),
-        _verifier = verifier ?? PurchaseVerificationService() {
+  }) : _purchase = gateway ?? InAppPurchaseGateway(),
+       _verifier = verifier ?? PurchaseVerificationService() {
     VerifiedEntitlementCache.registerAiTokenRefresher(getAiAccessToken);
     _ready = _init();
   }
@@ -269,7 +269,9 @@ class AppPurchaseProvider extends PurchaseProvider {
     if (_aiAccess &&
         _aiAccessToken != null &&
         expiry != null &&
-        expiry.isAfter(DateTime.now().toUtc().add(const Duration(seconds: 30)))) {
+        expiry.isAfter(
+          DateTime.now().toUtc().add(const Duration(seconds: 30)),
+        )) {
       return _aiAccessToken;
     }
 
@@ -289,7 +291,9 @@ class AppPurchaseProvider extends PurchaseProvider {
       _statusMessage = 'AI利用権を更新できませんでした。通信状態を確認してください。';
       notifyListeners();
       if (kDebugMode) {
-        debugPrint('PurchaseProvider: token refresh failed - $error\n$stackTrace');
+        debugPrint(
+          'PurchaseProvider: token refresh failed - $error\n$stackTrace',
+        );
       }
       return null;
     }

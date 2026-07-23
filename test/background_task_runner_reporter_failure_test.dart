@@ -9,15 +9,16 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('BackgroundTaskRunner reporter failures', () {
     test('contains synchronous error-handler failures', () async {
-      final failures = <
-        (
-          Object originalError,
-          StackTrace originalStack,
-          Object reportingError,
-          StackTrace reportingStack,
-          String taskName,
-        )
-      >[];
+      final failures =
+          <
+            (
+              Object originalError,
+              StackTrace originalStack,
+              Object reportingError,
+              StackTrace reportingStack,
+              String taskName,
+            )
+          >[];
       final runner = BackgroundTaskRunner(
         onError: (_, _, _) {
           throw StateError('reporting failed');
