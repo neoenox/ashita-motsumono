@@ -98,9 +98,8 @@ void main() {
       );
 
       expect(
-        report.issues.where(
-          (issue) => issue.code == 'local_endpoint_in_production',
-        ),
+        report.issues
+            .where((issue) => issue.code == 'local_endpoint_in_production'),
         hasLength(3),
       );
     });
@@ -125,27 +124,24 @@ void main() {
       );
     });
 
-    test(
-      'checks label, icon, required permissions, and high-risk permissions',
-      () {
-        final report = ReleaseAudit.run(
-          _validInput(
-            manifestContent: '''
+    test('checks label, icon, required permissions, and high-risk permissions', () {
+      final report = ReleaseAudit.run(
+        _validInput(
+          manifestContent: '''
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
   <application android:label="\${applicationName}" android:icon="launcher.png" />
 </manifest>
 ''',
-          ),
-        );
+        ),
+      );
 
-        expect(_codes(report), contains('manifest_label_placeholder'));
-        expect(_codes(report), contains('manifest_icon_invalid'));
-        expect(_codes(report), contains('required_permission_missing'));
-        expect(_codes(report), contains('high_risk_permission'));
-      },
-    );
+      expect(_codes(report), contains('manifest_label_placeholder'));
+      expect(_codes(report), contains('manifest_icon_invalid'));
+      expect(_codes(report), contains('required_permission_missing'));
+      expect(_codes(report), contains('high_risk_permission'));
+    });
   });
 }
 
