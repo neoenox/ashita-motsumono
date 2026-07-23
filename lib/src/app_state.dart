@@ -74,14 +74,14 @@ class AppState extends ChangeNotifier {
   List<AppTodo> get todos => todoState.todos;
   List<DocumentRecord> get documents => documentState.documents;
 
-  Future<void> load() async {
+  Future<void> load() => _runMutation(() async {
     final snapshot = await _store.load();
     childState.replace(snapshot.children);
     todoState.replace(snapshot.todos);
     documentState.replace(snapshot.documents);
     _loaded = true;
     notifyListeners();
-  }
+  });
 
   Future<void> requestNotificationPermissions() {
     return _notificationCoordinator.requestPermissions();

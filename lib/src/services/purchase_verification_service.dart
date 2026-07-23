@@ -42,7 +42,8 @@ abstract interface class PurchaseVerifier {
 class PurchaseVerificationService implements PurchaseVerifier {
   PurchaseVerificationService({String? baseUrl, http.Client? client})
     : _baseUrl = baseUrl ?? _configuredBaseUrl,
-      _client = client ?? http.Client();
+      _client = client ?? http.Client(),
+      _ownsClient = client == null;
 
   static const _configuredBaseUrl = String.fromEnvironment(
     'GEMINI_PROXY_URL',
@@ -55,9 +56,20 @@ class PurchaseVerificationService implements PurchaseVerifier {
 
   final String _baseUrl;
   final http.Client _client;
+  final bool _ownsClient;
+  bool _closed = false;
+
+  void close() {
+    if (_closed) return;
+    _closed = true;
+    if (_ownsClient) _client.close();
+  }
 
   @override
   Future<EntitlementVerification> verify(PurchaseDetails purchase) async {
+    if (_closed) {
+      return const EntitlementVerification.retryable('購入確認サービスは終了されています。');
+    }
     final endpoint = _endpoint('/entitlements/verify');
     if (endpoint == null) {
       return _failed(
@@ -142,7 +154,7 @@ class PurchaseVerificationService implements PurchaseVerifier {
     PurchaseDetails purchase,
     EntitlementVerification result,
   ) {
-    if (purchase.productID == _aiProductId) {
+    if (purchase.productID == _aiProductId && !result.retryable) {
       VerifiedEntitlementCache.clearAiToken();
     }
     return result;

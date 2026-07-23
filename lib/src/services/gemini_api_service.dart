@@ -74,10 +74,13 @@ class GeminiError extends GeminiResult {
 
 class GeminiApiService {
   GeminiApiService({this.proxyUrl, http.Client? client})
-    : _client = client ?? http.Client();
+    : _client = client ?? http.Client(),
+      _ownsClient = client == null;
 
   String? proxyUrl;
   final http.Client _client;
+  final bool _ownsClient;
+  bool _closed = false;
 
   static const _defaultProxyUrl = String.fromEnvironment(
     'GEMINI_PROXY_URL',
@@ -87,10 +90,17 @@ class GeminiApiService {
   factory GeminiApiService.defaultInstance() =>
       GeminiApiService(proxyUrl: _defaultProxyUrl);
 
+  void close() {
+    if (_closed) return;
+    _closed = true;
+    if (_ownsClient) _client.close();
+  }
+
   Future<GeminiResult> analyzeImage(
     File imageFile, {
     required String accessToken,
   }) async {
+    if (_closed) return GeminiError('AI解析サービスは終了されています');
     final endpoint = _endpoint('/analyze');
     if (endpoint == null) return GeminiError('AI解析サーバーが設定されていません');
     if (accessToken.trim().isEmpty) return GeminiError('AI分析の購入確認が必要です');

@@ -24,16 +24,21 @@ class InAppPurchaseGateway implements PurchaseGateway {
 
   @override
   Stream<List<PurchaseDetails>> get purchaseStream => _purchase.purchaseStream;
+
   @override
   Future<bool> isAvailable() => _purchase.isAvailable();
+
   @override
   Future<ProductDetailsResponse> queryProductDetails(Set<String> identifiers) =>
       _purchase.queryProductDetails(identifiers);
+
   @override
   Future<bool> buyNonConsumable({required PurchaseParam purchaseParam}) =>
       _purchase.buyNonConsumable(purchaseParam: purchaseParam);
+
   @override
   Future<void> restorePurchases() => _purchase.restorePurchases();
+
   @override
   Future<void> completePurchase(PurchaseDetails purchase) =>
       _purchase.completePurchase(purchase);
@@ -43,6 +48,8 @@ abstract class PurchaseProvider extends ChangeNotifier {
   bool get adRemoved;
   bool get aiAccess;
   bool get busy;
+  bool get restoring => false;
+  bool get entitlementResolved => true;
   String get priceLabel;
   String get aiPriceLabel;
   bool get canPurchase;
@@ -72,7 +79,10 @@ class AppPurchaseProvider extends PurchaseProvider {
     PurchaseGateway? gateway,
     PurchaseVerifier? verifier,
   }) : _purchase = gateway ?? InAppPurchaseGateway(),
-       _verifier = verifier ?? PurchaseVerificationService() {
+       _verifier = verifier ?? PurchaseVerificationService(),
+       _ownsVerifier = verifier == null,
+       _adRemoved = _settings.adRemoved,
+       _aiAccess = _settings.aiAccess {
     VerifiedEntitlementCache.registerAiTokenRefresher(getAiAccessToken);
     _ready = _init();
   }
@@ -80,12 +90,15 @@ class AppPurchaseProvider extends PurchaseProvider {
   final AppSettings _settings;
   final PurchaseGateway _purchase;
   final PurchaseVerifier _verifier;
+  final bool _ownsVerifier;
   StreamSubscription<List<PurchaseDetails>>? _subscription;
   late final Future<void> _ready;
 
-  bool _adRemoved = false;
-  bool _aiAccess = false;
+  bool _adRemoved;
+  bool _aiAccess;
   bool _busy = false;
+  bool _restoring = true;
+  bool _entitlementResolved = false;
   bool _storeAvailable = false;
   bool _productLoaded = false;
   bool _aiProductLoaded = false;
@@ -101,21 +114,45 @@ class AppPurchaseProvider extends PurchaseProvider {
 
   @override
   Future<void> get ready => _ready;
+
   @override
   bool get adRemoved => _adRemoved;
+
   @override
   bool get aiAccess => _aiAccess;
+
   @override
   bool get busy => _busy;
+
   @override
-  bool get canPurchase => _storeAvailable && _productLoaded && !_busy;
+  bool get restoring => _restoring;
+
   @override
-  bool get canPurchaseAi => _storeAvailable && _aiProductLoaded && !_busy;
+  bool get entitlementResolved => _entitlementResolved;
+
+  @override
+  bool get canPurchase =>
+      _storeAvailable &&
+      _productLoaded &&
+      !_busy &&
+      !_restoring &&
+      _entitlementResolved;
+
+  @override
+  bool get canPurchaseAi =>
+      _storeAvailable &&
+      _aiProductLoaded &&
+      !_busy &&
+      !_restoring &&
+      _entitlementResolved;
+
   @override
   String? get statusMessage => _statusMessage;
+
   @override
   String get priceLabel =>
       _storePrice == null ? '価格は購入前に表示' : '買い切り $_storePrice';
+
   @override
   String get aiPriceLabel =>
       _aiStorePrice == null ? '価格は購入前に表示' : '買い切り $_aiStorePrice';
@@ -125,24 +162,29 @@ class AppPurchaseProvider extends PurchaseProvider {
     VerifiedEntitlementCache.clearAiTokenRefresher();
     VerifiedEntitlementCache.clearAiToken();
     unawaited(_subscription?.cancel());
+    if (_ownsVerifier && _verifier is PurchaseVerificationService) {
+      (_verifier as PurchaseVerificationService).close();
+    }
     super.dispose();
   }
 
   Future<void> _init() async {
+    _restoring = true;
+    _entitlementResolved = false;
+    notifyListeners();
     try {
-      // 端末内フラグだけでは権利を付与せず、毎回ストア復元とサーバー検証を行う。
-      _adRemoved = false;
-      _aiAccess = false;
+      // 保存済み権利は復元中の暫定表示にのみ使い、ストアとサーバーで再検証する。
       _storeAvailable = await _purchase.isAvailable();
       if (!_storeAvailable) {
         _statusMessage = 'ストアに接続できないため、購入済み情報を確認できません。';
-        notifyListeners();
         return;
       }
       _subscription = _purchase.purchaseStream.listen(
         (details) => unawaited(_processPurchases(details)),
         onError: (Object error, StackTrace stackTrace) {
           _statusMessage = '購入情報の受信に失敗しました。';
+          _restoring = false;
+          _entitlementResolved = true;
           notifyListeners();
           if (kDebugMode) {
             debugPrint('PurchaseProvider: stream failed - $error\n$stackTrace');
@@ -151,22 +193,33 @@ class AppPurchaseProvider extends PurchaseProvider {
       );
       await _loadProductDetails();
       await _purchase.restorePurchases();
+      await Future<void>.delayed(Duration.zero);
     } on Object catch (error, stackTrace) {
       _statusMessage = '購入情報の確認に失敗しました。時間をおいてもう一度お試しください。';
-      notifyListeners();
       if (kDebugMode) {
         debugPrint('PurchaseProvider: init failed - $error\n$stackTrace');
       }
+    } finally {
+      _restoring = false;
+      _entitlementResolved = true;
+      notifyListeners();
     }
   }
 
   Future<void> _processPurchases(List<PurchaseDetails> details) async {
+    var handledRelevantPurchase = false;
     for (final purchase in details) {
       if (purchase.productID != PurchaseProvider.productId &&
           purchase.productID != PurchaseProvider.aiProductId) {
         continue;
       }
+      handledRelevantPurchase = true;
       await _processPurchaseSafely(purchase);
+    }
+    if (handledRelevantPurchase || _restoring) {
+      _restoring = false;
+      _entitlementResolved = true;
+      notifyListeners();
     }
   }
 
@@ -176,17 +229,21 @@ class AppPurchaseProvider extends PurchaseProvider {
         case PurchaseStatus.purchased || PurchaseStatus.restored:
           final verification = await _verifier.verify(purchase);
           if (!verification.verified) {
+            if (verification.retryable) {
+              _statusMessage =
+                  verification.message ?? '購入情報を確認できませんでした。';
+              break;
+            }
             await _deny(purchase.productID, verification.message);
             break;
           }
-
           await _grant(purchase, verification);
           if (purchase.pendingCompletePurchase) {
             try {
               await _purchase.completePurchase(purchase);
             } on Object catch (error, stackTrace) {
-              // ストアから再配信されたときに再試行できるよう、検証済み権利は維持する。
-              _statusMessage = '購入は確認済みですが、ストア処理を完了できませんでした。再起動後に再試行します。';
+              _statusMessage =
+                  '購入は確認済みですが、ストア処理を完了できませんでした。再起動後に再試行します。';
               if (kDebugMode) {
                 debugPrint(
                   'PurchaseProvider: completePurchase failed - '
@@ -225,7 +282,6 @@ class AppPurchaseProvider extends PurchaseProvider {
       _statusMessage = null;
       return;
     }
-
     await _settings.setAiAccess(true);
     _aiAccess = true;
     _aiPurchase = purchase;
@@ -241,7 +297,6 @@ class AppPurchaseProvider extends PurchaseProvider {
       _adRemoved = false;
       return;
     }
-
     await _settings.setAiAccess(false);
     _aiAccess = false;
     _aiPurchase = null;
@@ -254,7 +309,6 @@ class AppPurchaseProvider extends PurchaseProvider {
   Future<String?> getAiAccessToken() {
     final pending = _pendingTokenFetch;
     if (pending != null) return pending;
-
     final refresh = _getAiAccessTokenImpl();
     _pendingTokenFetch = refresh;
     return refresh.whenComplete(() {
@@ -274,12 +328,21 @@ class AppPurchaseProvider extends PurchaseProvider {
         )) {
       return _aiAccessToken;
     }
-
     final purchase = _aiPurchase;
     if (purchase == null) return null;
     try {
       final verification = await _verifier.verify(purchase);
-      if (!verification.verified || verification.accessToken == null) {
+      if (!verification.verified) {
+        if (verification.retryable) {
+          _statusMessage = verification.message ?? 'AI利用権を更新できませんでした。';
+          notifyListeners();
+          return null;
+        }
+        await _deny(PurchaseProvider.aiProductId, verification.message);
+        notifyListeners();
+        return null;
+      }
+      if (verification.accessToken == null) {
         await _deny(PurchaseProvider.aiProductId, verification.message);
         notifyListeners();
         return null;
@@ -301,11 +364,12 @@ class AppPurchaseProvider extends PurchaseProvider {
 
   @override
   Future<void> purchase() => _purchaseProduct(ai: false);
+
   @override
   Future<void> purchaseAi() => _purchaseProduct(ai: true);
 
   Future<void> _purchaseProduct({required bool ai}) async {
-    if (_busy) return;
+    if (_busy || _restoring || !_entitlementResolved) return;
     _busy = true;
     notifyListeners();
     try {
@@ -336,8 +400,10 @@ class AppPurchaseProvider extends PurchaseProvider {
 
   @override
   Future<void> restore() async {
-    if (_busy) return;
+    if (_busy || _restoring) return;
     _busy = true;
+    _restoring = true;
+    _entitlementResolved = false;
     notifyListeners();
     try {
       _storeAvailable = await _purchase.isAvailable();
@@ -346,6 +412,7 @@ class AppPurchaseProvider extends PurchaseProvider {
         return;
       }
       await _purchase.restorePurchases();
+      await Future<void>.delayed(Duration.zero);
     } on Object catch (error, stackTrace) {
       _statusMessage = '購入履歴を復元できませんでした。時間をおいてもう一度お試しください。';
       if (kDebugMode) {
@@ -353,6 +420,8 @@ class AppPurchaseProvider extends PurchaseProvider {
       }
     } finally {
       _busy = false;
+      _restoring = false;
+      _entitlementResolved = true;
       notifyListeners();
     }
   }
