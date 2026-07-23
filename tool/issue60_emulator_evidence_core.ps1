@@ -198,7 +198,7 @@ function FilterEvidence(
   $Destination,
   [string[]]$Patterns
 ) {
-  if (Test-Path $Source) {
+  if ((Test-Path $Source) -and $Patterns -and $Patterns.Count -gt 0) {
     Select-String `
       $Source `
       -Pattern $Patterns `
