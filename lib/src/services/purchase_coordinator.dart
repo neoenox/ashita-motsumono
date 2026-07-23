@@ -225,18 +225,21 @@ class PurchaseCoordinator extends ChangeNotifier {
             );
           }
         }
+        return;
       case PurchaseStatus.error:
         _beginOperation(
           purchase.productID,
           PurchaseOperationPhase.failed,
           statusMessage: '購入処理でエラーが発生しました。',
         );
+        return;
       case PurchaseStatus.canceled:
         _beginOperation(
           purchase.productID,
           PurchaseOperationPhase.canceled,
           statusMessage: '購入をキャンセルしました。',
         );
+        return;
       case PurchaseStatus.pending:
         final current = _state.operationFor(purchase.productID);
         if (current.busy) {
@@ -253,6 +256,7 @@ class PurchaseCoordinator extends ChangeNotifier {
             statusMessage: '購入処理を確認しています。',
           );
         }
+        return;
     }
   }
 
