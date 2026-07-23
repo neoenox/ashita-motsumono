@@ -1,0 +1,40 @@
+name: PR126 Diagnostics
+
+on:
+  push:
+    branches: [fix/restore-adaptive-add-todo]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Format source
+        run: dart format lib/src/screens/add_todo_screen.dart
+      - name: Analyze
+        shell: bash
+        run: |
+          mkdir -p build/pr126-diagnostics
+          set +e
+          flutter analyze --no-fatal-infos > build/pr126-diagnostics/flutter-analyze.txt 2>&1
+          status=$?
+          cp lib/src/screens/add_todo_screen.dart build/pr126-diagnostics/add_todo_screen.dart
+          echo "$status" > build/pr126-diagnostics/analyze-exit-code.txt
+          exit 0
+      - name: Upload diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr126-diagnostics
+          path: build/pr126-diagnostics/
+          if-no-files-found: error
+          retention-days: 1
