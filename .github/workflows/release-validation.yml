@@ -43,14 +43,7 @@ jobs:
         run: flutter pub get
 
       - name: Check formatting
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p build/ci-diagnostics
-          dart format .
-          git diff -- . > build/ci-diagnostics/dart-format.patch
-          git diff --name-only > build/ci-diagnostics/dart-format-files.txt
-          test ! -s build/ci-diagnostics/dart-format.patch
+        run: dart format --output=none --set-exit-if-changed .
 
       - name: Analyze
         shell: bash
