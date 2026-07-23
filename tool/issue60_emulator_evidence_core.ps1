@@ -270,9 +270,30 @@ function AlarmRegistration(
     }
   }
   $registered = $added.Count -gt 0
+  $expectedEpoch = if ($ExpectedTime) {
+    (ParseTime $ExpectedTime 'ExpectedTime').ToUnixTimeMilliseconds()
+  }
+  $alarmEpochs = @(
+    $added |
+      ForEach-Object {
+        if ($_ -match 'origWhen (?<epoch>\d+)') {
+          [long]$Matches.epoch
+        }
+      }
+  )
+  $expectedTimeMatch = if (
+    $null -ne $expectedEpoch -and
+    ($alarmEpochs -contains $expectedEpoch)
+  ) {
+    'PASS'
+  }
+  else {
+    'INCONCLUSIVE'
+  }
   $result = [pscustomobject][ordered]@{
     Result = if ($registered) { 'PASS' } else { 'INCONCLUSIVE' }
     ExpectedTime = $ExpectedTime
+    ExpectedTimeMatch = $expectedTimeMatch
     BeforeRelevantLineCount = $before.Count
     AfterRelevantLineCount = $after.Count
     AddedLineCount = $added.Count
