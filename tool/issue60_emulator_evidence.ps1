@@ -52,6 +52,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$global:Issue60Serial = $Serial
 
 if ($Serial -ne 'emulator-5554') {
   throw 'serial must be emulator-5554'
