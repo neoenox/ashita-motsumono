@@ -51,9 +51,16 @@ void main() {
 
   test('all direct ADB execution stays in the fixed serial wrapper', () {
     final text = joinFiles(powerShellFiles);
+    final coreText = core.readAsStringSync();
 
-    expect(text, contains(r'& adb -s $Serial @Args'));
-    expect('& adb '.allMatches(text).length, 2);
+    expect(coreText, contains(r'-s $global:Issue60Serial'));
+    expect(
+      RegExp(r'& \(Resolve-Issue60AdbExecutable\)')
+          .allMatches(coreText)
+          .length,
+      2,
+    );
+    expect(text, isNot(contains('adb -d')));
   });
 
   test('alarm registration uses Todo pre-save and post-save evidence', () {
