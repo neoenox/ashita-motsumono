@@ -77,9 +77,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final settings = AppSettings(await SharedPreferences.getInstance());
     final gateway = _FakePurchaseGateway();
-    final verifier = _FakeVerifier(
-      const EntitlementVerification.granted(accessToken: 'verified-token'),
-    );
+    final verifier = _FakeVerifier(_grantedAiVerification());
     final provider = AppPurchaseProvider(
       settings,
       gateway: gateway,
@@ -150,9 +148,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final settings = AppSettings(await SharedPreferences.getInstance());
     final gateway = _FakePurchaseGateway(completeFailures: 1);
-    final verifier = _FakeVerifier(
-      const EntitlementVerification.granted(accessToken: 'verified-token'),
-    );
+    final verifier = _FakeVerifier(_grantedAiVerification());
     final provider = AppPurchaseProvider(
       settings,
       gateway: gateway,
@@ -178,6 +174,13 @@ void main() {
     expect(gateway.completedPurchases, [purchase]);
     expect(provider.statusMessage, isNull);
   });
+}
+
+EntitlementVerification _grantedAiVerification() {
+  return EntitlementVerification.granted(
+    accessToken: 'verified-token',
+    expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
+  );
 }
 
 PurchaseDetails _purchase(String productId) {
