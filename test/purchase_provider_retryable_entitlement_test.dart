@@ -115,44 +115,47 @@ void main() {
     expect(verifier.callCount, 2);
   });
 
-  test('keeps existing AI entitlement on retryable verification failure', () async {
-    SharedPreferences.setMockInitialValues({});
-    final preferences = await SharedPreferences.getInstance();
-    final settings = AppSettings(preferences);
-    final gateway = _FakePurchaseGateway();
-    final verifier = _MutableVerifier(_granted());
-    final provider = AppPurchaseProvider(
-      settings,
-      gateway: gateway,
-      verifier: verifier,
-    );
-    addTearDown(provider.dispose);
-    addTearDown(gateway.dispose);
-    await provider.ready;
+  test(
+    'keeps existing AI entitlement on retryable verification failure',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final settings = AppSettings(preferences);
+      final gateway = _FakePurchaseGateway();
+      final verifier = _MutableVerifier(_granted());
+      final provider = AppPurchaseProvider(
+        settings,
+        gateway: gateway,
+        verifier: verifier,
+      );
+      addTearDown(provider.dispose);
+      addTearDown(gateway.dispose);
+      await provider.ready;
 
-    final purchase = _purchase();
-    gateway.emit([purchase]);
-    await gateway.purchaseCompleted.future;
+      final purchase = _purchase();
+      gateway.emit([purchase]);
+      await gateway.purchaseCompleted.future;
 
-    expect(provider.aiAccess, isTrue);
-    expect(settings.aiAccess, isTrue);
+      expect(provider.aiAccess, isTrue);
+      expect(settings.aiAccess, isTrue);
 
-    verifier.result = const EntitlementVerification.retryable(
-      'verification temporarily unavailable',
-    );
-    gateway.emit([purchase]);
-    await verifier.waitForCalls(2);
-    await Future<void>.delayed(Duration.zero);
+      verifier.result = const EntitlementVerification.retryable(
+        'verification temporarily unavailable',
+      );
+      gateway.emit([purchase]);
+      await verifier.waitForCalls(2);
+      await Future<void>.delayed(Duration.zero);
 
-    expect(provider.aiAccess, isTrue);
-    expect(settings.aiAccess, isTrue);
-    expect(provider.statusMessage, 'verification temporarily unavailable');
-    expect(gateway.completionAttempts, 1);
-    expect(
-      provider.state.operationFor(PurchaseProvider.aiProductId).phase,
-      PurchaseOperationPhase.retryable,
-    );
-  });
+      expect(provider.aiAccess, isTrue);
+      expect(settings.aiAccess, isTrue);
+      expect(provider.statusMessage, 'verification temporarily unavailable');
+      expect(gateway.completionAttempts, 1);
+      expect(
+        provider.state.operationFor(PurchaseProvider.aiProductId).phase,
+        PurchaseOperationPhase.retryable,
+      );
+    },
+  );
 
   test('revokes entitlement only after explicit verification denial', () async {
     SharedPreferences.setMockInitialValues({'purchase_ai_access': true});

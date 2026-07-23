@@ -126,9 +126,7 @@ class PurchaseVerificationService implements PurchaseVerifier {
         );
         if (purchase.productID == _aiProductId &&
             (token == null || expiresAt == null)) {
-          return const EntitlementVerification.denied(
-            'AI利用権トークンを確認できませんでした。',
-          );
+          return const EntitlementVerification.denied('AI利用権トークンを確認できませんでした。');
         }
         return EntitlementVerification.granted(
           accessToken: token,

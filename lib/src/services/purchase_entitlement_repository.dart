@@ -69,7 +69,9 @@ class PurchaseEntitlementRepository {
       return _snapshot;
     }
     if (purchase.productID != aiAccessProductId) {
-      throw UnsupportedError('Unsupported purchase product: ${purchase.productID}');
+      throw UnsupportedError(
+        'Unsupported purchase product: ${purchase.productID}',
+      );
     }
 
     final token = verification.accessToken;

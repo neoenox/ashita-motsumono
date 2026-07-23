@@ -71,7 +71,7 @@ class PurchaseCoordinator extends ChangeNotifier {
     VerifiedEntitlementCache.clearAiToken();
     unawaited(_subscription?.cancel());
     if (_ownsVerifier && _verifier is PurchaseVerificationService) {
-      (_verifier as PurchaseVerificationService).close();
+      _verifier.close();
     }
     super.dispose();
   }
@@ -167,10 +167,7 @@ class PurchaseCoordinator extends ChangeNotifier {
     try {
       await _events.enqueue(() {
         if (_disposed) return;
-        _transition(
-          PurchasePhase.failed,
-          statusMessage: '購入情報の受信に失敗しました。',
-        );
+        _transition(PurchasePhase.failed, statusMessage: '購入情報の受信に失敗しました。');
         if (kDebugMode) {
           debugPrint(
             'PurchaseCoordinator: stream failed - $error\n$stackTrace',
@@ -260,10 +257,7 @@ class PurchaseCoordinator extends ChangeNotifier {
     }
   }
 
-  Future<void> _verifyAndApply(
-    PurchaseDetails purchase,
-    int generation,
-  ) async {
+  Future<void> _verifyAndApply(PurchaseDetails purchase, int generation) async {
     final verification = await _verifier.verify(purchase);
     if (!_isCurrentOperation(purchase.productID, generation)) return;
 
@@ -494,9 +488,7 @@ class PurchaseCoordinator extends ChangeNotifier {
         statusMessage: '購入履歴を復元できませんでした。時間をおいてもう一度お試しください。',
       );
       if (kDebugMode) {
-        debugPrint(
-          'PurchaseCoordinator: restore failed - $error\n$stackTrace',
-        );
+        debugPrint('PurchaseCoordinator: restore failed - $error\n$stackTrace');
       }
       return false;
     }

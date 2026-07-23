@@ -24,158 +24,176 @@ void main() {
     VerifiedEntitlementCache.clearAiToken();
   });
 
-  test('verification success does not mutate the shared AI token cache', () async {
-    VerifiedEntitlementCache.setAiToken(
-      'existing-token',
-      DateTime.now().toUtc().add(const Duration(minutes: 10)),
-    );
-    final expiresAt = DateTime.now().toUtc().add(const Duration(minutes: 20));
-    final service = PurchaseVerificationService(
-      baseUrl: 'https://example.com',
-      client: MockClient((_) async {
-        return http.Response(
+  test(
+    'verification success does not mutate the shared AI token cache',
+    () async {
+      VerifiedEntitlementCache.setAiToken(
+        'existing-token',
+        DateTime.now().toUtc().add(const Duration(minutes: 10)),
+      );
+      final expiresAt = DateTime.now().toUtc().add(const Duration(minutes: 20));
+      final service = PurchaseVerificationService(
+        baseUrl: 'https://example.com',
+        client: MockClient((_) async {
+          return http.Response(
+            jsonEncode({
+              'verified': true,
+              'accessToken': 'new-token',
+              'expiresAt': expiresAt.toIso8601String(),
+            }),
+            200,
+          );
+        }),
+      );
+      addTearDown(service.close);
+
+      final result = await service.verify(_purchase());
+
+      expect(result.verified, isTrue);
+      expect(result.accessToken, 'new-token');
+      expect(VerifiedEntitlementCache.validAiToken, 'existing-token');
+    },
+  );
+
+  test(
+    'verification denial does not clear the shared AI token cache',
+    () async {
+      VerifiedEntitlementCache.setAiToken(
+        'existing-token',
+        DateTime.now().toUtc().add(const Duration(minutes: 10)),
+      );
+      final service = PurchaseVerificationService(
+        baseUrl: 'https://example.com',
+        client: MockClient((_) async {
+          return http.Response(jsonEncode({'error': 'purchase revoked'}), 403);
+        }),
+      );
+      addTearDown(service.close);
+
+      final result = await service.verify(_purchase());
+
+      expect(result.verified, isFalse);
+      expect(result.retryable, isFalse);
+      expect(result.message, 'purchase revoked');
+      expect(VerifiedEntitlementCache.validAiToken, 'existing-token');
+    },
+  );
+
+  test(
+    'repository publishes the AI token only after persistence succeeds',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final settings = _GateAppSettings(preferences);
+      final repository = PurchaseEntitlementRepository(
+        settings,
+        removeAdsProductId: PurchaseProvider.productId,
+        aiAccessProductId: PurchaseProvider.aiProductId,
+      );
+
+      final grant = repository.grant(_purchase(), _granted());
+      await settings.writeStarted.future;
+
+      expect(repository.snapshot.aiAccess, isFalse);
+      expect(VerifiedEntitlementCache.validAiToken, isNull);
+
+      settings.allowWrite.complete();
+      await grant;
+
+      expect(repository.snapshot.aiAccess, isTrue);
+      expect(settings.aiAccess, isTrue);
+      expect(VerifiedEntitlementCache.validAiToken, 'verified-token');
+    },
+  );
+
+  test(
+    'repository persistence failure leaves state and cache unchanged',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final settings = _FailingAppSettings(preferences);
+      final repository = PurchaseEntitlementRepository(
+        settings,
+        removeAdsProductId: PurchaseProvider.productId,
+        aiAccessProductId: PurchaseProvider.aiProductId,
+      );
+
+      await expectLater(
+        repository.grant(_purchase(), _granted()),
+        throwsStateError,
+      );
+
+      expect(repository.snapshot.aiAccess, isFalse);
+      expect(settings.aiAccess, isFalse);
+      expect(VerifiedEntitlementCache.validAiToken, isNull);
+    },
+  );
+
+  test(
+    'disposing the provider discards an in-flight verification result',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final settings = AppSettings(preferences);
+      final gateway = _FakePurchaseGateway();
+      final verifier = _DeferredVerifier();
+      final provider = AppPurchaseProvider(
+        settings,
+        gateway: gateway,
+        verifier: verifier,
+      );
+      addTearDown(gateway.dispose);
+      await provider.ready;
+
+      gateway.emit([_purchase()]);
+      await verifier.called.future;
+
+      provider.dispose();
+      verifier.result.complete(_granted());
+      await verifier.returned.future;
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(settings.aiAccess, isFalse);
+      expect(VerifiedEntitlementCache.validAiToken, isNull);
+      expect(gateway.completionAttempts, 0);
+    },
+  );
+
+  test(
+    'closing verification during a request returns no applicable result',
+    () async {
+      final requestStarted = Completer<void>();
+      final response = Completer<http.Response>();
+      final service = PurchaseVerificationService(
+        baseUrl: 'https://example.com',
+        client: MockClient((_) async {
+          requestStarted.complete();
+          return response.future;
+        }),
+      );
+
+      final verification = service.verify(_purchase());
+      await requestStarted.future;
+      service.close();
+      response.complete(
+        http.Response(
           jsonEncode({
             'verified': true,
-            'accessToken': 'new-token',
-            'expiresAt': expiresAt.toIso8601String(),
+            'accessToken': 'late-token',
+            'expiresAt': DateTime.now()
+                .toUtc()
+                .add(const Duration(minutes: 10))
+                .toIso8601String(),
           }),
           200,
-        );
-      }),
-    );
-    addTearDown(service.close);
+        ),
+      );
 
-    final result = await service.verify(_purchase());
+      final result = await verification;
 
-    expect(result.verified, isTrue);
-    expect(result.accessToken, 'new-token');
-    expect(VerifiedEntitlementCache.validAiToken, 'existing-token');
-  });
-
-  test('verification denial does not clear the shared AI token cache', () async {
-    VerifiedEntitlementCache.setAiToken(
-      'existing-token',
-      DateTime.now().toUtc().add(const Duration(minutes: 10)),
-    );
-    final service = PurchaseVerificationService(
-      baseUrl: 'https://example.com',
-      client: MockClient((_) async {
-        return http.Response(jsonEncode({'error': 'purchase revoked'}), 403);
-      }),
-    );
-    addTearDown(service.close);
-
-    final result = await service.verify(_purchase());
-
-    expect(result.verified, isFalse);
-    expect(result.retryable, isFalse);
-    expect(result.message, 'purchase revoked');
-    expect(VerifiedEntitlementCache.validAiToken, 'existing-token');
-  });
-
-  test('repository publishes the AI token only after persistence succeeds', () async {
-    final preferences = await SharedPreferences.getInstance();
-    final settings = _GateAppSettings(preferences);
-    final repository = PurchaseEntitlementRepository(
-      settings,
-      removeAdsProductId: PurchaseProvider.productId,
-      aiAccessProductId: PurchaseProvider.aiProductId,
-    );
-
-    final grant = repository.grant(_purchase(), _granted());
-    await settings.writeStarted.future;
-
-    expect(repository.snapshot.aiAccess, isFalse);
-    expect(VerifiedEntitlementCache.validAiToken, isNull);
-
-    settings.allowWrite.complete();
-    await grant;
-
-    expect(repository.snapshot.aiAccess, isTrue);
-    expect(settings.aiAccess, isTrue);
-    expect(VerifiedEntitlementCache.validAiToken, 'verified-token');
-  });
-
-  test('repository persistence failure leaves state and cache unchanged', () async {
-    final preferences = await SharedPreferences.getInstance();
-    final settings = _FailingAppSettings(preferences);
-    final repository = PurchaseEntitlementRepository(
-      settings,
-      removeAdsProductId: PurchaseProvider.productId,
-      aiAccessProductId: PurchaseProvider.aiProductId,
-    );
-
-    await expectLater(
-      repository.grant(_purchase(), _granted()),
-      throwsStateError,
-    );
-
-    expect(repository.snapshot.aiAccess, isFalse);
-    expect(settings.aiAccess, isFalse);
-    expect(VerifiedEntitlementCache.validAiToken, isNull);
-  });
-
-  test('disposing the provider discards an in-flight verification result', () async {
-    final preferences = await SharedPreferences.getInstance();
-    final settings = AppSettings(preferences);
-    final gateway = _FakePurchaseGateway();
-    final verifier = _DeferredVerifier();
-    final provider = AppPurchaseProvider(
-      settings,
-      gateway: gateway,
-      verifier: verifier,
-    );
-    addTearDown(gateway.dispose);
-    await provider.ready;
-
-    gateway.emit([_purchase()]);
-    await verifier.called.future;
-
-    provider.dispose();
-    verifier.result.complete(_granted());
-    await verifier.returned.future;
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
-
-    expect(settings.aiAccess, isFalse);
-    expect(VerifiedEntitlementCache.validAiToken, isNull);
-    expect(gateway.completionAttempts, 0);
-  });
-
-  test('closing verification during a request returns no applicable result', () async {
-    final requestStarted = Completer<void>();
-    final response = Completer<http.Response>();
-    final service = PurchaseVerificationService(
-      baseUrl: 'https://example.com',
-      client: MockClient((_) async {
-        requestStarted.complete();
-        return response.future;
-      }),
-    );
-
-    final verification = service.verify(_purchase());
-    await requestStarted.future;
-    service.close();
-    response.complete(
-      http.Response(
-        jsonEncode({
-          'verified': true,
-          'accessToken': 'late-token',
-          'expiresAt': DateTime.now()
-              .toUtc()
-              .add(const Duration(minutes: 10))
-              .toIso8601String(),
-        }),
-        200,
-      ),
-    );
-
-    final result = await verification;
-
-    expect(result.verified, isFalse);
-    expect(result.retryable, isTrue);
-    expect(VerifiedEntitlementCache.validAiToken, isNull);
-  });
+      expect(result.verified, isFalse);
+      expect(result.retryable, isTrue);
+      expect(VerifiedEntitlementCache.validAiToken, isNull);
+    },
+  );
 }
 
 EntitlementVerification _granted() {
