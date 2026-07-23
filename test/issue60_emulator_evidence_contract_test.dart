@@ -55,9 +55,7 @@ void main() {
 
     expect(coreText, contains(r'-s $global:Issue60Serial'));
     expect(
-      RegExp(r'& \(Resolve-Issue60AdbExecutable\)')
-          .allMatches(coreText)
-          .length,
+      RegExp(r'& \(Resolve-Issue60AdbExecutable\)').allMatches(coreText).length,
       2,
     );
     expect(text, isNot(contains('adb -d')));
