@@ -23,7 +23,7 @@ playSigning → formalRelease → playSubmission → internalTest
 - [x] `flutter test --no-pub -r compact`
 - [x] 表示バージョンと`pubspec.yaml`の同期をCIで確認
 - [ ] Android実機でカメラ、画像選択、日本語OCR、通知を確認
-- [ ] 内部テスト版で広告削除の購入・復元を確認
+- [ ] 内部テスト版で広告削除とAI分析の購入・復元を確認
 
 ## 2. playSigning：正式Release前に必要
 
@@ -33,9 +33,11 @@ playSigning → formalRelease → playSubmission → internalTest
 - [ ] デフォルト言語を日本語にする
 - [ ] Play App Signingを設定
 - [ ] アップロード証明書SHA-256を記録
-- [ ] アプリ内商品を作成
-- [ ] 商品IDを`IAP_REMOVE_ADS_PRODUCT_ID`と一致させる
-- [ ] 未設定の場合、商品IDを`remove_ads`にする
+- [ ] アプリ内商品を2件作成
+- [ ] 広告削除商品IDを`IAP_REMOVE_ADS_PRODUCT_ID`と一致させる
+- [ ] 未設定の場合、広告削除商品IDを`remove_ads`にする
+- [ ] AI分析商品IDを`IAP_AI_ACCESS_PRODUCT_ID`と一致させる
+- [ ] 未設定の場合、AI分析商品IDを`ai_analysis`にする
 - [ ] `play-console-evidence.json`の署名準備項目を事実に基づき更新
 - [ ] 統合ゲートの`playSigning`がPASS
 
@@ -55,6 +57,7 @@ Repository Variables:
 
 - [ ] `ANDROID_UPLOAD_CERT_SHA256`
 - [ ] `IAP_REMOVE_ADS_PRODUCT_ID`（未設定時`remove_ads`）
+- [ ] `IAP_AI_ACCESS_PRODUCT_ID`（未設定時`ai_analysis`）
 
 ## 4. formalRelease：署名済み成果物
 
@@ -103,7 +106,7 @@ Repository Variables:
 - [ ] AI画像解析は、外部送信の説明に同意した場合だけ、解析対象の画像、画像形式、解析基準日およびタイムゾーンを、Cloudflare Workers経由でGoogle Gemini APIへ送信することを申告する
 - [ ] Cloudflare Workersは中継用途で、独自同期・保管バックエンドではないことを説明する
 - [ ] Google Mobile Adsによる広告関連データ処理を申告する
-- [ ] Google Play Billingによる広告削除の購入・復元を申告する
+- [ ] Google Play Billingによる広告削除とAI分析の購入・復元を申告する
 - [ ] カメラ、画像選択、通知権限の用途を説明する
 - [ ] 全データ削除対象を確認する
 - [ ] JSONエクスポートの包含・除外データを確認する
@@ -115,8 +118,8 @@ Repository Variables:
 - [ ] Play経由でインストール
 - [ ] 本番広告表示
 - [ ] 広告失敗時も主要機能利用可能
-- [ ] 商品価格表示、広告削除の購入・復元、広告非表示を確認
-- [ ] AI画像解析の同意、購入、実行
+- [ ] 広告削除商品の価格表示、購入・復元、広告非表示
+- [ ] AI分析商品の価格表示、同意、購入・復元、実行
 - [ ] OCR失敗時の手入力フォールバック
 - [ ] 通知拒否時もTodo登録可能
 - [ ] データ削除とJSONエクスポート
