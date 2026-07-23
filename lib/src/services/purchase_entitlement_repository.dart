@@ -43,13 +43,18 @@ class EntitlementSnapshot {
 }
 
 class PurchaseEntitlementRepository {
-  PurchaseEntitlementRepository(this._settings)
-    : _snapshot = EntitlementSnapshot(
-        adRemoved: _settings.adRemoved,
-        aiAccess: _settings.aiAccess,
-      );
+  PurchaseEntitlementRepository(
+    this._settings, {
+    required this.removeAdsProductId,
+    required this.aiAccessProductId,
+  }) : _snapshot = EntitlementSnapshot(
+         adRemoved: _settings.adRemoved,
+         aiAccess: _settings.aiAccess,
+       );
 
   final AppSettings _settings;
+  final String removeAdsProductId;
+  final String aiAccessProductId;
   EntitlementSnapshot _snapshot;
 
   EntitlementSnapshot get snapshot => _snapshot;
@@ -58,27 +63,40 @@ class PurchaseEntitlementRepository {
     PurchaseDetails purchase,
     EntitlementVerification verification,
   ) async {
-    if (purchase.productID == _removeAdsProductId) {
+    if (purchase.productID == removeAdsProductId) {
       await _settings.setAdRemoved(true);
       _snapshot = _snapshot.copyWith(adRemoved: true);
       return _snapshot;
     }
+    if (purchase.productID != aiAccessProductId) {
+      throw UnsupportedError('Unsupported purchase product: ${purchase.productID}');
+    }
+
+    final token = verification.accessToken;
+    final expiresAt = verification.expiresAt;
+    if (token == null || expiresAt == null) {
+      throw StateError('AI entitlement verification did not include a token.');
+    }
 
     await _settings.setAiAccess(true);
+    VerifiedEntitlementCache.setAiToken(token, expiresAt);
     _snapshot = _snapshot.copyWith(
       aiAccess: true,
       aiPurchase: purchase,
-      aiAccessToken: verification.accessToken,
-      aiAccessTokenExpiresAt: verification.expiresAt,
+      aiAccessToken: token,
+      aiAccessTokenExpiresAt: expiresAt.toUtc(),
     );
     return _snapshot;
   }
 
   Future<EntitlementSnapshot> deny(String productId) async {
-    if (productId == _removeAdsProductId) {
+    if (productId == removeAdsProductId) {
       await _settings.setAdRemoved(false);
       _snapshot = _snapshot.copyWith(adRemoved: false);
       return _snapshot;
+    }
+    if (productId != aiAccessProductId) {
+      throw UnsupportedError('Unsupported purchase product: $productId');
     }
 
     await _settings.setAiAccess(false);
@@ -100,11 +118,6 @@ class PurchaseEntitlementRepository {
         ? token
         : null;
   }
-
-  static const _removeAdsProductId = String.fromEnvironment(
-    'IAP_REMOVE_ADS_PRODUCT_ID',
-    defaultValue: 'remove_ads',
-  );
 }
 
 const _unset = Object();
