@@ -43,7 +43,18 @@ jobs:
         run: flutter pub get
 
       - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed .
+        shell: bash
+        run: |
+          set +e
+          mkdir -p build/ci-diagnostics/formatted-sources
+          dart format .
+          git diff --name-only -- '*.dart' > build/ci-diagnostics/formatted-files.txt
+          while IFS= read -r file; do
+            [ -n "$file" ] || continue
+            mkdir -p "build/ci-diagnostics/formatted-sources/$(dirname "$file")"
+            cp "$file" "build/ci-diagnostics/formatted-sources/$file"
+          done < build/ci-diagnostics/formatted-files.txt
+          test ! -s build/ci-diagnostics/formatted-files.txt
 
       - name: Analyze
         shell: bash
