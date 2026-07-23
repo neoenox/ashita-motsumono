@@ -40,6 +40,8 @@ def play_payload(
         "uploadCertificateSha256": CERT if signing else "",
         "iapProductCreated": signing,
         "iapProductId": "remove_ads",
+        "iapAiProductCreated": signing,
+        "iapAiProductId": "ai_analysis",
         "privacyPolicyRegistered": submission,
         "storeListingComplete": submission,
         "dataSafetyComplete": submission,
@@ -66,7 +68,10 @@ def release_payload() -> dict[str, object]:
             "applicationId": BASE.APPLICATION_ID,
             "uploadCertificateSha256": CERT,
         },
-        "billing": {"removeAdsProductId": "remove_ads"},
+        "billing": {
+            "removeAdsProductId": "remove_ads",
+            "aiAccessProductId": "ai_analysis",
+        },
         "artifacts": {
             "apk": {
                 "artifactName": BASE.APK_ARTIFACT,
@@ -133,6 +138,16 @@ class OrderedReleaseGateTests(unittest.TestCase):
         self.assertEqual(signing["result"], "PASS")
         self.assertEqual(submission["result"], "BLOCKED")
 
+    def test_signing_requires_ai_product(self) -> None:
+        payload = play_payload()
+        payload["iapAiProductCreated"] = False
+        payload["iapAiProductId"] = ""
+        result = ORCHESTRATOR.validate_play_signing(payload)
+        self.assertEqual(result["result"], "BLOCKED")
+        self.assertTrue(
+            any("iapAiProduct" in value for value in result["failures"])
+        )
+
     def test_submission_does_not_replace_signing(self) -> None:
         payload = play_payload(signing=False, submission=True)
         self.assertEqual(
@@ -142,6 +157,21 @@ class OrderedReleaseGateTests(unittest.TestCase):
         self.assertEqual(
             ORCHESTRATOR.validate_play_submission(payload)["result"],
             "PASS",
+        )
+
+    def test_release_manifest_requires_matching_ai_product(self) -> None:
+        payload = release_payload()
+        payload["billing"]["aiAccessProductId"] = "wrong_ai_product"
+        result = ORCHESTRATOR.validate_release_manifest(
+            payload,
+            SHA,
+            CERT,
+            "remove_ads",
+            "ai_analysis",
+        )
+        self.assertEqual(result["result"], "BLOCKED")
+        self.assertTrue(
+            any("AI billing product" in value for value in result["failures"])
         )
 
     def test_next_action_runs_formal_release_before_submission(self) -> None:
@@ -253,6 +283,13 @@ class OrderedReleaseGateTests(unittest.TestCase):
         self.assertEqual(stages["formalRelease"]["result"], "PASS")
         self.assertEqual(stages["playSubmission"]["result"], "BLOCKED")
         self.assertIn("store listing", report["nextAction"])
+
+    def test_template_contains_both_product_ids(self) -> None:
+        payload = ORCHESTRATOR.template_payload("play-console")
+        self.assertFalse(payload["iapProductCreated"])
+        self.assertEqual(payload["iapProductId"], "remove_ads")
+        self.assertFalse(payload["iapAiProductCreated"])
+        self.assertEqual(payload["iapAiProductId"], "ai_analysis")
 
 
 if __name__ == "__main__":
