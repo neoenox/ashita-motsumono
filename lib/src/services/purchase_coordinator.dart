@@ -88,7 +88,7 @@ class PurchaseCoordinator extends ChangeNotifier {
 
   Future<void> restore() {
     if (_disposed) return Future<void>.value();
-    final restore = _events.enqueue(_restoreImpl);
+    final restore = _events.enqueueValue(_restoreImpl);
     return restore.then((started) async {
       if (!started) return;
       await Future<void>.delayed(Duration.zero);
@@ -100,7 +100,7 @@ class PurchaseCoordinator extends ChangeNotifier {
     final pending = _pendingTokenFetch;
     if (pending != null) return pending;
 
-    final refresh = _events.enqueue(_getAiAccessTokenImpl);
+    final refresh = _events.enqueueValue(_getAiAccessTokenImpl);
     _pendingTokenFetch = refresh;
     return refresh.whenComplete(() {
       if (identical(_pendingTokenFetch, refresh)) {
@@ -384,7 +384,11 @@ class PurchaseCoordinator extends ChangeNotifier {
 
   Future<void> _purchaseProduct(String productId) async {
     final currentOperation = _state.operationFor(productId);
-    if (_state.phase != PurchasePhase.ready || currentOperation.busy) return;
+    if (_state.phase != PurchasePhase.ready ||
+        _state.hasActiveOperation ||
+        currentOperation.busy) {
+      return;
+    }
 
     final generation = _beginOperation(
       productId,
