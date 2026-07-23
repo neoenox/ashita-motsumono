@@ -57,6 +57,8 @@ def validate_play_signing(payload: dict[str, Any]) -> dict[str, Any]:
     ai_product_id = str(payload.get("iapAiProductId", "")).strip()
     if not ai_product_id:
         failures.append("Play Console iapAiProductId is required")
+    if product_id and ai_product_id and product_id == ai_product_id:
+        failures.append("Play Console billing product IDs must be distinct")
     if not failures:
         facts.extend(
             [
