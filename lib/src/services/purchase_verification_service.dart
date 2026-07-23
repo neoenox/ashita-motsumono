@@ -142,7 +142,7 @@ class PurchaseVerificationService implements PurchaseVerifier {
     PurchaseDetails purchase,
     EntitlementVerification result,
   ) {
-    if (purchase.productID == _aiProductId) {
+    if (purchase.productID == _aiProductId && !result.retryable) {
       VerifiedEntitlementCache.clearAiToken();
     }
     return result;
