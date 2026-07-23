@@ -115,10 +115,7 @@ void main() {
     });
 
     test('fromJson rejects missing stable fields', () {
-      expect(
-        () => AppTodo.fromJson({}),
-        throwsA(isA<FormatException>()),
-      );
+      expect(() => AppTodo.fromJson({}), throwsA(isA<FormatException>()));
     });
 
     test('copyWith preserves original when no args', () {
@@ -160,10 +157,7 @@ void main() {
         'createdAt': '2026-01-01T00:00:00.000',
         'updatedAt': '2026-01-01T00:00:00.000',
       };
-      expect(
-        () => AppTodo.fromJson(json),
-        throwsA(isA<FormatException>()),
-      );
+      expect(() => AppTodo.fromJson(json), throwsA(isA<FormatException>()));
     });
   });
 
@@ -192,10 +186,7 @@ void main() {
     });
 
     test('fromJson rejects empty input', () {
-      expect(
-        () => PersonProfile.fromJson({}),
-        throwsA(isA<FormatException>()),
-      );
+      expect(() => PersonProfile.fromJson({}), throwsA(isA<FormatException>()));
     });
 
     test('copyWith preserves original when no args', () {

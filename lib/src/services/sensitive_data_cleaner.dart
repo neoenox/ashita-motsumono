@@ -7,8 +7,8 @@ typedef DocumentsDirectoryProvider = Future<Directory> Function();
 
 class SensitiveDataCleaner {
   SensitiveDataCleaner({DocumentsDirectoryProvider? directoryProvider})
-      : _directoryProvider =
-            directoryProvider ?? getApplicationDocumentsDirectory;
+    : _directoryProvider =
+          directoryProvider ?? getApplicationDocumentsDirectory;
 
   final DocumentsDirectoryProvider _directoryProvider;
 

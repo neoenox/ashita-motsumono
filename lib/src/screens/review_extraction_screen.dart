@@ -25,8 +25,7 @@ class ReviewExtractionScreen extends StatefulWidget {
   final bool editOnly;
 
   @override
-  State<ReviewExtractionScreen> createState() =>
-      _ReviewExtractionScreenState();
+  State<ReviewExtractionScreen> createState() => _ReviewExtractionScreenState();
 }
 
 String _fmtTime(int hour, int minute) =>
@@ -88,9 +87,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
   Widget build(BuildContext context) {
     final children = context.watch<AppState>().children;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.editOnly ? '候補を編集' : '読み取り結果の確認'),
-      ),
+      appBar: AppBar(title: Text(widget.editOnly ? '候補を編集' : '読み取り結果の確認')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
           Spacing.md,
@@ -159,7 +156,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
             onChanged: _saving
                 ? null
                 : (value) =>
-                    setState(() => _category = value ?? TodoCategory.other),
+                      setState(() => _category = value ?? TodoCategory.other),
           ),
           const SizedBox(height: Spacing.md),
           Row(
@@ -200,10 +197,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
           TextField(
             controller: _amountController,
             enabled: !_saving,
-            decoration: const InputDecoration(
-              labelText: '金額',
-              hintText: '500',
-            ),
+            decoration: const InputDecoration(labelText: '金額', hintText: '500'),
             keyboardType: TextInputType.number,
           ),
           if (!widget.editOnly) ...[
@@ -223,7 +217,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
                       onChanged: _saving
                           ? null
                           : (value) =>
-                              setState(() => _notifyPreviousNight = value),
+                                setState(() => _notifyPreviousNight = value),
                     ),
                     const Divider(),
                     SwitchListTile(
@@ -236,7 +230,7 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
                       onChanged: _saving
                           ? null
                           : (value) =>
-                              setState(() => _notifySameMorning = value),
+                                setState(() => _notifySameMorning = value),
                     ),
                   ],
                 ),
@@ -268,8 +262,8 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
               _saving
                   ? '保存中…'
                   : widget.editOnly
-                      ? '変更を反映'
-                      : '登録する',
+                  ? '変更を反映'
+                  : '登録する',
             ),
           ),
         ),
@@ -336,9 +330,9 @@ class _ReviewExtractionScreenState extends State<ReviewExtractionScreen> {
       navigator.popUntil((route) => route.isFirst);
     } on Object catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('登録に失敗しました: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('登録に失敗しました: $error')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }

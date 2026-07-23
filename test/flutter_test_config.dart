@@ -10,8 +10,9 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
   const messagesChannel = MethodChannel('receive_sharing_intent/messages');
-  const mediaEventsChannel =
-      MethodChannel('receive_sharing_intent/events-media');
+  const mediaEventsChannel = MethodChannel(
+    'receive_sharing_intent/events-media',
+  );
 
   messenger.setMockMethodCallHandler(messagesChannel, (call) async {
     return switch (call.method) {

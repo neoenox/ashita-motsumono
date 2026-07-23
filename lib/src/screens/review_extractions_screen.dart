@@ -88,10 +88,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
                     children: [
                       Icon(Icons.person_outline, size: 18, color: cs.primary),
                       const SizedBox(width: Spacing.sm),
-                      Text(
-                        '対象',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
+                      Text('対象', style: Theme.of(context).textTheme.titleSmall),
                     ],
                   ),
                   const SizedBox(height: Spacing.sm),
@@ -196,9 +193,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
         personId: _personId,
         documentId: widget.documentId,
       );
-      await settings.addLearnedItemLabels(
-        _reviewState.selectedItemLabels,
-      );
+      await settings.addLearnedItemLabels(_reviewState.selectedItemLabels);
       _saved = true;
       if (!mounted) return;
       navigator.popUntil((route) => route.isFirst);

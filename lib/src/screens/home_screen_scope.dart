@@ -74,14 +74,14 @@ class _HomeScreenScopeState extends State<HomeScreenScope> {
       }
     } on OcrException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } on Object {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('中断された画像選択を復旧できませんでした。')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('中断された画像選択を復旧できませんでした。')));
     }
   }
 

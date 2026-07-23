@@ -36,10 +36,7 @@ Future<T?> pushAdaptive<T>(
   WidgetBuilder builder, {
   bool fullscreenDialog = false,
 }) {
-  return Navigator.of(context).push<T>(
-    adaptivePageRoute<T>(
-      builder,
-      fullscreenDialog: fullscreenDialog,
-    ),
-  );
+  return Navigator.of(
+    context,
+  ).push<T>(adaptivePageRoute<T>(builder, fullscreenDialog: fullscreenDialog));
 }

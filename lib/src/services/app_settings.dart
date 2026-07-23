@@ -7,9 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class AppSettings extends ChangeNotifier {
   AppSettings(this._prefs)
-      : _learnedItemLabels = List<String>.of(
-          _prefs.getStringList(_keyLearnedItemLabels) ?? const <String>[],
-        );
+    : _learnedItemLabels = List<String>.of(
+        _prefs.getStringList(_keyLearnedItemLabels) ?? const <String>[],
+      );
 
   final SharedPreferences _prefs;
   List<String> _learnedItemLabels;

@@ -254,14 +254,14 @@ class _BootstrapAppState extends State<BootstrapApp> {
       home: switch (_phase) {
         _BootstrapPhase.loading => const _BootstrapLoadingScreen(),
         _BootstrapPhase.recoverableFailure => _DatabaseRecoveryScreen(
-            backupInfo: _loadFailure?.backupInfo ?? _store?.loadCorruptBackup(),
-            onRetry: _retryLoad,
-            onReset: _confirmAndResetLocalDatabase,
-          ),
+          backupInfo: _loadFailure?.backupInfo ?? _store?.loadCorruptBackup(),
+          onRetry: _retryLoad,
+          onReset: _confirmAndResetLocalDatabase,
+        ),
         _BootstrapPhase.fatalFailure => _BootstrapFailureScreen(
-            error: _fatalError,
-            onRetry: _restartBootstrap,
-          ),
+          error: _fatalError,
+          onRetry: _restartBootstrap,
+        ),
         _BootstrapPhase.ready => const SizedBox.shrink(),
       },
     );
@@ -289,10 +289,7 @@ class _BootstrapLoadingScreenState extends State<_BootstrapLoadingScreen>
       duration: AppMotion.standard,
     )..repeat(reverse: true);
     _pulseScale = Tween<double>(begin: 0.92, end: 1).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: AppMotion.standardCurve,
-      ),
+      CurvedAnimation(parent: _pulseController, curve: AppMotion.standardCurve),
     );
   }
 

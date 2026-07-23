@@ -121,9 +121,7 @@ void main() {
 
   group('HomeScreen', () {
     testWidgets('shows home screen and first run card', (tester) async {
-      SharedPreferences.setMockInitialValues({
-        'onboarding_completed_v1': true,
-      });
+      SharedPreferences.setMockInitialValues({'onboarding_completed_v1': true});
       final settings = await _createSettings();
       final store = await DriftStore.createInMemory();
       final appState = AppState(
@@ -553,10 +551,11 @@ void main() {
       await tester.tap(find.text('登録データをすべて削除'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('削除する'));
-      for (var attempt = 0;
-          attempt < 20 &&
-              find.text('登録データを削除しました').evaluate().isEmpty;
-          attempt++) {
+      for (
+        var attempt = 0;
+        attempt < 20 && find.text('登録データを削除しました').evaluate().isEmpty;
+        attempt++
+      ) {
         await tester.pump(const Duration(milliseconds: 50));
       }
       await tester.pumpAndSettle();

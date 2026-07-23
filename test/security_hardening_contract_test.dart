@@ -4,9 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('AI worker requires entitlement verification and rate limiting', () {
-    final worker = File(
-      'workers/gemini-proxy/src/index.ts',
-    ).readAsStringSync();
+    final worker = File('workers/gemini-proxy/src/index.ts').readAsStringSync();
     final wrangler = File(
       'workers/gemini-proxy/wrangler.toml',
     ).readAsStringSync();

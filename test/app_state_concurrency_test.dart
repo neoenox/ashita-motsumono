@@ -31,8 +31,7 @@ class _DelayedStore extends Store {
     AppSnapshot value, {
     Map<String, NotificationSyncOperation> notificationOperations = const {},
     Iterable<String> cleanupPaths = const [],
-  }) =>
-      save(value);
+  }) => save(value);
 
   @override
   String? loadCorruptBackup() => null;
@@ -85,31 +84,34 @@ class _NoopNotifications extends NotificationService {
 }
 
 void main() {
-  test('concurrent todo additions are serialized without lost updates', () async {
-    final store = _DelayedStore();
-    final state = AppState(store: store, notifications: _NoopNotifications());
-    await state.load();
-    addTearDown(state.dispose);
+  test(
+    'concurrent todo additions are serialized without lost updates',
+    () async {
+      final store = _DelayedStore();
+      final state = AppState(store: store, notifications: _NoopNotifications());
+      await state.load();
+      addTearDown(state.dispose);
 
-    final first = state.addTodoFromDraft(
-      draft: const ExtractionDraft(
-        title: 'A',
-        category: TodoCategory.item,
-        items: ['A'],
-      ),
-    );
-    await store.firstWriteStarted.future;
-    final second = state.addTodoFromDraft(
-      draft: const ExtractionDraft(
-        title: 'B',
-        category: TodoCategory.item,
-        items: ['B'],
-      ),
-    );
-    store.releaseFirstWrite.complete();
+      final first = state.addTodoFromDraft(
+        draft: const ExtractionDraft(
+          title: 'A',
+          category: TodoCategory.item,
+          items: ['A'],
+        ),
+      );
+      await store.firstWriteStarted.future;
+      final second = state.addTodoFromDraft(
+        draft: const ExtractionDraft(
+          title: 'B',
+          category: TodoCategory.item,
+          items: ['B'],
+        ),
+      );
+      store.releaseFirstWrite.complete();
 
-    await Future.wait([first, second]);
-    expect(state.todos.map((todo) => todo.title), containsAll(['A', 'B']));
-    expect(store.snapshot.todos, hasLength(2));
-  });
+      await Future.wait([first, second]);
+      expect(state.todos.map((todo) => todo.title), containsAll(['A', 'B']));
+      expect(store.snapshot.todos, hasLength(2));
+    },
+  );
 }

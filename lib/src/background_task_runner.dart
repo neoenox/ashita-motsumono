@@ -34,8 +34,7 @@ class BackgroundTaskRunner {
     BackgroundErrorHandler? onError,
     BackgroundReporterFailureHandler? onReporterFailure,
   }) : _onError = onError ?? _defaultErrorHandler,
-       _onReporterFailure =
-           onReporterFailure ?? _defaultReporterFailureHandler;
+       _onReporterFailure = onReporterFailure ?? _defaultReporterFailureHandler;
 
   final BackgroundErrorHandler _onError;
   final BackgroundReporterFailureHandler _onReporterFailure;

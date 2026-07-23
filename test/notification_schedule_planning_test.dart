@@ -44,9 +44,7 @@ void main() {
     expect(requests[1].scheduledDate, DateTime(2026, 7, 13, 7));
     expect(requests[1].title, '今日の支度・提出');
     expect(
-      requests.every(
-        (request) => request.body == 'アプリを開いて内容を確認してください。',
-      ),
+      requests.every((request) => request.body == 'アプリを開いて内容を確認してください。'),
       isTrue,
     );
     expect(requests[0].id, isNot(requests[1].id));

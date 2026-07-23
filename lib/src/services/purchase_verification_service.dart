@@ -20,17 +20,13 @@ class EntitlementVerification {
   const EntitlementVerification.granted({
     String? accessToken,
     DateTime? expiresAt,
-  }) : this._(
-          verified: true,
-          accessToken: accessToken,
-          expiresAt: expiresAt,
-        );
+  }) : this._(verified: true, accessToken: accessToken, expiresAt: expiresAt);
 
   const EntitlementVerification.denied(String message)
-      : this._(verified: false, message: message);
+    : this._(verified: false, message: message);
 
   const EntitlementVerification.retryable(String message)
-      : this._(verified: false, message: message, retryable: true);
+    : this._(verified: false, message: message, retryable: true);
 
   final bool verified;
   final String? accessToken;
@@ -45,8 +41,8 @@ abstract interface class PurchaseVerifier {
 
 class PurchaseVerificationService implements PurchaseVerifier {
   PurchaseVerificationService({String? baseUrl, http.Client? client})
-      : _baseUrl = baseUrl ?? _configuredBaseUrl,
-        _client = client ?? http.Client();
+    : _baseUrl = baseUrl ?? _configuredBaseUrl,
+      _client = client ?? http.Client();
 
   static const _configuredBaseUrl = String.fromEnvironment(
     'GEMINI_PROXY_URL',
@@ -66,13 +62,11 @@ class PurchaseVerificationService implements PurchaseVerifier {
     if (endpoint == null) {
       return _failed(
         purchase,
-        const EntitlementVerification.retryable(
-          '購入確認サーバーが設定されていません。',
-        ),
+        const EntitlementVerification.retryable('購入確認サーバーが設定されていません。'),
       );
     }
-    final verificationData =
-        purchase.verificationData.serverVerificationData.trim();
+    final verificationData = purchase.verificationData.serverVerificationData
+        .trim();
     if (verificationData.isEmpty) {
       return _failed(
         purchase,
@@ -103,9 +97,7 @@ class PurchaseVerificationService implements PurchaseVerifier {
           if (token == null || expiresAt == null) {
             return _failed(
               purchase,
-              const EntitlementVerification.denied(
-                'AI利用権トークンを確認できませんでした。',
-              ),
+              const EntitlementVerification.denied('AI利用権トークンを確認できませんでした。'),
             );
           }
           VerifiedEntitlementCache.setAiToken(token, expiresAt);

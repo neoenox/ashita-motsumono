@@ -65,9 +65,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.only(bottom: Spacing.md),
             child: Text(
               '通知やサポーター機能の管理ができます',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
           _SectionCard(
@@ -217,17 +217,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _openExternalPage(
-    Uri uri,
-    String errorMessage,
-  ) async {
+  Future<void> _openExternalPage(Uri uri, String errorMessage) async {
     final opened = await tryOpenExternalPage(
       uri: uri,
       canOpen: canLaunchUrl,
-      launch: (target) => launchUrl(
-        target,
-        mode: LaunchMode.externalApplication,
-      ),
+      launch: (target) =>
+          launchUrl(target, mode: LaunchMode.externalApplication),
     );
     if (!opened && mounted) {
       ScaffoldMessenger.of(
@@ -279,18 +274,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-            enabled
-                ? '通知に予定の詳細を表示します'
-                : '通知の予定詳細を非表示にしました',
-          ),
+          content: Text(enabled ? '通知に予定の詳細を表示します' : '通知の予定詳細を非表示にしました'),
         ),
       );
     } on Object {
       if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(content: Text('通知表示設定の保存に失敗しました')),
-      );
+      messenger.showSnackBar(const SnackBar(content: Text('通知表示設定の保存に失敗しました')));
     }
   }
 
@@ -301,9 +290,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('登録データを削除しますか？'),
-        content: const Text(
-          '人物、Todo、読み取り履歴、保存画像をこの端末から削除します。この操作は元に戻せません。',
-        ),
+        content: const Text('人物、Todo、読み取り履歴、保存画像をこの端末から削除します。この操作は元に戻せません。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -397,8 +384,8 @@ class _SectionCard extends StatelessWidget {
                 child: Text(
                   description!,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],
@@ -431,9 +418,9 @@ class _SupporterCard extends StatelessWidget {
               children: [
                 Text(
                   'サポーター登録済み',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: cs.primary,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(color: cs.primary),
                 ),
                 const SizedBox(height: Spacing.xs),
                 const Text('広告なしで使えます。ご購入ありがとうございます。'),
@@ -534,9 +521,9 @@ class _AiAccessCard extends StatelessWidget {
               children: [
                 Text(
                   'AI分析 利用可能',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: cs.primary,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(color: cs.primary),
                 ),
                 const SizedBox(height: Spacing.xs),
                 const Text('画像の手書きメモもAIが読み取ってTodoに変換します。'),
@@ -559,10 +546,7 @@ class _AiAccessCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'AI画像認識',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
+                  Text('AI画像認識', style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: Spacing.xs),
                   const Text('手書きのメモやお便りもAIが読み取り、Todoを自動生成します。'),
                 ],

@@ -6,18 +6,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   AppTodo todo() => AppTodo(
-        id: 'todo-1',
-        title: '集金袋を提出',
-        category: TodoCategory.payment,
-        status: TodoStatus.active,
-        items: const [
-          ChecklistItem(id: 'item-1', label: '集金袋'),
-        ],
-        amount: 500,
-        dueDate: DateTime(2026, 7, 20),
-        createdAt: DateTime(2026, 7, 16),
-        updatedAt: DateTime(2026, 7, 16),
-      );
+    id: 'todo-1',
+    title: '集金袋を提出',
+    category: TodoCategory.payment,
+    status: TodoStatus.active,
+    items: const [ChecklistItem(id: 'item-1', label: '集金袋')],
+    amount: 500,
+    dueDate: DateTime(2026, 7, 20),
+    createdAt: DateTime(2026, 7, 16),
+    updatedAt: DateTime(2026, 7, 16),
+  );
 
   test('notification details are hidden by default', () async {
     SharedPreferences.setMockInitialValues({});
@@ -34,9 +32,7 @@ void main() {
 
     expect(requests, isNotEmpty);
     expect(
-      requests.every(
-        (request) => request.body == 'アプリを開いて内容を確認してください。',
-      ),
+      requests.every((request) => request.body == 'アプリを開いて内容を確認してください。'),
       isTrue,
     );
     expect(requests.any((request) => request.body.contains('500')), isFalse);

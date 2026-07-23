@@ -23,17 +23,11 @@ void main() {
     });
 
     test('先頭と末尾の空白を削除する', () {
-      expect(
-        TextFingerprint.normalize(' \t 明日は体操着を持参 \n '),
-        '明日は体操着を持参',
-      );
+      expect(TextFingerprint.normalize(' \t 明日は体操着を持参 \n '), '明日は体操着を持参');
     });
 
     test('空白を含まない日本語を変更しない', () {
-      expect(
-        TextFingerprint.normalize('明日は体操着を持参してください。'),
-        '明日は体操着を持参してください。',
-      );
+      expect(TextFingerprint.normalize('明日は体操着を持参してください。'), '明日は体操着を持参してください。');
     });
   });
 

@@ -20,16 +20,17 @@ class _GeminiDraft {
   });
 
   factory _GeminiDraft.fromJson(Map<String, dynamic> json) => _GeminiDraft(
-        title: json['title'] as String? ?? '',
-        category: json['category'] as String? ?? 'other',
-        dueDate: json['dueDate'] as String?,
-        amount: (json['amount'] as num?)?.toInt(),
-        items: (json['items'] as List<dynamic>?)
-                ?.map((value) => value.toString())
-                .toList() ??
-            const [],
-        note: json['note'] as String?,
-      );
+    title: json['title'] as String? ?? '',
+    category: json['category'] as String? ?? 'other',
+    dueDate: json['dueDate'] as String?,
+    amount: (json['amount'] as num?)?.toInt(),
+    items:
+        (json['items'] as List<dynamic>?)
+            ?.map((value) => value.toString())
+            .toList() ??
+        const [],
+    note: json['note'] as String?,
+  );
 
   final String title;
   final String category;
@@ -39,22 +40,22 @@ class _GeminiDraft {
   final String? note;
 
   ExtractionDraft toDraft() => ExtractionDraft(
-        title: title.trim(),
-        category: switch (category) {
-          'payment' => TodoCategory.payment,
-          'submit' => TodoCategory.submit,
-          'event' => TodoCategory.event,
-          'item' => TodoCategory.item,
-          _ => TodoCategory.other,
-        },
-        dueDate: dueDate?.length == 10 ? DateTime.tryParse(dueDate!) : null,
-        amount: amount,
-        items: items
-            .map((item) => item.trim())
-            .where((item) => item.isNotEmpty)
-            .toList(),
-        note: note?.trim(),
-      );
+    title: title.trim(),
+    category: switch (category) {
+      'payment' => TodoCategory.payment,
+      'submit' => TodoCategory.submit,
+      'event' => TodoCategory.event,
+      'item' => TodoCategory.item,
+      _ => TodoCategory.other,
+    },
+    dueDate: dueDate?.length == 10 ? DateTime.tryParse(dueDate!) : null,
+    amount: amount,
+    items: items
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList(),
+    note: note?.trim(),
+  );
 }
 
 sealed class GeminiResult {}
@@ -73,7 +74,7 @@ class GeminiError extends GeminiResult {
 
 class GeminiApiService {
   GeminiApiService({this.proxyUrl, http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   String? proxyUrl;
   final http.Client _client;
@@ -195,9 +196,8 @@ class GeminiApiService {
     return drafts.isEmpty ? GeminiEmpty() : GeminiSuccess(drafts: drafts);
   }
 
-  static String? _detectMimeType(String path) => switch (
-        path.split('.').last.toLowerCase()
-      ) {
+  static String? _detectMimeType(String path) =>
+      switch (path.split('.').last.toLowerCase()) {
         'png' => 'image/png',
         'jpg' || 'jpeg' => 'image/jpeg',
         'webp' => 'image/webp',

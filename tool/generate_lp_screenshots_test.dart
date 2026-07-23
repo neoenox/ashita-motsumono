@@ -140,16 +140,10 @@ void _configureViewport(WidgetTester tester) {
 }
 
 Widget _captureBoundary(Widget child) {
-  return RepaintBoundary(
-    key: _captureKey,
-    child: child,
-  );
+  return RepaintBoundary(key: _captureKey, child: child);
 }
 
-Future<void> _writeScreenshot(
-  WidgetTester tester,
-  String filename,
-) async {
+Future<void> _writeScreenshot(WidgetTester tester, String filename) async {
   await tester.pumpAndSettle();
   final boundary = tester.renderObject<RenderRepaintBoundary>(
     find.byKey(_captureKey),
@@ -226,20 +220,13 @@ void main() {
   setUp(() {
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    const messagesChannel = MethodChannel(
-      'receive_sharing_intent/messages',
-    );
-    const eventsChannel = MethodChannel(
-      'receive_sharing_intent/events-media',
-    );
+    const messagesChannel = MethodChannel('receive_sharing_intent/messages');
+    const eventsChannel = MethodChannel('receive_sharing_intent/events-media');
     messenger.setMockMethodCallHandler(
       messagesChannel,
       (call) async => <dynamic>[],
     );
-    messenger.setMockMethodCallHandler(
-      eventsChannel,
-      (call) async => null,
-    );
+    messenger.setMockMethodCallHandler(eventsChannel, (call) async => null);
     addTearDown(() {
       messenger.setMockMethodCallHandler(messagesChannel, null);
       messenger.setMockMethodCallHandler(eventsChannel, null);

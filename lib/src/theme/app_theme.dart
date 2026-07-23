@@ -84,7 +84,10 @@ class AppTheme {
         bodyMedium: TextStyle(fontWeight: FontWeight.w400),
         bodySmall: TextStyle(fontWeight: FontWeight.w400),
         labelLarge: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.05),
-        labelMedium: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.05),
+        labelMedium: TextStyle(
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.05,
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
@@ -156,9 +159,7 @@ class AppTheme {
         ),
       ),
       chipTheme: ChipThemeData(
-        shape: StadiumBorder(
-          side: BorderSide(color: cs.outlineVariant),
-        ),
+        shape: StadiumBorder(side: BorderSide(color: cs.outlineVariant)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         labelStyle: const TextStyle(
           fontFamily: 'NotoSansJP',
@@ -196,12 +197,12 @@ class CategoryColors {
 
 extension TodoCategoryColor on TodoCategory {
   Color get color => switch (this) {
-        TodoCategory.payment => CategoryColors.payment,
-        TodoCategory.submit => CategoryColors.submit,
-        TodoCategory.event => CategoryColors.event,
-        TodoCategory.item => CategoryColors.item,
-        TodoCategory.other => CategoryColors.other,
-      };
+    TodoCategory.payment => CategoryColors.payment,
+    TodoCategory.submit => CategoryColors.submit,
+    TodoCategory.event => CategoryColors.event,
+    TodoCategory.item => CategoryColors.item,
+    TodoCategory.other => CategoryColors.other,
+  };
 }
 
 class Spacing {

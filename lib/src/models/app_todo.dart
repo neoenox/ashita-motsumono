@@ -79,21 +79,21 @@ class AppTodo {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'personId': personId,
-        'documentId': documentId,
-        'dueDate': dueDate?.toIso8601String(),
-        'category': category.name,
-        'amount': amount,
-        'note': note,
-        'status': status.name,
-        'items': items.map((item) => item.toJson()).toList(),
-        'notifyPreviousNight': notifyPreviousNight,
-        'notifySameMorning': notifySameMorning,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'title': title,
+    'personId': personId,
+    'documentId': documentId,
+    'dueDate': dueDate?.toIso8601String(),
+    'category': category.name,
+    'amount': amount,
+    'note': note,
+    'status': status.name,
+    'items': items.map((item) => item.toJson()).toList(),
+    'notifyPreviousNight': notifyPreviousNight,
+    'notifySameMorning': notifySameMorning,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 
   factory AppTodo.fromJson(Map<String, dynamic> json) {
     final id = json['id'];
@@ -116,16 +116,18 @@ class AppTodo {
     final category = switch (categoryName) {
       null => TodoCategory.other,
       'submission' => TodoCategory.submit,
-      String value => TodoCategory.values
-          .where((candidate) => candidate.name == value)
-          .firstOrNull,
+      String value =>
+        TodoCategory.values
+            .where((candidate) => candidate.name == value)
+            .firstOrNull,
       _ => null,
     };
     final status = switch (statusName) {
       null => TodoStatus.active,
-      String value => TodoStatus.values
-          .where((candidate) => candidate.name == value)
-          .firstOrNull,
+      String value =>
+        TodoStatus.values
+            .where((candidate) => candidate.name == value)
+            .firstOrNull,
       _ => null,
     };
     if (category == null || status == null) {
@@ -164,11 +166,7 @@ class AppTodo {
       note: json['note'] as String?,
       status: status,
       items: rawItems
-          .map(
-            (value) => ChecklistItem.fromJson(
-              value as Map<String, dynamic>,
-            ),
-          )
+          .map((value) => ChecklistItem.fromJson(value as Map<String, dynamic>))
           .toList(),
       notifyPreviousNight: previousNightRaw as bool? ?? true,
       notifySameMorning: sameMorningRaw as bool? ?? true,

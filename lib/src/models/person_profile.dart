@@ -33,12 +33,12 @@ class PersonProfile {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'colorValue': colorValue,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'name': name,
+    'colorValue': colorValue,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 
   factory PersonProfile.fromJson(Map<String, dynamic> json) {
     final id = json['id'];

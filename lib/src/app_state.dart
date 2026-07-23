@@ -41,11 +41,10 @@ class AppState extends ChangeNotifier {
     required NotificationService notifications,
     Uuid? uuid,
     SensitiveDataCleaner? sensitiveDataCleaner,
-  })  : _store = store,
-        _notifications = notifications,
-        _uuid = uuid ?? const Uuid(),
-        _sensitiveDataCleaner =
-            sensitiveDataCleaner ?? SensitiveDataCleaner() {
+  }) : _store = store,
+       _notifications = notifications,
+       _uuid = uuid ?? const Uuid(),
+       _sensitiveDataCleaner = sensitiveDataCleaner ?? SensitiveDataCleaner() {
     childState.addListener(notifyListeners);
   }
 

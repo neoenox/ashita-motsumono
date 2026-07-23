@@ -203,10 +203,7 @@ class _AnimatedTodoCheckbox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Checkbox自体を残し、既存のSemanticsとテスト契約を維持する。
-    final checkbox = Checkbox(
-      value: value,
-      onChanged: (_) => onChanged(),
-    );
+    final checkbox = Checkbox(value: value, onChanged: (_) => onChanged());
     if (reducedMotion) return checkbox;
 
     return AnimatedScale(
