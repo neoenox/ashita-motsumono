@@ -170,7 +170,13 @@ class PurchaseState {
     if (!canTransitionTo(next)) {
       throw StateError('Invalid purchase transition: $phase -> $next');
     }
-    return copyWith(phase: next, statusMessage: statusMessage);
+    final resolvedStatusMessage =
+        phase == PurchasePhase.restoring &&
+            next == PurchasePhase.ready &&
+            statusMessage == null
+        ? _unset
+        : statusMessage;
+    return copyWith(phase: next, statusMessage: resolvedStatusMessage);
   }
 
   PurchaseState withOperation(
