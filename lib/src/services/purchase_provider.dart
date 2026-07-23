@@ -44,11 +44,16 @@ class AppPurchaseProvider extends PurchaseProvider {
     PurchaseGateway? gateway,
     PurchaseVerifier? verifier,
   }) {
+    final resolvedVerifier = verifier ?? PurchaseVerificationService();
+    _ownedVerifier = verifier == null
+        ? resolvedVerifier as PurchaseVerificationService
+        : null;
+    _verifierGuard = PurchaseVerifierGuard(resolvedVerifier);
     _coordinator = PurchaseCoordinator(
       settings: settings,
       gateway: gateway ?? InAppPurchaseGateway(),
-      verifier: verifier ?? PurchaseVerificationService(),
-      ownsVerifier: verifier == null,
+      verifier: _verifierGuard,
+      ownsVerifier: false,
       removeAdsProductId: PurchaseProvider.productId,
       aiAccessProductId: PurchaseProvider.aiProductId,
     );
@@ -56,6 +61,8 @@ class AppPurchaseProvider extends PurchaseProvider {
   }
 
   late final PurchaseCoordinator _coordinator;
+  late final PurchaseVerifierGuard _verifierGuard;
+  PurchaseVerificationService? _ownedVerifier;
 
   @override
   Future<void> get ready => _coordinator.ready;
@@ -108,8 +115,11 @@ class AppPurchaseProvider extends PurchaseProvider {
 
   @override
   void dispose() {
+    _verifierGuard.close();
     _coordinator.removeListener(notifyListeners);
     _coordinator.dispose();
+    _ownedVerifier?.close();
+    _ownedVerifier = null;
     super.dispose();
   }
 }

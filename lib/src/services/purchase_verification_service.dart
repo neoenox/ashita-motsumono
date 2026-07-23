@@ -6,8 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:in_app_purchase/in_app_purchase.dart';
 
-import 'verified_entitlement_cache.dart';
-
 class EntitlementVerification {
   const EntitlementVerification._({
     required this.verified,
@@ -35,8 +33,32 @@ class EntitlementVerification {
   final bool retryable;
 }
 
+/// 購入証明を検証し、共有状態を変更せず結果だけを返す。
 abstract interface class PurchaseVerifier {
   Future<EntitlementVerification> verify(PurchaseDetails purchase);
+}
+
+/// Providerのライフサイクル終了後に返った検証結果を適用対象外にする。
+class PurchaseVerifierGuard implements PurchaseVerifier {
+  PurchaseVerifierGuard(this._delegate);
+
+  final PurchaseVerifier _delegate;
+  bool _closed = false;
+
+  void close() {
+    _closed = true;
+  }
+
+  @override
+  Future<EntitlementVerification> verify(PurchaseDetails purchase) async {
+    if (_closed) return _closedResult;
+    final result = await _delegate.verify(purchase);
+    return _closed ? _closedResult : result;
+  }
+
+  static const _closedResult = EntitlementVerification.retryable(
+    '購入確認処理は終了されています。',
+  );
 }
 
 class PurchaseVerificationService implements PurchaseVerifier {
@@ -72,18 +94,12 @@ class PurchaseVerificationService implements PurchaseVerifier {
     }
     final endpoint = _endpoint('/entitlements/verify');
     if (endpoint == null) {
-      return _failed(
-        purchase,
-        const EntitlementVerification.retryable('購入確認サーバーが設定されていません。'),
-      );
+      return const EntitlementVerification.retryable('購入確認サーバーが設定されていません。');
     }
     final verificationData = purchase.verificationData.serverVerificationData
         .trim();
     if (verificationData.isEmpty) {
-      return _failed(
-        purchase,
-        const EntitlementVerification.denied('購入証明データがありません。'),
-      );
+      return const EntitlementVerification.denied('購入証明データがありません。');
     }
 
     try {
@@ -99,20 +115,20 @@ class PurchaseVerificationService implements PurchaseVerifier {
             }),
           )
           .timeout(const Duration(seconds: 30));
+      if (_closed) {
+        return const EntitlementVerification.retryable('購入確認サービスは終了されています。');
+      }
       final payload = _decodeObject(response.body);
       if (response.statusCode == 200 && payload['verified'] == true) {
         final token = payload['accessToken'] as String?;
         final expiresAt = DateTime.tryParse(
           payload['expiresAt'] as String? ?? '',
         );
-        if (purchase.productID == _aiProductId) {
-          if (token == null || expiresAt == null) {
-            return _failed(
-              purchase,
-              const EntitlementVerification.denied('AI利用権トークンを確認できませんでした。'),
-            );
-          }
-          VerifiedEntitlementCache.setAiToken(token, expiresAt);
+        if (purchase.productID == _aiProductId &&
+            (token == null || expiresAt == null)) {
+          return const EntitlementVerification.denied(
+            'AI利用権トークンを確認できませんでした。',
+          );
         }
         return EntitlementVerification.granted(
           accessToken: token,
@@ -120,44 +136,19 @@ class PurchaseVerificationService implements PurchaseVerifier {
         );
       }
       final message = payload['error'] as String? ?? '購入を確認できませんでした。';
-      return _failed(
-        purchase,
-        response.statusCode >= 500 || response.statusCode == 429
-            ? EntitlementVerification.retryable(message)
-            : EntitlementVerification.denied(message),
-      );
+      return response.statusCode >= 500 || response.statusCode == 429
+          ? EntitlementVerification.retryable(message)
+          : EntitlementVerification.denied(message);
     } on SocketException {
-      return _failed(
-        purchase,
-        const EntitlementVerification.retryable('購入確認サーバーに接続できません。'),
-      );
+      return const EntitlementVerification.retryable('購入確認サーバーに接続できません。');
     } on TimeoutException {
-      return _failed(
-        purchase,
-        const EntitlementVerification.retryable('購入確認がタイムアウトしました。'),
-      );
+      return const EntitlementVerification.retryable('購入確認がタイムアウトしました。');
     } on FormatException {
-      return _failed(
-        purchase,
-        const EntitlementVerification.retryable('購入確認サーバーの応答が不正です。'),
-      );
+      return const EntitlementVerification.retryable('購入確認サーバーの応答が不正です。');
     } on Object catch (error) {
       if (kDebugMode) debugPrint('Purchase verification failed: $error');
-      return _failed(
-        purchase,
-        const EntitlementVerification.retryable('購入情報の確認に失敗しました。'),
-      );
+      return const EntitlementVerification.retryable('購入情報の確認に失敗しました。');
     }
-  }
-
-  EntitlementVerification _failed(
-    PurchaseDetails purchase,
-    EntitlementVerification result,
-  ) {
-    if (purchase.productID == _aiProductId && !result.retryable) {
-      VerifiedEntitlementCache.clearAiToken();
-    }
-    return result;
   }
 
   Uri? _endpoint(String path) {
