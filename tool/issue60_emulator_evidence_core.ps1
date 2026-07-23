@@ -27,7 +27,7 @@ function Adb([string[]]$Args, [string]$Out, [switch]$AllowFailure) {
     "command=adb -s $Serial $($Args -join ' ')",
     "host_time=$(Get-Date -Format o)"
   ) | Out-File $Out -Encoding utf8
-  $text = & adb -s $Serial @Args 2>&1
+  $text = & (Resolve-Issue60AdbExecutable) -s $Serial @Args 2>&1
   $code = $LASTEXITCODE
   $text | Out-File $Out -Append -Encoding utf8
   "exit_code=$code" | Out-File $Out -Append -Encoding utf8
@@ -38,7 +38,7 @@ function Adb([string[]]$Args, [string]$Out, [switch]$AllowFailure) {
 }
 
 function AdbText([string[]]$Args) {
-  $x = & adb -s $Serial @Args 2>$null
+  $x = & (Resolve-Issue60AdbExecutable) -s $Serial @Args 2>$null
   if ($LASTEXITCODE -ne 0) {
     return ''
   }

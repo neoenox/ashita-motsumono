@@ -20,11 +20,6 @@ function Resolve-Issue60RepositoryPath {
 }
 
 function Resolve-Issue60AdbExecutable {
-  $command = Get-Command adb -CommandType Application -ErrorAction SilentlyContinue
-  if ($command) {
-    return $command.Source
-  }
-
   foreach ($sdkRoot in @($env:ANDROID_SDK_ROOT, $env:ANDROID_HOME)) {
     if (-not $sdkRoot) {
       continue
@@ -38,6 +33,19 @@ function Resolve-Issue60AdbExecutable {
       if (Test-Path $candidate -PathType Leaf) {
         return (Resolve-Path $candidate).Path
       }
+    }
+  }
+
+  $command = Get-Command adb -CommandType Application -ErrorAction SilentlyContinue
+  if ($command) {
+    if ($command.Path) {
+      return $command.Path
+    }
+    if ($command.Source) {
+      return $command.Source
+    }
+    if ($command.Definition) {
+      return $command.Definition
     }
   }
 

@@ -76,9 +76,9 @@ $RepoRoot = Resolve-Issue60RepositoryRoot `
 
 $script:Issue60AdbExecutable = $null
 if ($Action -ne 'Aggregate') {
-  $script:Issue60AdbExecutable = Resolve-Issue60AdbExecutable
-  function adb {
-    & $script:Issue60AdbExecutable @args
+  $global:Issue60AdbExecutable = Resolve-Issue60AdbExecutable
+  function global:adb {
+    & (Resolve-Issue60AdbExecutable) @args
   }
 }
 
