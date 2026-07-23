@@ -198,10 +198,11 @@ function FilterEvidence(
   $Destination,
   [string[]]$Patterns
 ) {
-  if ((Test-Path $Source) -and $Patterns -and $Patterns.Count -gt 0) {
+  $effectivePatterns = @($Patterns | Where-Object { $_ })
+  if ((Test-Path $Source) -and $effectivePatterns.Count -gt 0) {
     Select-String `
       $Source `
-      -Pattern $Patterns `
+      -Pattern $effectivePatterns `
       -SimpleMatch `
       -Context 4, 8 |
       Out-File $Destination -Encoding utf8
