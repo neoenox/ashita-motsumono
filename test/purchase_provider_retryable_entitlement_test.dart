@@ -62,7 +62,11 @@ void main() {
     await verifier.waitForCalls(1);
 
     var readyCompleted = false;
-    unawaited(provider.ready.then((_) => readyCompleted = true));
+    unawaited(
+      provider.ready.then((_) {
+        readyCompleted = true;
+      }),
+    );
     await Future<void>.delayed(Duration.zero);
 
     expect(readyCompleted, isFalse);
