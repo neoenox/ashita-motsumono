@@ -176,6 +176,10 @@ class AppPurchaseProvider extends PurchaseProvider {
         case PurchaseStatus.purchased || PurchaseStatus.restored:
           final verification = await _verifier.verify(purchase);
           if (!verification.verified) {
+            if (verification.retryable) {
+              _statusMessage = verification.message ?? '購入情報を確認できませんでした。';
+              break;
+            }
             await _deny(purchase.productID, verification.message);
             break;
           }
@@ -279,7 +283,17 @@ class AppPurchaseProvider extends PurchaseProvider {
     if (purchase == null) return null;
     try {
       final verification = await _verifier.verify(purchase);
-      if (!verification.verified || verification.accessToken == null) {
+      if (!verification.verified) {
+        if (verification.retryable) {
+          _statusMessage = verification.message ?? 'AI利用権を更新できませんでした。';
+          notifyListeners();
+          return null;
+        }
+        await _deny(PurchaseProvider.aiProductId, verification.message);
+        notifyListeners();
+        return null;
+      }
+      if (verification.accessToken == null) {
         await _deny(PurchaseProvider.aiProductId, verification.message);
         notifyListeners();
         return null;
