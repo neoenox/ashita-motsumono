@@ -174,7 +174,11 @@ jobs:
             }
           }
 
-          $directAdbCount = ([regex]::Matches($allText, '& adb ')).Count
+          $coreText = Get-Content tool/issue60_emulator_evidence_core.ps1 -Raw
+          $directAdbCount = ([regex]::Matches(
+            $coreText,
+            '& \(Resolve-Issue60AdbExecutable\)'
+          )).Count
           if ($directAdbCount -ne 2) {
             throw "Expected exactly two centralized direct ADB calls; found $directAdbCount"
           }
