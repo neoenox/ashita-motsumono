@@ -148,6 +148,16 @@ class OrderedReleaseGateTests(unittest.TestCase):
             any("iapAiProduct" in value for value in result["failures"])
         )
 
+    def test_signing_rejects_duplicate_product_ids(self) -> None:
+        payload = play_payload()
+        payload["iapAiProductId"] = payload["iapProductId"]
+        result = ORCHESTRATOR.validate_play_signing(payload)
+        self.assertEqual(result["result"], "BLOCKED")
+        self.assertIn(
+            "Play Console billing product IDs must be distinct",
+            result["failures"],
+        )
+
     def test_submission_does_not_replace_signing(self) -> None:
         payload = play_payload(signing=False, submission=True)
         self.assertEqual(
