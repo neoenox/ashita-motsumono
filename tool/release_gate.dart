@@ -248,7 +248,7 @@ void _writeReport(Directory root, ReleaseAuditReport report) {
     report.passed
         ? 'RESULT: PASS (${report.warnings.length} warning(s))'
         : 'RESULT: FAIL (${report.errors.length} error(s), '
-              '${report.warnings.length} warning(s))',
+            '${report.warnings.length} warning(s))',
   );
 }
 
