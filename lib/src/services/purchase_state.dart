@@ -91,11 +91,14 @@ class PurchaseState {
   final String? statusMessage;
   final Map<String, PurchaseOperationState> operations;
 
+  bool get hasActiveOperation =>
+      operations.values.any((operation) => operation.busy);
+
   bool get busy => switch (phase) {
     PurchasePhase.initializing ||
     PurchasePhase.restoring ||
     PurchasePhase.purchasing => true,
-    _ => operations.values.any((operation) => operation.busy),
+    _ => hasActiveOperation,
   };
 
   bool get restoring => switch (phase) {
@@ -112,13 +115,13 @@ class PurchaseState {
       phase == PurchasePhase.ready &&
       storeAvailable &&
       adsProduct != null &&
-      !operationFor(adsProduct!.id).busy;
+      !hasActiveOperation;
 
   bool get canPurchaseAi =>
       phase == PurchasePhase.ready &&
       storeAvailable &&
       aiProduct != null &&
-      !operationFor(aiProduct!.id).busy;
+      !hasActiveOperation;
 
   String get priceLabel =>
       adsProduct == null ? '価格は購入前に表示' : '買い切り ${adsProduct!.price}';
