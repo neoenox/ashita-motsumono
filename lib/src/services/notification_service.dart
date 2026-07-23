@@ -106,6 +106,12 @@ class NotificationService {
 
     // 同じTodoの既存2通知を必ず先に削除してから、必要な未来通知だけを再登録する。
     await _cancelIds(ids);
+    // 旧バージョンでは永続化されたID行がないTodoにも、後方互換用のIDで
+    // 通知を登録していた。新しいID管理へ移行済みでも、その残存通知を先に
+    // 消さないと、起動後の再予約で重複通知になる。
+    if (notificationIds != null) {
+      await _cancelIdsIfDifferent(_fallbackNotificationIds(todo.id), ids);
+    }
     for (final request in buildScheduleRequests(
       todo,
       notificationIdPair: ids,
@@ -177,13 +183,27 @@ class NotificationService {
     final ids = notificationIds == null
         ? _fallbackNotificationIds(todoId)
         : await notificationIds!.findNotificationIds(todoId);
-    if (ids == null) return;
-    await _cancelIds(ids);
+    if (ids != null) await _cancelIds(ids);
+    if (notificationIds != null) {
+      await _cancelIdsIfDifferent(_fallbackNotificationIds(todoId), ids);
+    }
   }
 
   Future<void> _cancelIds(NotificationIdPair ids) async {
     await _plugin.cancel(id: ids.previousNight);
     await _plugin.cancel(id: ids.sameMorning);
+  }
+
+  Future<void> _cancelIdsIfDifferent(
+    NotificationIdPair fallback,
+    NotificationIdPair? current,
+  ) async {
+    if (current == null || fallback.previousNight != current.previousNight) {
+      await _plugin.cancel(id: fallback.previousNight);
+    }
+    if (current == null || fallback.sameMorning != current.sameMorning) {
+      await _plugin.cancel(id: fallback.sameMorning);
+    }
   }
 
   Future<void> _scheduleIfFuture(
