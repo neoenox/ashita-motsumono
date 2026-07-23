@@ -22,23 +22,23 @@ function Json($Value, $Path) {
   )
 }
 
-function Adb([string[]]$Args, [string]$Out, [switch]$AllowFailure) {
+function Adb([string[]]$AdbArguments, [string]$Out, [switch]$AllowFailure) {
   @(
-    "command=adb -s $global:Issue60Serial $($Args -join ' ')",
+    "command=adb -s $global:Issue60Serial $($AdbArguments -join ' ')",
     "host_time=$(Get-Date -Format o)"
   ) | Out-File $Out -Encoding utf8
-  $text = & (Resolve-Issue60AdbExecutable) -s $global:Issue60Serial @Args 2>&1
+  $text = & (Resolve-Issue60AdbExecutable) -s $global:Issue60Serial @AdbArguments 2>&1
   $code = $LASTEXITCODE
   $text | Out-File $Out -Append -Encoding utf8
   "exit_code=$code" | Out-File $Out -Append -Encoding utf8
   if ($code -ne 0 -and -not $AllowFailure) {
-    throw "adb failed: $($Args -join ' ')"
+    throw "adb failed: $($AdbArguments -join ' ')"
   }
   [pscustomobject]@{ Output = @($text); ExitCode = $code }
 }
 
-function AdbText([string[]]$Args) {
-  $x = & (Resolve-Issue60AdbExecutable) -s $global:Issue60Serial @Args 2>$null
+function AdbText([string[]]$AdbArguments) {
+  $x = & (Resolve-Issue60AdbExecutable) -s $global:Issue60Serial @AdbArguments 2>$null
   if ($LASTEXITCODE -ne 0) {
     return ''
   }
