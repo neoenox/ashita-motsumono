@@ -15,7 +15,7 @@ concurrency:
 jobs:
   diagnose-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 8
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -30,12 +30,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Run tests with bounded diagnostics
+      - name: Run first HomeScreen tests with bounded diagnostics
         shell: bash
         run: |
           set +e
           mkdir -p build/diagnostics
-          timeout --signal=TERM 20m flutter test --reporter expanded 2>&1 \
+          timeout --signal=TERM 3m \
+            flutter test test/widget_test.dart \
+              --plain-name 'shows home screen and first run card|shows empty state when children exist but no todos' \
+              --reporter expanded 2>&1 \
             | tee build/diagnostics/flutter-test.txt
           status=${PIPESTATUS[0]}
           echo "$status" > build/diagnostics/flutter-test-status.txt
