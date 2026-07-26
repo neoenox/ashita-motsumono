@@ -1,0 +1,53 @@
+name: Apply widget test repair
+
+on:
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  apply-repair:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Apply bounded empty-state pump
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('test/widget_test.dart')
+          text = path.read_text(encoding='utf-8')
+          marker = "testWidgets('shows empty state when children exist but no todos'"
+          start = text.index(marker)
+          end = text.index("testWidgets('shows today section with due todo'", start)
+          block = text[start:end]
+          old = 'await tester.pumpAndSettle();'
+          new = 'await tester.pump(const Duration(milliseconds: 300));'
+          if old not in block:
+              print('Target already repaired; no change required.')
+          else:
+              block = block.replace(old, new, 1)
+              path.write_text(text[:start] + block + text[end:], encoding='utf-8', newline='\n')
+          PY
+
+      - name: Commit targeted repair
+        shell: bash
+        run: |
+          if git diff --quiet -- test/widget_test.dart; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add test/widget_test.dart
+          git commit -m "test: bound empty-state widget settling"
+          git push origin "HEAD:${{ github.head_ref }}"
