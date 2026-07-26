@@ -1,0 +1,65 @@
+name: Format PR 133 HomeScreen fixture
+
+on:
+  push:
+    branches:
+      - fix/v0.6.3-release-gate
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: format-pr-133-home-screen-fixture
+  cancel-in-progress: true
+
+jobs:
+  format-fixture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out pull request branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/v0.6.3-release-gate
+          fetch-depth: 0
+
+      - name: Normalize HomeScreen preference fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('test/widget_test.dart')
+          text = path.read_text(encoding='utf-8')
+          pattern = re.compile(
+              r"  SharedPreferences\.setMockInitialValues\(\{\n"
+              r"\s*'onboarding_completed_v1': true,\n"
+              r"\s*'notification_info_shown_v1': true,\n"
+              r"\s*\}\);"
+          )
+          replacement = (
+              "  SharedPreferences.setMockInitialValues({\n"
+              "    'onboarding_completed_v1': true,\n"
+              "    'notification_info_shown_v1': true,\n"
+              "  });"
+          )
+          updated, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit('HomeScreen preference fixture was not found exactly once')
+          path.write_text(updated, encoding='utf-8')
+          PY
+
+          if git diff --quiet -- test/widget_test.dart; then
+            echo 'HomeScreen fixture formatting is already correct.'
+            exit 0
+          fi
+
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add test/widget_test.dart
+          git commit -m 'style: format HomeScreen preference fixture'
+          git push origin HEAD:fix/v0.6.3-release-gate
