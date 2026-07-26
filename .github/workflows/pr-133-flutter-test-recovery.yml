@@ -38,11 +38,13 @@ jobs:
           mapfile -t run_ids < <(
             jq -r \
               --argjson current_run_id "${GITHUB_RUN_ID}" \
+              --arg current_sha "${GITHUB_SHA}" \
               '.workflow_runs[]
                | select(
                    (.name == "Flutter CI" or .name == "Flutter Release Validation")
                    and (.status == "queued" or .status == "in_progress")
                    and (.id != $current_run_id)
+                   and (.head_sha != $current_sha)
                  )
                | .id' \
               <<<"${runs_json}"
