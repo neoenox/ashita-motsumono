@@ -5,6 +5,9 @@ extension DocumentAppStateOperations on AppState {
     required String sourceType,
     String? localImagePath,
     String? ocrText,
+    String? sourceMimeType,
+    String? sourceFingerprint,
+    List<DocumentPageRecord> pages = const [],
   }) => _runMutation(() async {
     final now = DateTime.now();
     final record = DocumentRecord(
@@ -12,14 +15,25 @@ extension DocumentAppStateOperations on AppState {
       sourceType: sourceType,
       localImagePath: localImagePath,
       ocrText: ocrText,
+      sourceMimeType: sourceMimeType,
+      sourceFingerprint: sourceFingerprint,
       createdAt: now,
       updatedAt: now,
+      pages: pages,
     );
     final nextDocuments = [...documents, record];
     await _persistSnapshot(nextDocuments: nextDocuments);
     _replaceDocuments(nextDocuments);
     return record;
   });
+
+  Future<void> addDocumentRecord(DocumentRecord record) => _runMutation(
+    () async {
+      final nextDocuments = [...documents, record];
+      await _persistSnapshot(nextDocuments: nextDocuments);
+      _replaceDocuments(nextDocuments);
+    },
+  );
 
   Future<bool> deleteDocument(String id) => _runMutation(() async {
     if (todos.any((todo) => todo.documentId == id)) return false;

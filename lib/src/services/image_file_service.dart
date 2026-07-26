@@ -37,6 +37,26 @@ class ImageFileService {
     return dest;
   }
 
+  Future<File> copyFromPath(String sourcePath) async {
+    final source = File(sourcePath);
+    final sourceLength = await source.length();
+    if (sourceLength <= 0) throw StateError('画像ファイルが空です。');
+    if (sourceLength > maxImageBytes) {
+      throw StateError('画像サイズが5MBを超えています。');
+    }
+    final dir = await getApplicationDocumentsDirectory();
+    final imageDir = Directory(p.join(dir.path, 'document_images'));
+    if (!await imageDir.exists()) await imageDir.create(recursive: true);
+    final rawExtension = p.extension(sourcePath).toLowerCase();
+    final extension = switch (rawExtension) {
+      '.png' || '.jpg' || '.jpeg' || '.webp' => rawExtension,
+      _ => '.jpg',
+    };
+    final dest = File(p.join(imageDir.path, '${_uuid.v4()}$extension'));
+    await source.copy(dest.path);
+    return dest;
+  }
+
   static Future<void> deleteIfExistsStrict(String path) async {
     if (path.isEmpty) return;
     final file = File(path);
