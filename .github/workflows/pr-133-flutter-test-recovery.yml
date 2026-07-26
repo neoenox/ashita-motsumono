@@ -1,3 +1,4 @@
+# Temporary bounded diagnostic for PR #133. Remove after normal CI passes.
 name: Recover PR 133 Flutter tests
 
 on:
