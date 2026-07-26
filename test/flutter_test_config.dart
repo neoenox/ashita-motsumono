@@ -1,37 +1,19 @@
 import 'dart:async';
 
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
-/// Installs platform-channel fakes shared by the Flutter test suite.
+/// Installs platform fakes shared by the Flutter test suite.
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   TestWidgetsFlutterBinding.ensureInitialized();
-  final messenger =
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
-  const messagesChannel = MethodChannel('receive_sharing_intent/messages');
-  const mediaEventsChannel = MethodChannel(
-    'receive_sharing_intent/events-media',
+  // receive_sharing_intent 1.9.0 exposes an official test implementation.
+  // Using it avoids leaving the plugin's initial-media Future or event stream
+  // pending between widget tests, which previously stalled the full CI suite.
+  ReceiveSharingIntent.setMockValues(
+    initialMedia: const <SharedMediaFile>[],
+    mediaStream: const Stream<List<SharedMediaFile>>.empty(),
   );
 
-  messenger.setMockMethodCallHandler(messagesChannel, (call) async {
-    return switch (call.method) {
-      'getInitialMedia' => <dynamic>[],
-      'reset' => null,
-      _ => null,
-    };
-  });
-  messenger.setMockMethodCallHandler(mediaEventsChannel, (call) async {
-    return switch (call.method) {
-      'listen' || 'cancel' => null,
-      _ => null,
-    };
-  });
-
-  try {
-    await testMain();
-  } finally {
-    messenger.setMockMethodCallHandler(messagesChannel, null);
-    messenger.setMockMethodCallHandler(mediaEventsChannel, null);
-  }
+  await testMain();
 }
