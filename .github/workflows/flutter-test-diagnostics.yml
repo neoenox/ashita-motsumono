@@ -1,0 +1,58 @@
+name: Flutter test diagnostics
+
+on:
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-test-diagnostics-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests with bounded diagnostics
+        shell: bash
+        run: |
+          set +e
+          mkdir -p build/diagnostics
+          timeout --signal=TERM 20m flutter test --reporter expanded 2>&1 \
+            | tee build/diagnostics/flutter-test.txt
+          status=${PIPESTATUS[0]}
+          echo "$status" > build/diagnostics/flutter-test-status.txt
+          exit 0
+
+      - name: Upload test diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-test-diagnostics
+          path: build/diagnostics/
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Fail when tests failed or timed out
+        shell: bash
+        run: |
+          status="$(cat build/diagnostics/flutter-test-status.txt)"
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
