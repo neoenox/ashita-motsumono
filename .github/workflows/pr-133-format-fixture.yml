@@ -1,4 +1,4 @@
-name: Format PR 133 HomeScreen fixture
+name: Repair PR 133 widget test pumping
 
 on:
   push:
@@ -10,11 +10,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: format-pr-133-home-screen-fixture
+  group: repair-pr-133-widget-test-pumping
   cancel-in-progress: true
 
 jobs:
-  format-fixture:
+  repair-widget-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -24,36 +24,48 @@ jobs:
           ref: fix/v0.6.3-release-gate
           fetch-depth: 0
 
-      - name: Normalize HomeScreen preference fixture
+      - name: Replace unbounded settle waits
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           path = Path('test/widget_test.dart')
           text = path.read_text(encoding='utf-8')
-          pattern = re.compile(
-              r"  SharedPreferences\.setMockInitialValues\(\{\n"
-              r"\s*'onboarding_completed_v1': true,\n"
-              r"\s*'notification_info_shown_v1': true,\n"
-              r"\s*\}\);"
+          settings_helper = """Future<AppSettings> _createSettings() async {
+            final prefs = await SharedPreferences.getInstance();
+            return AppSettings(prefs);
+          }
+          """
+          pump_helper = """
+          /// Advances enough deterministic frames for route and implicit animations.
+          ///
+          /// The app can keep scheduling frames while the HomeScreen is visible, so
+          /// pumpAndSettle is not a valid completion condition for these UI tests.
+          Future<void> _pumpUi(WidgetTester tester) async {
+            for (var frame = 0; frame < 10; frame++) {
+              await tester.pump(const Duration(milliseconds: 100));
+            }
+          }
+          """
+
+          if '_pumpUi(WidgetTester tester)' not in text:
+              if settings_helper not in text:
+                  raise SystemExit('AppSettings helper anchor was not found')
+              text = text.replace(settings_helper, settings_helper + pump_helper, 1)
+
+          replaced = text.count('await tester.pumpAndSettle();')
+          text = text.replace(
+              'await tester.pumpAndSettle();',
+              'await _pumpUi(tester);',
           )
-          replacement = (
-              "  SharedPreferences.setMockInitialValues({\n"
-              "    'onboarding_completed_v1': true,\n"
-              "    'notification_info_shown_v1': true,\n"
-              "  });"
-          )
-          updated, count = pattern.subn(replacement, text, count=1)
-          if count != 1:
-              raise SystemExit('HomeScreen preference fixture was not found exactly once')
-          path.write_text(updated, encoding='utf-8')
+          path.write_text(text, encoding='utf-8')
+          print(f'replaced {replaced} pumpAndSettle calls')
           PY
 
           if git diff --quiet -- test/widget_test.dart; then
-            echo 'HomeScreen fixture formatting is already correct.'
+            echo 'Widget test pumping is already bounded.'
             exit 0
           fi
 
@@ -61,5 +73,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add test/widget_test.dart
-          git commit -m 'style: format HomeScreen preference fixture'
+          git commit -m 'test: bound widget test frame pumping'
           git push origin HEAD:fix/v0.6.3-release-gate
