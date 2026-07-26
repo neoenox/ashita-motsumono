@@ -37,7 +37,7 @@ jobs:
           mkdir -p build/diagnostics
           timeout --signal=TERM 3m \
             flutter test test/widget_test.dart \
-              --plain-name 'shows home screen and first run card|shows empty state when children exist but no todos' \
+              --name 'shows home screen and first run card|shows empty state when children exist but no todos' \
               --reporter expanded 2>&1 \
             | tee build/diagnostics/flutter-test.txt
           status=${PIPESTATUS[0]}
