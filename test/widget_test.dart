@@ -158,7 +158,7 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(priceLabel: '買い切り ¥190'),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('まず人物を登録'), findsNothing);
       expect(find.text('Todoがありません'), findsOneWidget);
