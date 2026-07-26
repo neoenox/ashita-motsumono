@@ -8,7 +8,7 @@ on:
 
 permissions:
   actions: write
-  contents: write
+  contents: read
   statuses: write
 
 concurrency:
@@ -16,57 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  repair-widget-test-fixture:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      changed: ${{ steps.repair.outputs.changed }}
-    steps:
-      - name: Check out pull request branch
-        uses: actions/checkout@v4
-        with:
-          ref: fix/v0.6.3-release-gate
-          fetch-depth: 0
-
-      - name: Repair HomeScreen test preferences
-        id: repair
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('test/widget_test.dart')
-          text = path.read_text(encoding='utf-8')
-          old = "  SharedPreferences.setMockInitialValues({'notification_info_shown_v1': true});"
-          new = """  SharedPreferences.setMockInitialValues({
-            'onboarding_completed_v1': true,
-            'notification_info_shown_v1': true,
-          });"""
-
-          if old in text:
-              text = text.replace(old, new, 1)
-              path.write_text(text, encoding='utf-8')
-          elif new not in text:
-              raise SystemExit('HomeScreen preference fixture target was not found')
-          PY
-
-          if git diff --quiet -- test/widget_test.dart; then
-            echo 'changed=false' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          git diff --check
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add test/widget_test.dart
-          git commit -m 'test: complete HomeScreen preference fixture'
-          git push origin HEAD:fix/v0.6.3-release-gate
-          echo 'changed=true' >> "$GITHUB_OUTPUT"
-
   cancel-stale-runs:
-    needs: repair-widget-test-fixture
-    if: needs.repair-widget-test-fixture.outputs.changed != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
