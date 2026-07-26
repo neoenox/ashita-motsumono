@@ -14,6 +14,11 @@ subprojects {{
             sourceCompatibility = org.gradle.api.JavaVersion.VERSION_17.toString()
             targetCompatibility = org.gradle.api.JavaVersion.VERSION_17.toString()
         }}
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {{
+            compilerOptions.jvmTarget.set(
+                org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+            )
+        }}
     }}
 }}'''
 
@@ -23,6 +28,11 @@ subprojects {{
         tasks.withType(org.gradle.api.tasks.compile.JavaCompile).configureEach {{
             sourceCompatibility = org.gradle.api.JavaVersion.VERSION_17
             targetCompatibility = org.gradle.api.JavaVersion.VERSION_17
+        }}
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile).configureEach {{
+            compilerOptions.jvmTarget.set(
+                org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+            )
         }}
     }}
 }}'''

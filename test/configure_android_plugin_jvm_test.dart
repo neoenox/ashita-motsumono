@@ -54,7 +54,7 @@ void main() {
       contains('tasks.withType<org.gradle.api.tasks.compile.JavaCompile>()'),
     );
     expect(first, contains('org.gradle.api.JavaVersion.VERSION_17.toString()'));
-    expect(first, isNot(contains('kotlin.jvm.target.validation.mode')));
+    expect(first, contains('org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17'));
 
     final secondRun = await _configure(python: python, root: root);
     expect(secondRun.exitCode, 0, reason: '${secondRun.stderr}');
