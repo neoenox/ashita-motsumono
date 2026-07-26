@@ -152,7 +152,8 @@ Play Consoleで次を準備します。
 - Play App Signing
 - アップロード証明書SHA-256
 - 広告削除商品
-- 課金商品ID
+- AI分析商品
+- 課金商品ID 2件
 
 テンプレート：
 
@@ -183,6 +184,7 @@ Play Consoleで次を準備します。
 任意Repository Variable：
 
 - `IAP_REMOVE_ADS_PRODUCT_ID`（未設定時`remove_ads`）
+- `IAP_AI_ACCESS_PRODUCT_ID`（未設定時`ai_analysis`）
 
 `Release Android`を`workflow_dispatch`または正式`v*`タグで実行し、次を保存します。
 
@@ -200,7 +202,7 @@ formalReleaseゲート：
 - Play Console、キーストア、APK、AABの証明書SHA-256一致
 - 証明書照合がすべて`matches: true`
 - APK/AAB SHA-256が有効
-- artifact名、課金商品ID、Run IDが一致
+- artifact名、両方の課金商品ID、Run IDが一致
 
 ## 9. Issue #94：playSubmission
 
@@ -228,8 +230,8 @@ formalReleaseゲート：
 - 手入力フォールバック
 - 通知表示と通知拒否時Todo登録
 - 本番AdMobと広告失敗時フォールバック
-- 広告削除価格、購入、広告非表示、購入復元
-- AI画像解析の同意、購入、実行
+- 広告削除商品の価格、購入、広告非表示、購入復元
+- AI分析商品の価格、同意、購入、実行、購入復元
 - 全データ削除
 - JSONエクスポート
 

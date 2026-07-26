@@ -47,7 +47,9 @@ void main() {
       expect(checklist, contains('ADMOB_APP_ID'));
       expect(checklist, contains('ADMOB_BANNER_AD_UNIT_ID'));
       expect(checklist, contains('IAP_REMOVE_ADS_PRODUCT_ID'));
-      expect(checklist, contains('広告削除の購入・復元'));
+      expect(checklist, contains('IAP_AI_ACCESS_PRODUCT_ID'));
+      expect(checklist, contains('広告削除商品の価格表示、購入・復元、広告非表示'));
+      expect(checklist, contains('AI分析商品の価格表示、同意、購入・復元、実行'));
     },
   );
 

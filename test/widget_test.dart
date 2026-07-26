@@ -30,6 +30,16 @@ Future<AppSettings> _createSettings() async {
   return AppSettings(prefs);
 }
 
+/// Advances enough deterministic frames for route and implicit animations.
+///
+/// The app can keep scheduling frames while the HomeScreen is visible, so
+/// pumpAndSettle is not a valid completion condition for these UI tests.
+Future<void> _pumpUi(WidgetTester tester) async {
+  for (var frame = 0; frame < 10; frame++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
 /// テスト用の NotificationService（実プラグインへ到達しない）。
 class _FakeNotificationService extends NotificationService {
   _FakeNotificationService() : super(timezoneName: 'Asia/Tokyo');
@@ -96,11 +106,16 @@ class _TestPurchaseProvider extends PurchaseProvider {
 
 /// 通知説明ダイアログをスキップした AppState を生成する。
 Future<AppState> _createAppState() async {
-  SharedPreferences.setMockInitialValues({'notification_info_shown_v1': true});
-  final tempDir = await Directory.systemTemp.createTemp('ashita_widget_test_');
-  addTearDown(() async {
-    if (await tempDir.exists()) {
-      await tempDir.delete(recursive: true);
+  SharedPreferences.setMockInitialValues({
+    'onboarding_completed_v1': true,
+    'notification_info_shown_v1': true,
+  });
+  // Widget tests run in a fake-async zone, so real temporary-directory IO
+  // must be synchronous or the setup Future can remain pending indefinitely.
+  final tempDir = Directory.systemTemp.createTempSync('ashita_widget_test_');
+  addTearDown(() {
+    if (tempDir.existsSync()) {
+      tempDir.deleteSync(recursive: true);
     }
   });
   final store = await DriftStore.createInMemory();
@@ -112,6 +127,7 @@ Future<AppState> _createAppState() async {
     ),
   );
   await appState.load();
+  addTearDown(appState.close);
   return appState;
 }
 
@@ -121,7 +137,10 @@ void main() {
 
   group('HomeScreen', () {
     testWidgets('shows home screen and first run card', (tester) async {
-      SharedPreferences.setMockInitialValues({'onboarding_completed_v1': true});
+      SharedPreferences.setMockInitialValues({
+        'onboarding_completed_v1': true,
+        'notification_info_shown_v1': true,
+      });
       final settings = await _createSettings();
       final store = await DriftStore.createInMemory();
       final appState = AppState(
@@ -129,6 +148,7 @@ void main() {
         notifications: _FakeNotificationService(),
       );
       await appState.load();
+      addTearDown(appState.close);
 
       await tester.pumpWidget(
         AshitaMotsumonoApp(
@@ -137,7 +157,7 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(priceLabel: '買い切り ¥190'),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('あしたもつもの'), findsOneWidget);
       expect(find.text('まず人物を登録'), findsOneWidget);
@@ -158,7 +178,7 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(priceLabel: '買い切り ¥190'),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('まず人物を登録'), findsNothing);
       expect(find.text('Todoがありません'), findsOneWidget);
@@ -185,7 +205,7 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('今日やること'), findsOneWidget);
       expect(find.text('水筒を持参'), findsOneWidget);
@@ -207,10 +227,10 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.text('設定'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('通知時刻'), findsOneWidget);
     });
@@ -250,16 +270,16 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.byIcon(Icons.person_add_outlined));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('まだ登録されていません。'), findsOneWidget);
 
       await tester.enterText(find.byType(TextField), '長女');
       await tester.tap(find.text('追加'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('まだ登録されていません。'), findsNothing);
       expect(find.text('長女'), findsOneWidget);
@@ -276,14 +296,14 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.byIcon(Icons.person_add_outlined));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.enterText(find.byType(TextField), '長女');
       await tester.tap(find.text('追加'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('同じ名前がすでに登録されています'), findsOneWidget);
     });
@@ -311,11 +331,11 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('今日やること'), findsOneWidget);
       await tester.tap(find.text('集金袋を提出'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('Todo詳細'), findsOneWidget);
       expect(find.text('提出'), findsWidgets);
@@ -341,7 +361,7 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('Todoが見つかりませんでした'), findsOneWidget);
     });
@@ -388,15 +408,15 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.text('開く'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('読み取り結果の確認'), findsOneWidget);
 
       await tester.tap(find.byIcon(Icons.arrow_back));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(appState.documents.where((d) => d.id == docId), isEmpty);
     });
@@ -405,7 +425,7 @@ void main() {
   group('SettingsScreen', () {
     Future<void> _openSettings(WidgetTester tester) async {
       await tester.tap(find.text('設定'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
     }
 
     testWidgets('shows notification time tiles', (tester) async {
@@ -419,7 +439,7 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await _openSettings(tester);
 
@@ -431,7 +451,7 @@ void main() {
         300,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
       expect(find.text('サポーター'), findsOneWidget);
     });
 
@@ -446,7 +466,7 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await _openSettings(tester);
       await tester.scrollUntilVisible(
@@ -454,7 +474,7 @@ void main() {
         300,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('買い切りサポーター'), findsOneWidget);
       expect(find.text('買い切り ¥190'), findsNWidgets(2));
@@ -478,7 +498,7 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await _openSettings(tester);
       await tester.scrollUntilVisible(
@@ -486,7 +506,7 @@ void main() {
         300,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('購入アイテムを準備中です。しばらくしてからもう一度お試しください。'), findsNWidgets(2));
       final button = tester.widget<FilledButton>(
@@ -508,7 +528,7 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(adRemoved: true),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await _openSettings(tester);
       await tester.scrollUntilVisible(
@@ -516,7 +536,7 @@ void main() {
         300,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('サポーター登録済み'), findsOneWidget);
       expect(find.text('広告なしで使えます。ご購入ありがとうございます。'), findsOneWidget);
@@ -542,14 +562,14 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await _openSettings(tester);
       await tester.drag(find.byType(ListView), const Offset(0, -800));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.text('登録データをすべて削除'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
       await tester.tap(find.text('削除する'));
       for (
         var attempt = 0;
@@ -558,7 +578,7 @@ void main() {
       ) {
         await tester.pump(const Duration(milliseconds: 50));
       }
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('登録データを削除しました'), findsOneWidget);
       expect(appState.children, isEmpty);
@@ -584,12 +604,12 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.text('追加'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
       await tester.tap(find.text('AIで解析（手書きも対応）'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('AI画像解析について'), findsOneWidget);
       expect(find.textContaining('Cloudflare Workers'), findsOneWidget);
@@ -598,7 +618,7 @@ void main() {
       expect(find.text('同意して画像を選ぶ'), findsOneWidget);
 
       await tester.tap(find.text('キャンセル'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
       expect(find.text('AI画像解析について'), findsNothing);
     });
 
@@ -624,15 +644,15 @@ void main() {
       );
 
       await tester.tap(find.text('AI解析を開始'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
       await tester.tap(find.text('キャンセル'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
       expect(startCount, 0);
 
       await tester.tap(find.text('AI解析を開始'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
       await tester.tap(find.text('同意して画像を選ぶ'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
       expect(startCount, 1);
     });
 
@@ -648,10 +668,10 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.text('追加'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('画像・スクショから登録'), findsOneWidget);
       if (Platform.isWindows) {
@@ -678,18 +698,18 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.text('追加'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.byIcon(Icons.edit_note));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('手入力'), findsOneWidget);
       // Scroll down to reveal manual form TextFields (paste field is scrolled out of tree)
       await tester.drag(find.byType(ListView), const Offset(0, -600));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
       expect(find.byType(TextField), findsNWidgets(4));
     });
 
@@ -705,20 +725,20 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.text('追加'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.byIcon(Icons.edit_note));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       // Scroll to reveal the 登録 button
       await tester.drag(find.byType(ListView), const Offset(0, -700));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.widgetWithText(FilledButton, '登録'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('タイトルを入力してください'), findsOneWidget);
     });
@@ -737,10 +757,10 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.text('追加'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       // 相対日付を使い、ウォールクロック依存を排除（固定日付だと
       // 実行日が過ぎたときに期限確認表記に変わりテストが壊れる）
@@ -751,7 +771,7 @@ void main() {
         '申込書は明後日までに提出してください。',
       );
       await tester.tap(find.text('貼り付け文からTodo候補を作る'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('3件の候補を確認'), findsOneWidget);
       expect(find.text('持ち物：水着・帽子・タオル'), findsOneWidget);
@@ -759,7 +779,7 @@ void main() {
       expect(find.text('申込書を提出'), findsOneWidget);
 
       await tester.tap(find.text('3件を登録'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(appState.todos.map((todo) => todo.title), [
         '持ち物：水着・帽子・タオル',
@@ -786,17 +806,17 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.text('追加'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.byIcon(Icons.edit_note));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       // Scroll to reveal manual form fields
       await tester.drag(find.byType(ListView), const Offset(0, -300));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.enterText(
         find.widgetWithText(TextField, '例：集金袋を提出'),
@@ -804,7 +824,7 @@ void main() {
       );
 
       await tester.drag(find.byType(ListView), const Offset(0, -300));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.enterText(
         find.widgetWithText(TextField, '水筒、体操着、集金袋'),
@@ -812,17 +832,17 @@ void main() {
       );
 
       await tester.drag(find.byType(ListView), const Offset(0, -300));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.widgetWithText(FilledButton, '登録'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       await tester.tap(find.text('追加'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
       // 相対日付（ウォールクロック依存を排除）
       await tester.enterText(find.byType(TextField).first, '明日までに軍手を持参');
       await tester.tap(find.text('貼り付け文からTodo候補を作る'));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('持ち物：軍手'), findsOneWidget);
     });
@@ -858,13 +878,13 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('水筒を持参'), findsOneWidget);
       expect(find.text('集金袋を提出'), findsOneWidget);
 
       await tester.enterText(find.byType(TextField), '水筒');
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('水筒を持参'), findsOneWidget);
       expect(find.text('集金袋を提出'), findsNothing);
@@ -892,12 +912,12 @@ void main() {
           purchaseProvider: _TestPurchaseProvider(),
         ),
       );
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(find.text('水筒を持参'), findsOneWidget);
 
       await tester.tap(find.byType(Checkbox));
-      await tester.pumpAndSettle();
+      await _pumpUi(tester);
 
       expect(appState.todos.first.isDone, isTrue);
     });
