@@ -33,35 +33,41 @@ jobs:
 
           path = Path('test/widget_test.dart')
           text = path.read_text(encoding='utf-8')
-          settings_helper = """Future<AppSettings> _createSettings() async {
-            final prefs = await SharedPreferences.getInstance();
-            return AppSettings(prefs);
-          }
-          """
-          pump_helper = """
-          /// Advances enough deterministic frames for route and implicit animations.
-          ///
-          /// The app can keep scheduling frames while the HomeScreen is visible, so
-          /// pumpAndSettle is not a valid completion condition for these UI tests.
-          Future<void> _pumpUi(WidgetTester tester) async {
-            for (var frame = 0; frame < 10; frame++) {
-              await tester.pump(const Duration(milliseconds: 100));
-            }
-          }
-          """
+          settings_helper = (
+              "Future<AppSettings> _createSettings() async {\n"
+              "  final prefs = await SharedPreferences.getInstance();\n"
+              "  return AppSettings(prefs);\n"
+              "}\n"
+          )
+          pump_helper = (
+              "\n/// Advances enough deterministic frames for route and implicit animations.\n"
+              "///\n"
+              "/// HomeScreen can keep scheduling frames while it is visible, so\n"
+              "/// pumpAndSettle is not a valid completion condition for these tests.\n"
+              "Future<void> _pumpUi(WidgetTester tester) async {\n"
+              "  for (var frame = 0; frame < 10; frame++) {\n"
+              "    await tester.pump(const Duration(milliseconds: 100));\n"
+              "  }\n"
+              "}\n"
+          )
 
+          helper_added = False
           if '_pumpUi(WidgetTester tester)' not in text:
               if settings_helper not in text:
                   raise SystemExit('AppSettings helper anchor was not found')
               text = text.replace(settings_helper, settings_helper + pump_helper, 1)
+              helper_added = True
 
           replaced = text.count('await tester.pumpAndSettle();')
           text = text.replace(
               'await tester.pumpAndSettle();',
               'await _pumpUi(tester);',
           )
-          path.write_text(text, encoding='utf-8')
-          print(f'replaced {replaced} pumpAndSettle calls')
+          if not helper_added and replaced == 0:
+              print('Widget test pumping is already bounded.')
+          else:
+              path.write_text(text, encoding='utf-8')
+              print(f'added helper: {helper_added}; replaced calls: {replaced}')
           PY
 
           if git diff --quiet -- test/widget_test.dart; then
