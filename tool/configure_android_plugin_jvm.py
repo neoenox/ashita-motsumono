@@ -55,10 +55,32 @@ def _write_if_changed(path: Path, text: str) -> bool:
     return True
 
 
+GRADLE_PROPERTIES_MARKER = (
+    "# ashita-motsumono: suppress Kotlin JVM target validation for plugins"
+)
+IGNORE_MODE = (
+    f"{GRADLE_PROPERTIES_MARKER}\n"
+    "kotlin.jvm.target.validation.mode=IGNORE"
+)
+
+
+def _ensure_ignore_jvm_validation(root: Path) -> None:
+    props = root / "android" / "gradle.properties"
+    if not props.exists():
+        props.write_text("", encoding="utf-8")
+    text = props.read_text(encoding="utf-8")
+    if GRADLE_PROPERTIES_MARKER in text:
+        return
+    with props.open("a", encoding="utf-8", newline="\n") as output:
+        output.write(f"\n\n{IGNORE_MODE}\n")
+
+
 def configure(root: Path = DEFAULT_ROOT) -> Path:
     android = root / "android"
     kts = android / "build.gradle.kts"
     groovy = android / "build.gradle"
+
+    _ensure_ignore_jvm_validation(root)
 
     if kts.exists():
         result = _append_once(kts.read_text(encoding="utf-8"), KTS_BLOCK)

@@ -55,7 +55,22 @@ void main() {
     );
     expect(first, contains('org.gradle.api.JavaVersion.VERSION_17.toString()'));
     expect(first, contains('org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17'));
-
+    final props = File(
+      '${root.path}${Platform.pathSeparator}android'
+      '${Platform.pathSeparator}gradle.properties',
+    ).readAsStringSync();
+    expect(props, contains('kotlin.jvm.target.validation.mode=IGNORE'));
+    expect(
+      props,
+      isNot(
+        contains(
+          RegExp(
+            r'kotlin\.jvm\.target\.validation\.mode=IGNORE\n.*kotlin\.jvm\.target\.validation\.mode=IGNORE',
+            dotAll: true,
+          ),
+        ),
+      ),
+    );
     final secondRun = await _configure(python: python, root: root);
     expect(secondRun.exitCode, 0, reason: '${secondRun.stderr}');
     final second = gradle.readAsStringSync();
