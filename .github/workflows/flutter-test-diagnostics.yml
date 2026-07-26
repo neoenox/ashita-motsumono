@@ -32,6 +32,18 @@ jobs:
           path = Path('test/widget_test.dart')
           text = path.read_text(encoding='utf-8')
 
+          prefs_before = """      SharedPreferences.setMockInitialValues({
+  'onboarding_completed_v1': true,
+  'notification_info_shown_v1': true,
+});"""
+          prefs_after = """      SharedPreferences.setMockInitialValues({
+        'onboarding_completed_v1': true,
+        'notification_info_shown_v1': true,
+      });"""
+          if prefs_before not in text:
+              raise SystemExit('HomeScreen preference formatting target was not found')
+          text = text.replace(prefs_before, prefs_after, 1)
+
           helper_before = "  await appState.load();\n  return appState;"
           helper_after = "  await appState.load();\n  addTearDown(appState.close);\n  return appState;"
           if helper_before not in text:
@@ -46,7 +58,6 @@ jobs:
 
           path.write_text(text, encoding='utf-8')
           PY
-          dart format test/widget_test.dart
 
       - name: Remove temporary diagnostic workflow
         run: rm .github/workflows/flutter-test-diagnostics.yml
