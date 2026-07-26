@@ -112,6 +112,7 @@ Future<AppState> _createAppState() async {
     ),
   );
   await appState.load();
+  addTearDown(appState.close);
   return appState;
 }
 
@@ -122,9 +123,9 @@ void main() {
   group('HomeScreen', () {
     testWidgets('shows home screen and first run card', (tester) async {
       SharedPreferences.setMockInitialValues({
-  'onboarding_completed_v1': true,
-  'notification_info_shown_v1': true,
-});
+        'onboarding_completed_v1': true,
+        'notification_info_shown_v1': true,
+      });
       final settings = await _createSettings();
       final store = await DriftStore.createInMemory();
       final appState = AppState(
@@ -132,6 +133,7 @@ void main() {
         notifications: _FakeNotificationService(),
       );
       await appState.load();
+      addTearDown(appState.close);
 
       await tester.pumpWidget(
         AshitaMotsumonoApp(
