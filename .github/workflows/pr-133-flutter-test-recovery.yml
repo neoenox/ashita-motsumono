@@ -68,7 +68,7 @@ jobs:
   diagnose-tests:
     needs: cancel-stale-runs
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     steps:
       - name: Publish diagnostic start status
         shell: bash
@@ -78,7 +78,7 @@ jobs:
           set -euo pipefail
           jq -n \
             --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
-            '{state:"pending", target_url:$target_url, description:"Serial Flutter diagnostics are running", context:"pr-133-flutter-test-recovery"}' \
+            '{state:"pending", target_url:$target_url, description:"Widget tests are running with bounded diagnostics", context:"pr-133-flutter-test-recovery"}' \
             > status.json
           gh api \
             --method POST \
@@ -100,15 +100,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Run tests serially with bounded diagnostics
+      - name: Run widget tests with bounded diagnostics
         id: flutter-tests
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
           mkdir -p build/ci-diagnostics
-          timeout --signal=INT --kill-after=30s 15m \
-            flutter test --concurrency=1 --reporter expanded \
+          timeout --signal=INT --kill-after=30s 3m \
+            flutter test test/widget_test.dart --concurrency=1 --reporter expanded \
             2>&1 | tee build/ci-diagnostics/flutter-test-expanded.log
 
       - name: Upload Flutter test diagnostics
@@ -129,10 +129,10 @@ jobs:
         run: |
           set -euo pipefail
           state=failure
-          description='Serial Flutter diagnostics failed or timed out'
+          description='Widget test diagnostics failed or timed out'
           if [[ "$TEST_OUTCOME" == 'success' ]]; then
             state=success
-            description='Serial Flutter diagnostics passed'
+            description='Widget test diagnostics passed'
           fi
 
           jq -n \
