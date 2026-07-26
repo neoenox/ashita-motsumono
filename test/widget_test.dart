@@ -121,7 +121,10 @@ void main() {
 
   group('HomeScreen', () {
     testWidgets('shows home screen and first run card', (tester) async {
-      SharedPreferences.setMockInitialValues({'onboarding_completed_v1': true});
+      SharedPreferences.setMockInitialValues({
+  'onboarding_completed_v1': true,
+  'notification_info_shown_v1': true,
+});
       final settings = await _createSettings();
       final store = await DriftStore.createInMemory();
       final appState = AppState(
