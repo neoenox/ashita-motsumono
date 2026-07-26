@@ -110,10 +110,12 @@ Future<AppState> _createAppState() async {
     'onboarding_completed_v1': true,
     'notification_info_shown_v1': true,
   });
-  final tempDir = await Directory.systemTemp.createTemp('ashita_widget_test_');
-  addTearDown(() async {
-    if (await tempDir.exists()) {
-      await tempDir.delete(recursive: true);
+  // Widget tests run in a fake-async zone, so real temporary-directory IO
+  // must be synchronous or the setup Future can remain pending indefinitely.
+  final tempDir = Directory.systemTemp.createTempSync('ashita_widget_test_');
+  addTearDown(() {
+    if (tempDir.existsSync()) {
+      tempDir.deleteSync(recursive: true);
     }
   });
   final store = await DriftStore.createInMemory();
