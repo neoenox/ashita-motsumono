@@ -10,6 +10,8 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   // receive_sharing_intent 1.9.0 exposes an official test implementation.
   // Using it avoids leaving the plugin's initial-media Future or event stream
   // pending between widget tests, which previously stalled the full CI suite.
+  // HomeScreen tests must separately seed notification_info_shown_v1 unless
+  // they intentionally exercise the notification disclosure dialog.
   ReceiveSharingIntent.setMockValues(
     initialMedia: const <SharedMediaFile>[],
     mediaStream: const Stream<List<SharedMediaFile>>.empty(),
