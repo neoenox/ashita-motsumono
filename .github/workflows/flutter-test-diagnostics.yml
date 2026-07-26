@@ -1,26 +1,25 @@
 name: Repair HomeScreen test cleanup
 
 on:
-  pull_request:
+  push:
     branches:
-      - master
+      - fix/v0.6.3-release-gate
 
 permissions:
   contents: write
 
 concurrency:
-  group: repair-home-test-cleanup-${{ github.event.pull_request.number || github.ref }}
+  group: repair-home-test-cleanup-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   repair-home-test-cleanup:
-    if: github.head_ref == 'fix/v0.6.3-release-gate'
     runs-on: ubuntu-latest
     steps:
-      - name: Check out pull request branch
+      - name: Check out target branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: fix/v0.6.3-release-gate
           fetch-depth: 0
 
       - name: Close widget-test AppState instances
@@ -59,7 +58,7 @@ jobs:
           path.write_text(text, encoding='utf-8')
           PY
 
-      - name: Remove temporary diagnostic workflow
+      - name: Remove temporary repair workflow
         run: rm .github/workflows/flutter-test-diagnostics.yml
 
       - name: Commit and push repair
@@ -71,4 +70,4 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add test/widget_test.dart .github/workflows/flutter-test-diagnostics.yml
           git commit -m 'test: close HomeScreen AppState instances'
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
+          git push origin HEAD:fix/v0.6.3-release-gate
