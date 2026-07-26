@@ -1,0 +1,92 @@
+name: Flutter test diagnostics
+
+on:
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-test-diagnostics-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose-home-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Inject local checkpoints
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('test/widget_test.dart')
+          text = path.read_text(encoding='utf-8')
+          replacements = [
+              ("      final settings = await _createSettings();\n      final store = await DriftStore.createInMemory();",
+               "      print('CHECK first: before settings');\n      final settings = await _createSettings();\n      print('CHECK first: after settings');\n      final store = await DriftStore.createInMemory();\n      print('CHECK first: after store');"),
+              ("      await appState.load();\n\n      await tester.pumpWidget(",
+               "      await appState.load();\n      print('CHECK first: after load');\n\n      await tester.pumpWidget("),
+              ("      await tester.pumpAndSettle();\n\n      expect(find.text('あしたもつもの')",
+               "      print('CHECK first: after pumpWidget');\n      await tester.pumpAndSettle();\n      print('CHECK first: after settle');\n\n      expect(find.text('あしたもつもの')"),
+              ("      expect(find.text('Todoは人物別に整理できます。\\nログイン不要・端末内保存です。'), findsOneWidget);\n    });",
+               "      expect(find.text('Todoは人物別に整理できます。\\nログイン不要・端末内保存です。'), findsOneWidget);\n      print('CHECK first: body complete');\n    });"),
+              ("    ) async {\n      final appState = await _createAppState();\n      final settings = await _createSettings();\n      await appState.addChild('長女');",
+               "    ) async {\n      print('CHECK second: start');\n      final appState = await _createAppState();\n      print('CHECK second: after appState');\n      final settings = await _createSettings();\n      print('CHECK second: after settings');\n      await appState.addChild('長女');\n      print('CHECK second: after addChild');"),
+              ("      await tester.pumpAndSettle();\n\n      expect(find.text('まず人物を登録'), findsNothing);",
+               "      print('CHECK second: after pumpWidget');\n      await tester.pumpAndSettle();\n      print('CHECK second: after settle');\n\n      expect(find.text('まず人物を登録'), findsNothing);"),
+              ("      expect(find.text('「追加」ボタンから新しくTodoを作成できます'), findsOneWidget);\n    });",
+               "      expect(find.text('「追加」ボタンから新しくTodoを作成できます'), findsOneWidget);\n      print('CHECK second: body complete');\n    });"),
+          ]
+          for before, after in replacements:
+              if before not in text:
+                  raise SystemExit(f'checkpoint target not found: {before[:80]!r}')
+              text = text.replace(before, after, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Run first HomeScreen tests with bounded diagnostics
+        shell: bash
+        run: |
+          set +e
+          mkdir -p build/diagnostics
+          timeout --signal=TERM 2m \
+            flutter test test/widget_test.dart \
+              --name 'shows home screen and first run card|shows empty state when children exist but no todos' \
+              --reporter expanded 2>&1 \
+            | tee build/diagnostics/flutter-test.txt
+          status=${PIPESTATUS[0]}
+          echo "$status" > build/diagnostics/flutter-test-status.txt
+          exit 0
+
+      - name: Upload test diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-test-diagnostics
+          path: build/diagnostics/
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Fail when tests failed or timed out
+        shell: bash
+        run: |
+          status="$(cat build/diagnostics/flutter-test-status.txt)"
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
