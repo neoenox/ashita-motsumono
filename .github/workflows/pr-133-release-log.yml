@@ -1,4 +1,4 @@
-name: Capture PR 133 release failure log
+name: Repair PR 133 Android dependency compatibility
 
 on:
   push:
@@ -8,16 +8,15 @@ on:
       - .github/workflows/pr-133-release-log.yml
 
 permissions:
-  actions: read
-  contents: read
+  contents: write
   statuses: write
 
 jobs:
-  capture-log:
+  pin-compatible-plugin:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
-      - name: Publish capture run link
+      - name: Publish repair start status
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -25,7 +24,7 @@ jobs:
           set -euo pipefail
           jq -n \
             --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
-            '{state:"pending", target_url:$target_url, description:"Capturing release build failure log", context:"pr-133-release-log"}' \
+            '{state:"pending", target_url:$target_url, description:"Pinning Android-compatible sharing plugin", context:"pr-133-android-dependency-repair"}' \
             > status.json
           gh api --method POST \
             -H 'Accept: application/vnd.github+json' \
@@ -33,28 +32,66 @@ jobs:
             "/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             --input status.json
 
-      - name: Download failed release validation job log
+      - name: Check out pull request branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/v0.6.3-release-gate
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+
+      - name: Pin receive_sharing_intent to the SDK 36 compatible release
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          mkdir -p build/ci-diagnostics
-          gh api \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "/repos/${GITHUB_REPOSITORY}/actions/jobs/89787941740/logs" \
-            > build/ci-diagnostics/release-validation-job.log
-          tail -n 200 build/ci-diagnostics/release-validation-job.log
+          flutter pub add receive_sharing_intent:1.8.1
+          python3 - <<'PY'
+          from pathlib import Path
 
-      - name: Upload failed release validation log
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr-133-release-validation-job-log
-          path: build/ci-diagnostics/release-validation-job.log
-          retention-days: 7
+          pubspec = Path('pubspec.yaml')
+          text = pubspec.read_text(encoding='utf-8')
+          old = '  receive_sharing_intent: 1.8.1\n'
+          new = (
+              '  receive_sharing_intent: 1.8.1 '
+              '# 1.9.0 requires Android SDK 37 / AGP 9.2.1\n'
+          )
+          if old not in text and new not in text:
+              raise SystemExit('Exact receive_sharing_intent pin was not written')
+          if old in text:
+              pubspec.write_text(text.replace(old, new, 1), encoding='utf-8')
 
-      - name: Publish capture success
+          lock = Path('pubspec.lock').read_text(encoding='utf-8')
+          marker = '  receive_sharing_intent:'
+          start = lock.index(marker)
+          end = lock.index('\n  record_use:', start)
+          block = lock[start:end]
+          if 'version: "1.8.1"' not in block:
+              raise SystemExit('pubspec.lock did not resolve receive_sharing_intent 1.8.1')
+          PY
+          flutter pub get
+          git diff --check
+
+      - name: Commit dependency compatibility fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- pubspec.yaml pubspec.lock; then
+            echo 'Dependency is already pinned.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add pubspec.yaml pubspec.lock
+          git commit -m 'fix: pin sharing intent to Android SDK 36 compatible release'
+          git pull --rebase origin fix/v0.6.3-release-gate
+          git push origin HEAD:fix/v0.6.3-release-gate
+
+      - name: Publish repair success
         if: success()
         shell: bash
         env:
@@ -63,7 +100,7 @@ jobs:
           set -euo pipefail
           jq -n \
             --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
-            '{state:"success", target_url:$target_url, description:"Release build failure log captured", context:"pr-133-release-log"}' \
+            '{state:"success", target_url:$target_url, description:"Android-compatible sharing plugin pinned", context:"pr-133-android-dependency-repair"}' \
             > status.json
           gh api --method POST \
             -H 'Accept: application/vnd.github+json' \
