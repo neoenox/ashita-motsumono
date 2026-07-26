@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  statuses: write
 
 concurrency:
   group: repair-pr-133-widget-test-pumping
@@ -18,6 +19,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Publish repair start status
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            '{state:"pending", target_url:$target_url, description:"Repairing unbounded widget test waits", context:"pr-133-widget-test-repair"}' \
+            > status.json
+          gh api \
+            --method POST \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            --input status.json
+
       - name: Check out pull request branch
         uses: actions/checkout@v4
         with:
@@ -33,14 +51,8 @@ jobs:
 
           path = Path('test/widget_test.dart')
           text = path.read_text(encoding='utf-8')
-          settings_helper = (
-              "Future<AppSettings> _createSettings() async {\n"
-              "  final prefs = await SharedPreferences.getInstance();\n"
-              "  return AppSettings(prefs);\n"
-              "}\n"
-          )
-          pump_helper = (
-              "\n/// Advances enough deterministic frames for route and implicit animations.\n"
+          helper = (
+              "/// Advances enough deterministic frames for route and implicit animations.\n"
               "///\n"
               "/// HomeScreen can keep scheduling frames while it is visible, so\n"
               "/// pumpAndSettle is not a valid completion condition for these tests.\n"
@@ -48,14 +60,15 @@ jobs:
               "  for (var frame = 0; frame < 10; frame++) {\n"
               "    await tester.pump(const Duration(milliseconds: 100));\n"
               "  }\n"
-              "}\n"
+              "}\n\n"
           )
+          anchor = "/// テスト用の NotificationService（実プラグインへ到達しない）。"
 
           helper_added = False
           if '_pumpUi(WidgetTester tester)' not in text:
-              if settings_helper not in text:
-                  raise SystemExit('AppSettings helper anchor was not found')
-              text = text.replace(settings_helper, settings_helper + pump_helper, 1)
+              if anchor not in text:
+                  raise SystemExit('NotificationService helper anchor was not found')
+              text = text.replace(anchor, helper + anchor, 1)
               helper_added = True
 
           replaced = text.count('await tester.pumpAndSettle();')
@@ -63,11 +76,9 @@ jobs:
               'await tester.pumpAndSettle();',
               'await _pumpUi(tester);',
           )
-          if not helper_added and replaced == 0:
-              print('Widget test pumping is already bounded.')
-          else:
+          if helper_added or replaced:
               path.write_text(text, encoding='utf-8')
-              print(f'added helper: {helper_added}; replaced calls: {replaced}')
+          print(f'added helper: {helper_added}; replaced calls: {replaced}')
           PY
 
           if git diff --quiet -- test/widget_test.dart; then
@@ -80,4 +91,32 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add test/widget_test.dart
           git commit -m 'test: bound widget test frame pumping'
+          git pull --rebase origin fix/v0.6.3-release-gate
           git push origin HEAD:fix/v0.6.3-release-gate
+
+      - name: Publish repair result
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          state=failure
+          description='Widget test repair failed'
+          if [[ "$JOB_STATUS" == 'success' ]]; then
+            state=success
+            description='Widget test waits are bounded'
+          fi
+          jq -n \
+            --arg state "$state" \
+            --arg description "$description" \
+            --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            '{state:$state, target_url:$target_url, description:$description, context:"pr-133-widget-test-repair"}' \
+            > status.json
+          gh api \
+            --method POST \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            --input status.json
