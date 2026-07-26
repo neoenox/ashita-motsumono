@@ -15,6 +15,7 @@ _SIGNING_REQUIRED_TRUE = (
     "appCreated",
     "playAppSigningEnabled",
     "iapProductCreated",
+    "iapAiProductCreated",
 )
 _SUBMISSION_REQUIRED_TRUE = (
     "privacyPolicyRegistered",
@@ -53,17 +54,23 @@ def validate_play_signing(payload: dict[str, Any]) -> dict[str, Any]:
     product_id = str(payload.get("iapProductId", "")).strip()
     if not product_id:
         failures.append("Play Console iapProductId is required")
+    ai_product_id = str(payload.get("iapAiProductId", "")).strip()
+    if not ai_product_id:
+        failures.append("Play Console iapAiProductId is required")
+    if product_id and ai_product_id and product_id == ai_product_id:
+        failures.append("Play Console billing product IDs must be distinct")
     if not failures:
         facts.extend(
             [
-                "Play Console app, Play App Signing and product are ready",
+                "Play Console app, Play App Signing and products are ready",
                 f"Play upload certificate is {upload_sha}",
-                f"Play Billing product is {product_id}",
+                f"Play Billing products are {product_id} and {ai_product_id}",
             ]
         )
     response = base.result("playSigning", not failures, facts, failures)
     response["uploadCertificateSha256"] = upload_sha
     response["iapProductId"] = product_id
+    response["iapAiProductId"] = ai_product_id
     return response
 
 
@@ -82,6 +89,37 @@ def validate_play_submission(payload: dict[str, Any]) -> dict[str, Any]:
     return base.result("playSubmission", not failures, facts, failures)
 
 
+def validate_release_manifest(
+    payload: dict[str, Any],
+    source_sha: str,
+    upload_sha: str,
+    product_id: str,
+    ai_product_id: str,
+) -> dict[str, Any]:
+    response = base.validate_release_manifest(
+        payload,
+        source_sha,
+        upload_sha,
+        product_id,
+    )
+    failures = list(response["failures"])
+    facts = list(response["facts"])
+    billing = payload.get("billing")
+    if (
+        not isinstance(billing, dict)
+        or billing.get("aiAccessProductId") != ai_product_id
+    ):
+        failures.append(
+            "release manifest AI billing product differs from Play Console evidence"
+        )
+    if not failures:
+        facts.append(f"AI billing product is {ai_product_id}")
+    response["result"] = "PASS" if not failures else "BLOCKED"
+    response["facts"] = facts
+    response["failures"] = failures
+    return response
+
+
 def next_action(stages: list[dict[str, Any]]) -> str:
     actions = {
         "releaseSession": (
@@ -93,7 +131,7 @@ def next_action(stages: list[dict[str, Any]]) -> str:
         ),
         "playSigning": (
             "create the Play app, enable Play App Signing, record the upload "
-            "certificate, and create the billing product"
+            "certificate, and create both billing products"
         ),
         "formalRelease": (
             "run the formal Release Android workflow and download "
@@ -144,14 +182,16 @@ def evaluate(
         signing = base.missing_stage("playSigning", play_console_path)
         signing["uploadCertificateSha256"] = ""
         signing["iapProductId"] = ""
+        signing["iapAiProductId"] = ""
     stages.append(signing)
 
     if release_manifest_path and release_manifest_path.exists():
-        formal = base.validate_release_manifest(
+        formal = validate_release_manifest(
             base.read_json(release_manifest_path),
             source_sha,
             str(signing.get("uploadCertificateSha256", "")),
             str(signing.get("iapProductId", "")),
+            str(signing.get("iapAiProductId", "")),
         )
     else:
         formal = base.missing_stage("formalRelease", release_manifest_path)
@@ -198,6 +238,14 @@ def evaluate(
     }
 
 
+def template_payload(kind: str, source_sha: str = "") -> dict[str, Any]:
+    payload = base.template_payload(kind, source_sha)
+    if kind == "play-console":
+        payload["iapAiProductCreated"] = False
+        payload["iapAiProductId"] = "ai_analysis"
+    return payload
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -236,7 +284,7 @@ def main() -> int:
         if args.command == "write-template":
             base.write_json(
                 args.output,
-                base.template_payload(args.kind, args.source_sha),
+                template_payload(args.kind, args.source_sha),
             )
             print(f"template: {args.output}")
             return 0

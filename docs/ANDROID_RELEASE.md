@@ -61,6 +61,7 @@ WindowsでキーストアをBase64化します。
 | Variable | デフォルト |
 |---|---|
 | `IAP_REMOVE_ADS_PRODUCT_ID` | `remove_ads` |
+| `IAP_AI_ACCESS_PRODUCT_ID` | `ai_analysis` |
 
 ## 4. 証明書を照合する
 
@@ -120,7 +121,7 @@ AAB artifact：
 - `AAB_SHA256SUMS`
 - `release-manifest.json`
 
-`release-manifest.json`にはcommit、ref、Run ID、version、Application ID、証明書、artifact名、APK/AABハッシュ、課金商品IDを記録します。秘密鍵、パスワード、AdMob ID、Gemini URLは記録しません。
+`release-manifest.json`にはcommit、ref、Run ID、version、Application ID、証明書、artifact名、APK/AABハッシュ、両方の課金商品IDを記録します。秘密鍵、パスワード、AdMob ID、Gemini URLは記録しません。
 
 ## 7. formalReleaseゲート
 
