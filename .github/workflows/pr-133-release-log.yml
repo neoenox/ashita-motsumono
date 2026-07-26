@@ -1,0 +1,38 @@
+name: Capture PR 133 release failure log
+
+on:
+  push:
+    branches:
+      - fix/v0.6.3-release-gate
+    paths:
+      - .github/workflows/pr-133-release-log.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  capture-log:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download failed release validation job log
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/ci-diagnostics
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "/repos/${GITHUB_REPOSITORY}/actions/jobs/89787941740/logs" \
+            > build/ci-diagnostics/release-validation-job.log
+          tail -n 200 build/ci-diagnostics/release-validation-job.log
+
+      - name: Upload failed release validation log
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-133-release-validation-job-log
+          path: build/ci-diagnostics/release-validation-job.log
+          retention-days: 7
