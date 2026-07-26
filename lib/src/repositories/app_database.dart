@@ -63,6 +63,8 @@ class DbDocument extends Table {
   TextColumn get sourceType => text()();
   TextColumn get localImagePath => text().nullable()();
   TextColumn get ocrText => text().nullable()();
+  TextColumn get sourceMimeType => text().nullable()();
+  TextColumn get sourceFingerprint => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -70,7 +72,23 @@ class DbDocument extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [DbChild, DbTodo, DbChecklistItem, DbDocument])
+class DbDocumentPage extends Table {
+  TextColumn get id => text()();
+  TextColumn get documentId => text()();
+  IntColumn get pageIndex => integer()();
+  TextColumn get localImagePath => text()();
+  TextColumn get ocrText => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {documentId, pageIndex},
+  ];
+}
+
+@DriftDatabase(tables: [DbChild, DbTodo, DbChecklistItem, DbDocument, DbDocumentPage])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e, {this.databaseFile});
 
@@ -80,7 +98,7 @@ class AppDatabase extends _$AppDatabase {
   static const _databaseSuffixes = ['', '-wal', '-shm', '-journal'];
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -93,9 +111,11 @@ class AppDatabase extends _$AppDatabase {
         await _repairLegacyReferences();
         await _createAuxiliarySchema();
       }
+      if (from < 3) {
+        await _migrateToV3(m);
+      }
     },
     beforeOpen: (details) async {
-      // Drift公式推奨どおり、マイグレーション完了後に毎回有効化する。
       await customStatement('PRAGMA foreign_keys = ON');
       await _createAuxiliarySchema();
     },
@@ -248,10 +268,16 @@ class AppDatabase extends _$AppDatabase {
     final todoRows = await select(dbTodo).get();
     final itemRows = await select(dbChecklistItem).get();
     final docRows = await select(dbDocument).get();
+    final pageRows = await select(dbDocumentPage).get();
 
     final itemsByTodo = <String, List<DbChecklistItemData>>{};
     for (final item in itemRows) {
       itemsByTodo.putIfAbsent(item.todoId, () => []).add(item);
+    }
+
+    final pagesByDocument = <String, List<DbDocumentPageData>>{};
+    for (final page in pageRows) {
+      pagesByDocument.putIfAbsent(page.documentId, () => []).add(page);
     }
 
     return AppSnapshot(
@@ -259,7 +285,9 @@ class AppDatabase extends _$AppDatabase {
       todos: todoRows
           .map((row) => _toAppTodo(row, itemsByTodo[row.id] ?? []))
           .toList(),
-      documents: docRows.map(_toDocumentRecord).toList(),
+      documents: docRows
+          .map((row) => _toDocumentRecord(row, pagesByDocument[row.id] ?? []))
+          .toList(),
     );
   }
 
@@ -291,6 +319,9 @@ class AppDatabase extends _$AppDatabase {
     };
     final existingChecklistItems = {
       for (final row in await select(dbChecklistItem).get()) row.id: row,
+    };
+    final existingPages = {
+      for (final row in await select(dbDocumentPage).get()) row.id: row,
     };
 
     final childRows = snapshot.children
@@ -324,6 +355,16 @@ class AppDatabase extends _$AppDatabase {
         }
       }
     }
+    final pageRows = <DbDocumentPageCompanion>[];
+    final pageIds = <String>[];
+    for (final document in snapshot.documents) {
+      for (final page in document.pages) {
+        pageIds.add(page.id);
+        if (!_matchesDocumentPage(existingPages[page.id], page)) {
+          pageRows.add(_fromDocumentPage(page));
+        }
+      }
+    }
 
     await batch((batch) {
       if (childRows.isNotEmpty) {
@@ -338,6 +379,9 @@ class AppDatabase extends _$AppDatabase {
       if (checklistRows.isNotEmpty) {
         batch.insertAllOnConflictUpdate(dbChecklistItem, checklistRows);
       }
+      if (pageRows.isNotEmpty) {
+        batch.insertAllOnConflictUpdate(dbDocumentPage, pageRows);
+      }
     });
 
     if (checklistItemIds.isEmpty) {
@@ -346,6 +390,14 @@ class AppDatabase extends _$AppDatabase {
       await (delete(
         dbChecklistItem,
       )..where((row) => row.id.isNotIn(checklistItemIds))).go();
+    }
+
+    if (pageIds.isEmpty) {
+      await delete(dbDocumentPage).go();
+    } else {
+      await (delete(
+        dbDocumentPage,
+      )..where((row) => row.id.isNotIn(pageIds))).go();
     }
 
     final todoIds = snapshot.todos.map((todo) => todo.id).toList();
@@ -387,6 +439,8 @@ class AppDatabase extends _$AppDatabase {
         row.sourceType == document.sourceType &&
         row.localImagePath == document.localImagePath &&
         row.ocrText == document.ocrText &&
+        row.sourceMimeType == document.sourceMimeType &&
+        row.sourceFingerprint == document.sourceFingerprint &&
         row.createdAt == document.createdAt &&
         row.updatedAt == document.updatedAt;
   }
@@ -635,6 +689,19 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  Future<void> _migrateToV3(Migrator m) async {
+    await m.addColumn(dbDocument, dbDocument.sourceMimeType);
+    await m.addColumn(dbDocument, dbDocument.sourceFingerprint);
+    await m.createTable(dbDocumentPage);
+
+    await customStatement('''
+      INSERT INTO db_document_page (id, document_id, page_index, local_image_path, ocr_text)
+      SELECT id || '-page-0', id, 0, local_image_path, COALESCE(ocr_text, '')
+      FROM db_document
+      WHERE local_image_path IS NOT NULL AND local_image_path != ''
+    ''');
+  }
+
   Future<void> _repairLegacyReferences() async {
     await customStatement(
       'DELETE FROM db_checklist_item '
@@ -821,13 +888,29 @@ class AppDatabase extends _$AppDatabase {
     isChecked: Value(item.isChecked),
   );
 
-  DocumentRecord _toDocumentRecord(DbDocumentData document) => DocumentRecord(
+  DocumentRecord _toDocumentRecord(
+    DbDocumentData document,
+    List<DbDocumentPageData> pages,
+  ) => DocumentRecord(
     id: document.id,
     sourceType: document.sourceType,
     localImagePath: document.localImagePath,
     ocrText: document.ocrText,
+    sourceMimeType: document.sourceMimeType,
+    sourceFingerprint: document.sourceFingerprint,
     createdAt: document.createdAt,
     updatedAt: document.updatedAt,
+    pages: pages
+        .map(
+          (p) => DocumentPageRecord(
+            id: p.id,
+            documentId: p.documentId,
+            pageIndex: p.pageIndex,
+            localImagePath: p.localImagePath,
+            ocrText: p.ocrText,
+          ),
+        )
+        .toList(),
   );
 
   DbDocumentCompanion _fromDocumentRecord(DocumentRecord document) =>
@@ -836,7 +919,26 @@ class AppDatabase extends _$AppDatabase {
         sourceType: Value(document.sourceType),
         localImagePath: Value(document.localImagePath),
         ocrText: Value(document.ocrText),
+        sourceMimeType: Value(document.sourceMimeType),
+        sourceFingerprint: Value(document.sourceFingerprint),
         createdAt: Value(document.createdAt),
         updatedAt: Value(document.updatedAt),
+      );
+
+  bool _matchesDocumentPage(DbDocumentPageData? row, DocumentPageRecord page) {
+    return row != null &&
+        row.documentId == page.documentId &&
+        row.pageIndex == page.pageIndex &&
+        row.localImagePath == page.localImagePath &&
+        row.ocrText == page.ocrText;
+  }
+
+  DbDocumentPageCompanion _fromDocumentPage(DocumentPageRecord page) =>
+      DbDocumentPageCompanion(
+        id: Value(page.id),
+        documentId: Value(page.documentId),
+        pageIndex: Value(page.pageIndex),
+        localImagePath: Value(page.localImagePath),
+        ocrText: Value(page.ocrText),
       );
 }

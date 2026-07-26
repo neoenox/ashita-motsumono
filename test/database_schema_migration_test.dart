@@ -45,9 +45,22 @@ void main() {
       'notification_id_map',
       'notification_sync_queue',
       'pending_file_cleanup',
+      'db_document_page',
     ]) {
       await legacy.customStatement('DROP TABLE IF EXISTS $table');
     }
+    // v3 で追加されたカラムがない v2 相当の DbDocument を再作成する
+    await legacy.customStatement('DROP TABLE IF EXISTS db_document');
+    await legacy.customStatement('''
+      CREATE TABLE db_document (
+        id TEXT NOT NULL PRIMARY KEY,
+        source_type TEXT NOT NULL,
+        local_image_path TEXT,
+        ocr_text TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
 
     final now = DateTime(2026, 7, 13);
     await legacy
