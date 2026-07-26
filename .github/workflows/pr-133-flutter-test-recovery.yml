@@ -18,7 +18,7 @@ concurrency:
 jobs:
   diagnose-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 8
     steps:
       - name: Publish diagnostic start status
         shell: bash
@@ -28,65 +28,77 @@ jobs:
           set -euo pipefail
           jq -n \
             --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
-            '{state:"pending", target_url:$target_url, description:"Isolating PR 133 widget test hang", context:"pr-133-flutter-test-recovery"}' \
+            '{state:"pending", target_url:$target_url, description:"Locating PR 133 widget hang", context:"pr-133-flutter-test-recovery"}' \
             > status.json
-          gh api \
-            --method POST \
+          gh api --method POST \
             -H 'Accept: application/vnd.github+json' \
             -H 'X-GitHub-Api-Version: 2022-11-28' \
             "/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             --input status.json
 
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.44.0'
           channel: stable
           cache: true
 
-      - name: Install dependencies
-        run: flutter pub get
+      - run: flutter pub get
 
-      - name: Isolate widget test hang
+      - name: Instrument and run empty-state test
         id: flutter-tests
         continue-on-error: true
         shell: bash
         run: |
+          set +e
           set -o pipefail
           mkdir -p build/ci-diagnostics
+          python3 - <<'PY'
+          from pathlib import Path
 
-          echo '=== second HomeScreen test in isolation ==='
-          timeout --signal=INT --kill-after=30s 2m \
+          path = Path('test/widget_test.dart')
+          text = path.read_text(encoding='utf-8')
+          start = text.index("    testWidgets('shows empty state when children exist but no todos'")
+          end = text.index("\n    testWidgets('shows today section with due todo'", start)
+          block = text[start:end]
+          replacements = [
+              ("      final appState = await _createAppState();",
+               "      print('TRACE before createAppState');\n"
+               "      final appState = await _createAppState();\n"
+               "      print('TRACE after createAppState');"),
+              ("      final settings = await _createSettings();",
+               "      print('TRACE before createSettings');\n"
+               "      final settings = await _createSettings();\n"
+               "      print('TRACE after createSettings');"),
+              ("      await appState.addChild('長女');",
+               "      print('TRACE before addChild');\n"
+               "      await appState.addChild('長女');\n"
+               "      print('TRACE after addChild');"),
+              ("      await tester.pumpWidget(",
+               "      print('TRACE before pumpWidget');\n"
+               "      await tester.pumpWidget("),
+              ("      await _pumpUi(tester);",
+               "      print('TRACE after pumpWidget');\n"
+               "      print('TRACE before pumpUi');\n"
+               "      await _pumpUi(tester);\n"
+               "      print('TRACE after pumpUi');"),
+          ]
+          for old, new in replacements:
+              if old not in block:
+                  raise SystemExit(f'missing instrumentation anchor: {old}')
+              block = block.replace(old, new, 1)
+          path.write_text(text[:start] + block + text[end:], encoding='utf-8')
+          PY
+
+          timeout --signal=INT --kill-after=30s 90s \
             flutter test test/widget_test.dart \
               --plain-name 'HomeScreen shows empty state when children exist but no todos' \
               --concurrency=1 --reporter expanded \
-            2>&1 | tee build/ci-diagnostics/home-empty-state-isolated.log
-          isolated_status=${PIPESTATUS[0]}
-
-          echo '=== first HomeScreen test in isolation ==='
-          timeout --signal=INT --kill-after=30s 2m \
-            flutter test test/widget_test.dart \
-              --plain-name 'HomeScreen shows home screen and first run card' \
-              --concurrency=1 --reporter expanded \
-            2>&1 | tee build/ci-diagnostics/home-first-run-isolated.log
-          first_status=${PIPESTATUS[0]}
-
-          echo '=== complete widget test file ==='
-          timeout --signal=INT --kill-after=30s 5m \
-            flutter test test/widget_test.dart --concurrency=1 --reporter expanded \
-            2>&1 | tee build/ci-diagnostics/widget-test-expanded.log
-          suite_status=${PIPESTATUS[0]}
-
-          printf 'isolated_status=%s\nfirst_status=%s\nsuite_status=%s\n' \
-            "$isolated_status" "$first_status" "$suite_status" \
-            | tee build/ci-diagnostics/statuses.txt
-
-          if (( isolated_status != 0 || first_status != 0 || suite_status != 0 )); then
-            exit 1
-          fi
+            2>&1 | tee build/ci-diagnostics/empty-state-trace.log
+          test_status=${PIPESTATUS[0]}
+          echo "test_status=${test_status}" | tee build/ci-diagnostics/statuses.txt
+          exit "${test_status}"
 
       - name: Upload Flutter test diagnostics
         if: always()
@@ -106,25 +118,20 @@ jobs:
         run: |
           set -euo pipefail
           state=failure
-          description='PR 133 widget isolation failed or timed out'
+          description='PR 133 widget trace failed or timed out'
           if [[ "$TEST_OUTCOME" == 'success' ]]; then
             state=success
-            description='PR 133 widget isolation passed'
+            description='PR 133 widget trace passed'
           fi
-
           jq -n \
             --arg state "$state" \
             --arg description "$description" \
             --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             '{state:$state, target_url:$target_url, description:$description, context:"pr-133-flutter-test-recovery"}' \
             > status.json
-          gh api \
-            --method POST \
+          gh api --method POST \
             -H 'Accept: application/vnd.github+json' \
             -H 'X-GitHub-Api-Version: 2022-11-28' \
             "/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             --input status.json
-
-          if [[ "$TEST_OUTCOME" != 'success' ]]; then
-            exit 1
-          fi
+          [[ "$TEST_OUTCOME" == 'success' ]]
