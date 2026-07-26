@@ -96,7 +96,10 @@ class _TestPurchaseProvider extends PurchaseProvider {
 
 /// 通知説明ダイアログをスキップした AppState を生成する。
 Future<AppState> _createAppState() async {
-  SharedPreferences.setMockInitialValues({'notification_info_shown_v1': true});
+  SharedPreferences.setMockInitialValues({
+  'onboarding_completed_v1': true,
+  'notification_info_shown_v1': true,
+});
   final tempDir = await Directory.systemTemp.createTemp('ashita_widget_test_');
   addTearDown(() async {
     if (await tempDir.exists()) {
