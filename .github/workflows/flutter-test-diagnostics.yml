@@ -1,4 +1,4 @@
-name: Flutter test diagnostics
+name: Repair widget test setup
 
 on:
   pull_request:
@@ -6,56 +6,51 @@ on:
       - master
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: flutter-test-diagnostics-${{ github.event.pull_request.number || github.ref }}
+  group: repair-widget-test-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  diagnose-tests:
+  repair-widget-test:
+    if: github.head_ref == 'fix/v0.6.3-release-gate'
     runs-on: ubuntu-latest
-    timeout-minutes: 8
     steps:
-      - name: Check out repository
+      - name: Check out pull request branch
         uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.0'
-          channel: stable
-          cache: true
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Run first HomeScreen tests with bounded diagnostics
+      - name: Prevent the first HomeScreen test from opening notification dialog
         shell: bash
         run: |
-          set +e
-          mkdir -p build/diagnostics
-          timeout --signal=TERM 3m \
-            flutter test test/widget_test.dart \
-              --name 'shows home screen and first run card|shows empty state when children exist but no todos' \
-              --reporter expanded 2>&1 \
-            | tee build/diagnostics/flutter-test.txt
-          status=${PIPESTATUS[0]}
-          echo "$status" > build/diagnostics/flutter-test-status.txt
-          exit 0
+          python3 - <<'PY'
+          from pathlib import Path
 
-      - name: Upload test diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: flutter-test-diagnostics
-          path: build/diagnostics/
-          if-no-files-found: error
-          retention-days: 1
+          path = Path('test/widget_test.dart')
+          text = path.read_text(encoding='utf-8')
+          before = "SharedPreferences.setMockInitialValues({'onboarding_completed_v1': true});"
+          after = """SharedPreferences.setMockInitialValues({
+            'onboarding_completed_v1': true,
+            'notification_info_shown_v1': true,
+          });"""
+          if before not in text:
+              raise SystemExit('expected widget test setup was not found')
+          path.write_text(text.replace(before, after, 1), encoding='utf-8')
+          PY
 
-      - name: Fail when tests failed or timed out
+      - name: Remove temporary diagnostic workflow
+        run: rm .github/workflows/flutter-test-diagnostics.yml
+
+      - name: Commit and push repair
         shell: bash
         run: |
-          status="$(cat build/diagnostics/flutter-test-status.txt)"
-          if [ "$status" -ne 0 ]; then
-            exit "$status"
-          fi
+          set -euo pipefail
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add test/widget_test.dart .github/workflows/flutter-test-diagnostics.yml
+          git commit -m 'test: isolate HomeScreen notification state'
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
