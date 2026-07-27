@@ -42,9 +42,7 @@ class ShareFileStagingService {
            temporaryDirectoryProvider ?? getTemporaryDirectory,
        _uuid = uuid ?? const Uuid();
 
-  static const _channel = MethodChannel(
-    'ashita_motsumono/share_file_staging',
-  );
+  static const _channel = MethodChannel('ashita_motsumono/share_file_staging');
   static const _maxImageBytes = 5 * 1024 * 1024;
   static const _maxPdfBytes = 25 * 1024 * 1024;
 
@@ -131,16 +129,14 @@ class ShareFileStagingService {
     }
 
     try {
-      final copiedPath = await _channel.invokeMethod<String>(
-        'copyContentUriToStaging',
-        <String, Object?>{
-          'uri': uri,
-          'destinationDirectory': destinationDirectory.path,
-          'extension': extension,
-          'mimeType': mimeType,
-          'maxBytes': maxBytes,
-        },
-      );
+      final copiedPath = await _channel
+          .invokeMethod<String>('copyContentUriToStaging', <String, Object?>{
+            'uri': uri,
+            'destinationDirectory': destinationDirectory.path,
+            'extension': extension,
+            'mimeType': mimeType,
+            'maxBytes': maxBytes,
+          });
       if (copiedPath == null || copiedPath.trim().isEmpty) {
         throw const ShareFileStagingException('共有ファイルのコピー結果が空です。');
       }

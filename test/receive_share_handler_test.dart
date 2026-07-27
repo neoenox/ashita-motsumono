@@ -121,7 +121,10 @@ void main() {
     ]);
 
     expect(result, isA<ReceiveShareFailure>());
-    expect(intake.importedImagePaths, ['/shared/front.jpg', '/shared/back.png']);
+    expect(intake.importedImagePaths, [
+      '/shared/front.jpg',
+      '/shared/back.png',
+    ]);
     expect(intake.imageSourceType, 'shared_images');
     expect(intake.importedPdfPath, isNull);
   });
@@ -157,10 +160,7 @@ void main() {
     ]);
 
     expect(result, isA<ReceiveShareFailure>());
-    expect(
-      (result as ReceiveShareFailure).message,
-      '画像とPDFの同時共有は対応していません。',
-    );
+    expect((result as ReceiveShareFailure).message, '画像とPDFの同時共有は対応していません。');
     expect(intake.importedImagePaths, isNull);
     expect(intake.importedPdfPath, isNull);
   });
@@ -191,10 +191,7 @@ void main() {
     ]);
 
     expect(result, isA<ReceiveShareFailure>());
-    expect(
-      intake.importedPdfPath,
-      'content://school.documents/document/42',
-    );
+    expect(intake.importedPdfPath, 'content://school.documents/document/42');
     expect(intake.pdfSourceType, 'shared_pdf');
     expect(intake.importedImagePaths, isNull);
   });

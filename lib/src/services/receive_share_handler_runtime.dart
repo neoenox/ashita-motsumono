@@ -45,10 +45,7 @@ extension ReceiveShareHandlerRuntime on ReceiveShareHandler {
     if (files.isEmpty) return;
 
     final payloadKey = files
-        .map(
-          (file) =>
-              '${file.type.name}:${file.mimeType ?? ''}:${file.path}',
-        )
+        .map((file) => '${file.type.name}:${file.mimeType ?? ''}:${file.path}')
         .join('\u001f');
     final now = DateTime.now();
     final recentDuplicate =
@@ -98,7 +95,9 @@ extension ReceiveShareHandlerRuntime on ReceiveShareHandler {
       );
     }
 
-    final imageFiles = nonEmptyFiles.where(_isImageFile).toList(growable: false);
+    final imageFiles = nonEmptyFiles
+        .where(_isImageFile)
+        .toList(growable: false);
     final pdfFiles = nonEmptyFiles.where(_isPdfFile).toList(growable: false);
     final textFiles = nonEmptyFiles.where(_isTextFile).toList(growable: false);
 
