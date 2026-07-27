@@ -98,8 +98,9 @@ extension ReceiveShareHandlerRuntime on ReceiveShareHandler {
     final imageFiles = nonEmptyFiles
         .where(_isImageFile)
         .toList(growable: false);
-    final pdfFiles = nonEmptyFiles.where(_isPdfFile).toList(growable: false);
-    final textFiles = nonEmptyFiles.where(_isTextFile).toList(growable: false);
+    final pdfFiles = nonEmptyFiles
+        .where(_isPdfFile)
+        .toList(growable: false);
 
     if (imageFiles.isNotEmpty && pdfFiles.isNotEmpty) {
       return const ReceiveShareFailure(
@@ -114,15 +115,41 @@ extension ReceiveShareHandlerRuntime on ReceiveShareHandler {
       );
     }
 
-    _isProcessing = true;
-    try {
-      _evictExpiredFingerprints();
-      if (imageFiles.isNotEmpty) return await _processImages(imageFiles);
-      if (pdfFiles.isNotEmpty) return await _processPdf(pdfFiles.single);
-      if (textFiles.isNotEmpty) return await _processText(textFiles.first.path);
+    SharedMediaFile? supportedFile;
+    for (final file in nonEmptyFiles) {
+      if (_isImageFile(file) || _isPdfFile(file) || _isTextFile(file)) {
+        supportedFile = file;
+        break;
+      }
+    }
+
+    if (supportedFile == null) {
       return const ReceiveShareFailure(
         '対応している共有データは画像、PDF、テキストです。',
         kind: ReceiveShareFailureKind.unsupportedFormat,
+      );
+    }
+
+    _isProcessing = true;
+    try {
+      _evictExpiredFingerprints();
+      if (_isPdfFile(supportedFile)) {
+        return await _processPdf(supportedFile);
+      }
+      if (_isImageFile(supportedFile)) {
+        if (imageFiles.length == 1) {
+          return await _processImage(
+            supportedFile.path,
+            mimeType: supportedFile.mimeType ?? 'image/*',
+          );
+        }
+        return await _processMultipleImages(imageFiles);
+      }
+      return await _processText(supportedFile.path);
+    } on OcrException catch (error) {
+      return ReceiveShareFailure(
+        error.message,
+        kind: ReceiveShareFailureKind.ocrEmpty,
       );
     } on StateError catch (error) {
       return ReceiveShareFailure(
