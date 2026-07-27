@@ -208,9 +208,9 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
       case OcrPickDuplicate():
         await _showDuplicateDialog('この画像は取り込み済みです');
       case OcrPickNoCandidates():
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('候補が見つかりませんでした')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('候補が見つかりませんでした')));
       case OcrPickError():
         if (result.message == DocumentIntakeService.cancelledMessage) return;
         ScaffoldMessenger.of(
@@ -236,9 +236,9 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
       case IntakeDuplicate():
         await _showDuplicateDialog(duplicateLabel);
       case IntakeNoCandidates():
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('候補が見つかりませんでした')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('候補が見つかりませんでした')));
       case IntakeEmpty():
         ScaffoldMessenger.of(
           context,
