@@ -39,7 +39,9 @@ class _NeverRenderPdfService extends PdfRenderService {
 }
 
 class _TwoPagePdfService extends PdfRenderService {
-  _TwoPagePdfService() : super();
+  _TwoPagePdfService({this.reportProgress = false}) : super();
+
+  final bool reportProgress;
 
   @override
   Future<List<RenderedPdfPage>> render({
@@ -52,6 +54,10 @@ class _TwoPagePdfService extends PdfRenderService {
     final second = File('${stagingDirectory.path}/page-1.jpg');
     await first.writeAsBytes([1, 2, 3]);
     await second.writeAsBytes([4, 5, 6]);
+    if (reportProgress) {
+      onProgress?.call(1, 2);
+      onProgress?.call(2, 2);
+    }
     return [
       RenderedPdfPage(pageIndex: 0, imageFile: first),
       RenderedPdfPage(pageIndex: 1, imageFile: second),
@@ -165,6 +171,95 @@ void main() {
       expect(page.imageFile.path, contains('document_images'));
     }
     expect(state.documents.single.pages, hasLength(2));
+  });
+
+  test('reports PDF rendering and OCR progress separately', () async {
+    final tempDir = await Directory.systemTemp.createTemp(
+      'document_intake_progress_',
+    );
+    final (state, settings) = await _createState();
+    addTearDown(() async {
+      await state.close();
+      state.dispose();
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    final source = File('${tempDir.path}/source.pdf');
+    await source.writeAsString('%PDF-1.4\n%%EOF');
+    final progress = <IntakeProgress>[];
+    final service = DocumentIntakeService(
+      appState: state,
+      appSettings: settings,
+      pdfRenderService: _TwoPagePdfService(reportProgress: true),
+      ocrService: _QueueOcrService(['', '']),
+      temporaryDirectoryProvider: () async => tempDir,
+      documentsDirectoryProvider: () async => tempDir,
+    );
+
+    final result = await service.importPdf(
+      sourcePath: source.path,
+      sourceType: 'pdf',
+      onProgress: progress.add,
+    );
+
+    expect(result, isA<IntakeNoCandidates>());
+    expect(
+      progress.map((entry) => entry.message),
+      containsAllInOrder([
+        'PDFを読み込み中...',
+        '1/2ページを画像化中',
+        '2/2ページを画像化中',
+        '1/2ページを読み取り中',
+        '2/2ページを読み取り中',
+        '読み取り結果を保存中...',
+      ]),
+    );
+  });
+
+  test('cooperatively cancels multiple images before the next image', () async {
+    final tempDir = await Directory.systemTemp.createTemp(
+      'document_intake_cancel_',
+    );
+    final (state, settings) = await _createState();
+    addTearDown(() async {
+      await state.close();
+      state.dispose();
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    final first = File('${tempDir.path}/first.jpg')..writeAsBytesSync([1]);
+    final second = File('${tempDir.path}/second.jpg')..writeAsBytesSync([2]);
+    final token = IntakeCancellationToken();
+    final progress = <IntakeProgress>[];
+    final service = DocumentIntakeService(
+      appState: state,
+      appSettings: settings,
+      ocrService: _QueueOcrService(['first', 'second']),
+      temporaryDirectoryProvider: () async => tempDir,
+      documentsDirectoryProvider: () async => tempDir,
+    );
+
+    final result = await service.importImages(
+      sourcePaths: [first.path, second.path],
+      sourceType: 'gallery',
+      cancellationToken: token,
+      onProgress: (entry) {
+        progress.add(entry);
+        if (entry.stage == IntakeProgressStage.recognizingImages &&
+            entry.current == 1) {
+          token.cancel();
+        }
+      },
+    );
+
+    expect(result, isA<IntakeError>());
+    expect((result as IntakeError).message, DocumentIntakeService.cancelledMessage);
+    expect(progress.where((entry) => entry.stage == IntakeProgressStage.recognizingImages), hasLength(1));
+    expect(state.documents, isEmpty);
   });
 
   test('removes copied images when database persistence fails', () async {

@@ -51,6 +51,21 @@ class OcrPickService {
       maxHeight: 2048,
     );
     if (picked == null) return null;
+    return processPickedImage(picked, source: source);
+  }
+
+  Future<List<XFile>> pickGalleryImages() {
+    return _picker.pickMultiImage(
+      imageQuality: 85,
+      maxWidth: 2048,
+      maxHeight: 2048,
+    );
+  }
+
+  Future<OcrPickResult> processPickedImage(
+    XFile picked, {
+    ImageSource source = ImageSource.gallery,
+  }) {
     return _processLocalImage(picked, source);
   }
 

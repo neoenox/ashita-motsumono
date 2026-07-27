@@ -19,6 +19,63 @@ import 'image_file_service.dart';
 import 'ocr_service.dart';
 import 'pdf_render_service.dart';
 
+enum IntakeProgressStage {
+  loadingPdf,
+  renderingPdf,
+  recognizingPdf,
+  recognizingImages,
+  saving,
+}
+
+@immutable
+class IntakeProgress {
+  const IntakeProgress({
+    required this.stage,
+    this.current = 0,
+    this.total = 0,
+  });
+
+  final IntakeProgressStage stage;
+  final int current;
+  final int total;
+
+  double? get fraction {
+    if (total <= 0) return null;
+    final value = current / total;
+    if (value < 0) return 0.0;
+    if (value > 1) return 1.0;
+    return value;
+  }
+
+  String get message => switch (stage) {
+    IntakeProgressStage.loadingPdf => 'PDFを読み込み中...',
+    IntakeProgressStage.renderingPdf => '$current/$totalページを画像化中',
+    IntakeProgressStage.recognizingPdf => '$current/$totalページを読み取り中',
+    IntakeProgressStage.recognizingImages => '$current/$total枚目を読み取り中',
+    IntakeProgressStage.saving => '読み取り結果を保存中...',
+  };
+}
+
+class IntakeCancellationToken {
+  bool _cancelled = false;
+
+  bool get isCancelled => _cancelled;
+
+  void cancel() {
+    _cancelled = true;
+  }
+
+  void throwIfCancelled() {
+    if (_cancelled) throw const IntakeCancelledException();
+  }
+}
+
+class IntakeCancelledException implements Exception {
+  const IntakeCancelledException();
+}
+
+typedef IntakeProgressCallback = void Function(IntakeProgress progress);
+
 sealed class IntakeResult {
   const IntakeResult();
 }
@@ -77,6 +134,8 @@ class DocumentIntakeService {
        _documentsDirectoryProvider =
            documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
 
+  static const cancelledMessage = '取り込みをキャンセルしました。';
+
   final AppState _appState;
   final AppSettings _appSettings;
   final OcrService _ocrService;
@@ -88,11 +147,19 @@ class DocumentIntakeService {
   Future<IntakeResult> importPdf({
     required String sourcePath,
     required String sourceType,
-    void Function(int current, int total)? onProgress,
+    IntakeProgressCallback? onProgress,
+    IntakeCancellationToken? cancellationToken,
   }) async {
     try {
       return await _runWithStaging((staging) async {
+        onProgress?.call(
+          const IntakeProgress(stage: IntakeProgressStage.loadingPdf),
+        );
+        cancellationToken?.throwIfCancelled();
+
         final pdfFile = await _copyToStaging(File(sourcePath), staging);
+        cancellationToken?.throwIfCancelled();
+
         final fileHash = await _sha256(pdfFile);
         if (fileHash == null) {
           return const IntakeError('PDFファイルを読み込めませんでした。');
@@ -106,9 +173,27 @@ class DocumentIntakeService {
         final renderedPages = await _pdfRenderService.render(
           pdfFile: pdfFile,
           stagingDirectory: staging,
-          onProgress: onProgress,
+          onProgress: (current, total) {
+            onProgress?.call(
+              IntakeProgress(
+                stage: IntakeProgressStage.renderingPdf,
+                current: current,
+                total: total,
+              ),
+            );
+            if (cancellationToken?.isCancelled ?? false) {
+              throw const PdfRenderCancelledException();
+            }
+          },
         );
-        final pageResults = await _recognizePages(renderedPages);
+        cancellationToken?.throwIfCancelled();
+
+        final pageResults = await _recognizePages(
+          renderedPages,
+          progressStage: IntakeProgressStage.recognizingPdf,
+          onProgress: onProgress,
+          cancellationToken: cancellationToken,
+        );
         final combinedText = _combinePageText(pageResults, unitLabel: 'ページ');
         final drafts = _extractDrafts(combinedText);
 
@@ -117,6 +202,14 @@ class DocumentIntakeService {
           return IntakeDuplicate(existingDocumentId: duplicateBeforeSave.id);
         }
 
+        cancellationToken?.throwIfCancelled();
+        onProgress?.call(
+          const IntakeProgress(
+            stage: IntakeProgressStage.saving,
+            current: 1,
+            total: 1,
+          ),
+        );
         final document = await _saveDocumentWithPages(
           sourceType: sourceType,
           sourceMimeType: 'application/pdf',
@@ -135,6 +228,10 @@ class DocumentIntakeService {
 
         return IntakeSuccess(document: document, drafts: drafts);
       });
+    } on IntakeCancelledException {
+      return const IntakeError(cancelledMessage);
+    } on PdfRenderCancelledException {
+      return const IntakeError(cancelledMessage);
     } on PdfImportException catch (error) {
       return IntakeError(error.message);
     } on Object catch (error, stackTrace) {
@@ -146,6 +243,8 @@ class DocumentIntakeService {
   Future<IntakeResult> importImages({
     required List<String> sourcePaths,
     required String sourceType,
+    IntakeProgressCallback? onProgress,
+    IntakeCancellationToken? cancellationToken,
   }) async {
     if (sourcePaths.isEmpty) {
       return const IntakeError('画像を読み込めませんでした。');
@@ -155,6 +254,7 @@ class DocumentIntakeService {
       return await _runWithStaging((staging) async {
         final copiedImages = <File>[];
         for (final path in sourcePaths) {
+          cancellationToken?.throwIfCancelled();
           final copied = await _imageFileService.copyFromPath(
             path,
             destinationDirectory: staging,
@@ -164,6 +264,14 @@ class DocumentIntakeService {
 
         final pageResults = <PageOcrResult>[];
         for (var i = 0; i < copiedImages.length; i++) {
+          cancellationToken?.throwIfCancelled();
+          onProgress?.call(
+            IntakeProgress(
+              stage: IntakeProgressStage.recognizingImages,
+              current: i + 1,
+              total: copiedImages.length,
+            ),
+          );
           final text = await _ocrService.recognize(copiedImages[i]);
           pageResults.add(
             PageOcrResult(
@@ -176,6 +284,14 @@ class DocumentIntakeService {
 
         final combinedText = _combinePageText(pageResults, unitLabel: '枚目');
         final drafts = _extractDrafts(combinedText);
+        cancellationToken?.throwIfCancelled();
+        onProgress?.call(
+          const IntakeProgress(
+            stage: IntakeProgressStage.saving,
+            current: 1,
+            total: 1,
+          ),
+        );
         final document = await _saveDocumentWithPages(
           sourceType: sourceType,
           sourceMimeType: 'image/*',
@@ -193,6 +309,8 @@ class DocumentIntakeService {
 
         return IntakeSuccess(document: document, drafts: drafts);
       });
+    } on IntakeCancelledException {
+      return const IntakeError(cancelledMessage);
     } on Object catch (error, stackTrace) {
       _debugLog('Image import failed', error, stackTrace);
       return const IntakeError('画像の取り込みに失敗しました。');
@@ -229,10 +347,22 @@ class DocumentIntakeService {
   }
 
   Future<List<PageOcrResult>> _recognizePages(
-    List<RenderedPdfPage> renderedPages,
-  ) async {
+    List<RenderedPdfPage> renderedPages, {
+    required IntakeProgressStage progressStage,
+    IntakeProgressCallback? onProgress,
+    IntakeCancellationToken? cancellationToken,
+  }) async {
     final pageResults = <PageOcrResult>[];
-    for (final page in renderedPages) {
+    for (var i = 0; i < renderedPages.length; i++) {
+      cancellationToken?.throwIfCancelled();
+      onProgress?.call(
+        IntakeProgress(
+          stage: progressStage,
+          current: i + 1,
+          total: renderedPages.length,
+        ),
+      );
+      final page = renderedPages[i];
       final text = await _ocrService.recognize(page.imageFile);
       pageResults.add(
         PageOcrResult(

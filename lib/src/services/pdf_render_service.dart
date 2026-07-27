@@ -20,6 +20,10 @@ class PdfImportException implements Exception {
   String toString() => message;
 }
 
+class PdfRenderCancelledException implements Exception {
+  const PdfRenderCancelledException();
+}
+
 class RenderedPdfPage {
   const RenderedPdfPage({required this.pageIndex, required this.imageFile});
 
@@ -105,6 +109,8 @@ class PdfRenderService {
           }
           renderedPages.add(rendered);
           onProgress?.call(pageNumber, document.pagesCount);
+        } on PdfRenderCancelledException {
+          rethrow;
         } on PdfImportException {
           rethrow;
         } on Object catch (error) {
