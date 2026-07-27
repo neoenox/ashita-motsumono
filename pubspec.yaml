@@ -29,7 +29,8 @@ dependencies:
   http: ^1.3.0
   crypto: ^3.0.3
   receive_sharing_intent: 1.8.1 # 1.9.0 requires Android SDK 37 / AGP 9.2.1
-  file_picker: ^11.0.2
+  # 11.0.x omits the Android Kotlin plugin and cannot compile FilePickerPlugin.
+  file_picker: 10.3.10
   pdfx: ^2.9.2
 
 dev_dependencies:
