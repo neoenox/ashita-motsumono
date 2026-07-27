@@ -143,6 +143,22 @@ class ReleaseWorkflowTest(unittest.TestCase):
         self.assertLess(backup, regenerate)
         self.assertLess(regenerate, restore)
 
+    def test_platform_regeneration_preserves_android_share_intake(self) -> None:
+        manifest = 'android/app/src/main/AndroidManifest.xml'
+        activity = (
+            'android/app/src/main/kotlin/com/ashita_motsumono/MainActivity.kt'
+        )
+        self.assertIn(f'"{manifest}"', self.create_platforms)
+        self.assertIn(f'"{activity}"', self.create_platforms)
+        self.assertIn(
+            'cp "$native_file" "$TMP_DIR/$native_file"',
+            self.create_platforms,
+        )
+        self.assertIn(
+            'cp "$TMP_DIR/$native_file" "$native_file"',
+            self.create_platforms,
+        )
+
     def test_regenerated_platform_preserves_privacy_configuration(self) -> None:
         release = self.release_config.index('configure_android_release.py')
         privacy = self.release_config.index('configure_android_privacy.py')
