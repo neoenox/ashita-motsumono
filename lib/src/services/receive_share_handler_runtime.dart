@@ -14,7 +14,8 @@ extension ReceiveShareHandlerRuntime on ReceiveShareHandler {
     );
 
     try {
-      final initialFiles = await ReceiveSharingIntent.instance.getInitialMedia();
+      final initialFiles = await ReceiveSharingIntent.instance
+          .getInitialMedia();
       _enqueue(initialFiles, onResult: onResult, onError: onError);
       await _queue;
     } on Object catch (error, stackTrace) {
@@ -142,5 +143,4 @@ extension ReceiveShareHandlerRuntime on ReceiveShareHandler {
       _isProcessing = false;
     }
   }
-
 }

@@ -294,10 +294,8 @@ class _NoCandidatesScreenState extends State<NoCandidatesScreen> {
     if (!mounted) return;
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => _reviewScreenFor(
-          drafts: drafts,
-          documentId: widget.documentId,
-        ),
+        builder: (_) =>
+            _reviewScreenFor(drafts: drafts, documentId: widget.documentId),
       ),
     );
   }

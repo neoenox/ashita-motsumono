@@ -178,5 +178,4 @@ extension _ReceiveShareSources on ReceiveShareHandler {
       rethrow;
     }
   }
-
 }

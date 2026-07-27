@@ -27,13 +27,12 @@ extension DocumentAppStateOperations on AppState {
     return record;
   });
 
-  Future<void> addDocumentRecord(DocumentRecord record) => _runMutation(
-    () async {
-      final nextDocuments = [...documents, record];
-      await _persistSnapshot(nextDocuments: nextDocuments);
-      _replaceDocuments(nextDocuments);
-    },
-  );
+  Future<void> addDocumentRecord(DocumentRecord record) =>
+      _runMutation(() async {
+        final nextDocuments = [...documents, record];
+        await _persistSnapshot(nextDocuments: nextDocuments);
+        _replaceDocuments(nextDocuments);
+      });
 
   Future<bool> deleteDocument(String id) => _runMutation(() async {
     if (todos.any((todo) => todo.documentId == id)) return false;

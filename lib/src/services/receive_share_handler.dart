@@ -108,5 +108,4 @@ class ReceiveShareHandler {
   static const _maxCompletedFingerprints = 128;
   static const _fingerprintTtl = Duration(hours: 1);
   static const _maxImageBytes = 5 * 1024 * 1024;
-
 }

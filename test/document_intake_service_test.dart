@@ -257,8 +257,16 @@ void main() {
     );
 
     expect(result, isA<IntakeError>());
-    expect((result as IntakeError).message, DocumentIntakeService.cancelledMessage);
-    expect(progress.where((entry) => entry.stage == IntakeProgressStage.recognizingImages), hasLength(1));
+    expect(
+      (result as IntakeError).message,
+      DocumentIntakeService.cancelledMessage,
+    );
+    expect(
+      progress.where(
+        (entry) => entry.stage == IntakeProgressStage.recognizingImages,
+      ),
+      hasLength(1),
+    );
     expect(state.documents, isEmpty);
   });
 

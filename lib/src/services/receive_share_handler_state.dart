@@ -10,9 +10,13 @@ extension ReceiveShareHandlerLifecycle on ReceiveShareHandler {
 
   void _recordCompleted(String fingerprint) {
     _completedFingerprints.add(
-      _CompletedFingerprint(fingerprint, DateTime.now().add(ReceiveShareHandler._fingerprintTtl)),
+      _CompletedFingerprint(
+        fingerprint,
+        DateTime.now().add(ReceiveShareHandler._fingerprintTtl),
+      ),
     );
-    while (_completedFingerprints.length > ReceiveShareHandler._maxCompletedFingerprints) {
+    while (_completedFingerprints.length >
+        ReceiveShareHandler._maxCompletedFingerprints) {
       _completedFingerprints.removeAt(0);
     }
   }

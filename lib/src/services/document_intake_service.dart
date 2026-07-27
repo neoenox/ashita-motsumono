@@ -29,11 +29,7 @@ enum IntakeProgressStage {
 
 @immutable
 class IntakeProgress {
-  const IntakeProgress({
-    required this.stage,
-    this.current = 0,
-    this.total = 0,
-  });
+  const IntakeProgress({required this.stage, this.current = 0, this.total = 0});
 
   final IntakeProgressStage stage;
   final int current;

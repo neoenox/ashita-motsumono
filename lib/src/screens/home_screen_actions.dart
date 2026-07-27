@@ -82,6 +82,7 @@ extension _HomeScreenActions on _HomeScreenState {
         await pushAdaptive<void>(context, (_) => reviewScreen);
     }
   }
+
   Future<void> _showNotificationInfoIfNeeded() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted || (prefs.getBool(_notificationInfoShownKey) ?? false)) return;

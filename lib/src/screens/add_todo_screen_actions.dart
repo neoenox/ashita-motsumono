@@ -261,9 +261,9 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
           ),
         );
       case IntakeEmpty():
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('文字を読み取れませんでした。')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('文字を読み取れませんでした。')));
       case IntakeError():
         if (result.message == DocumentIntakeService.cancelledMessage) return;
         ScaffoldMessenger.of(
