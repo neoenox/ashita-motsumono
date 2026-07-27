@@ -6,9 +6,16 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 
+typedef PdfFilePicker = Future<FilePickerResult?> Function();
+
 class PdfPickService {
-  Future<File?> pickPdf() async {
-    final result = await FilePicker.pickFiles(
+  PdfPickService({PdfFilePicker? picker})
+    : _picker = picker ?? _pickPdfFromPlatform;
+
+  final PdfFilePicker _picker;
+
+  static Future<FilePickerResult?> _pickPdfFromPlatform() {
+    return FilePicker.platform.pickFiles(
       dialogTitle: 'プリントのPDFを選択',
       type: FileType.custom,
       allowedExtensions: const ['pdf'],
@@ -16,7 +23,10 @@ class PdfPickService {
       withData: false,
       withReadStream: false,
     );
+  }
 
+  Future<File?> pickPdf() async {
+    final result = await _picker();
     if (result == null || result.xFiles.isEmpty) {
       return null;
     }
