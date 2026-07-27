@@ -88,4 +88,4 @@ warning • Unused import: 'package:ashita_motsumono/src/models/entities.dart'. 
    info • Don't invoke 'print' in production code. Try using a logging framework • test_driver/ocr_verify.dart:82:3 • avoid_print
    info • Statements in an if should be enclosed in a block. Try wrapping the statement in a block • tool/src/release_audit.dart:486:7 • curly_braces_in_flow_control_structures
 
-49 issues found. (ran in 16.7s)
+49 issues found. (ran in 10.9s)
