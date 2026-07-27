@@ -1,0 +1,103 @@
+name: Apply PDF intake P0 fixes (fixed v5)
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fixes:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/pdf-intake
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - name: Apply implementation and analyzer fixes
+        run: |
+          ruby -ryaml -e 'print YAML.load_file(".github/workflows/apply-pdf-intake-p0-fixed-v4.yml").dig("jobs", "apply-fixes", "steps")[2]["run"]' > /tmp/apply-v4.sh
+          bash /tmp/apply-v4.sh
+          python3 - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              'lib/src/models/document_record.dart': [
+                  ("pages.map((p) => p.toJson()!).toList()", "pages.map((p) => p.toJson()).toList()"),
+              ],
+              'lib/src/services/pdf_pick_service.dart': [
+                  ("if (path == null || path.isEmpty) return null;", "if (path.isEmpty) return null;"),
+              ],
+              'test/document_intake_service_test.dart': [
+                  ("import 'package:ashita_motsumono/src/models/entities.dart';\n", ""),
+              ],
+          }
+          for filename, edits in replacements.items():
+              path = Path(filename)
+              text = path.read_text()
+              for old, new in edits:
+                  if old not in text:
+                      raise SystemExit(f'Expected analyzer fix not found: {filename}: {old}')
+                  text = text.replace(old, new, 1)
+              path.write_text(text)
+          PY
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Format changed files
+        run: |
+          dart format \
+            lib/src/models/document_record.dart \
+            lib/src/repositories/app_database.dart \
+            lib/src/services/document_intake_service.dart \
+            lib/src/services/image_file_service.dart \
+            lib/src/services/pdf_pick_service.dart \
+            lib/src/services/pdf_render_service.dart \
+            lib/src/services/receive_share_handler.dart \
+            test/app_database_test.dart \
+            test/database_schema_migration_test.dart \
+            test/document_intake_service_test.dart
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+      - name: Run targeted tests
+        run: |
+          flutter test test/document_intake_service_test.dart
+          flutter test test/app_database_test.dart
+          flutter test test/database_schema_migration_test.dart
+      - name: Run full test suite
+        run: flutter test
+      - name: Commit and push fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm --ignore-unmatch \
+            .github/workflows/apply-pdf-intake-p0.yml \
+            .github/workflows/apply-pdf-intake-p0-pr.yml \
+            .github/workflows/debug-pdf-intake-apply.yml \
+            .github/workflows/apply-pdf-intake-p0-fixed.yml \
+            .github/workflows/debug-pdf-intake-fixed.yml \
+            .github/workflows/apply-pdf-intake-p0-fixed-v2.yml \
+            .github/workflows/debug-pdf-intake-v2.yml \
+            .github/workflows/inspect-pdf-intake-script.yml \
+            .github/workflows/apply-pdf-intake-p0-fixed-v3.yml \
+            .github/workflows/debug-pdf-intake-v3.yml \
+            .github/workflows/apply-pdf-intake-p0-fixed-v4.yml \
+            .github/workflows/debug-pdf-intake-analyze.yml \
+            .github/workflows/apply-pdf-intake-p0-fixed-v5.yml \
+            .github/pdf-intake-apply-debug.log \
+            .github/pdf-intake-fixed-debug.log \
+            .github/pdf-intake-v2-debug.log \
+            .github/pdf-intake-script-inspect.log \
+            .github/pdf-intake-v3-debug.log \
+            .github/pdf-intake-analyze-debug.log
+          git add -A
+          git diff --cached --stat
+          git commit -m "fix: harden PDF intake persistence"
+          git push origin HEAD:feature/pdf-intake
