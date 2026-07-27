@@ -146,11 +146,9 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
         token,
         const IntakeProgress(stage: IntakeProgressStage.loadingPdf),
       );
-      final appState = context.read<AppState>();
-      final appSettings = context.read<AppSettings>();
       final intake = DocumentIntakeService(
-        appState: appState,
-        appSettings: appSettings,
+        appState: context.read<AppState>(),
+        appSettings: context.read<AppSettings>(),
       );
       final result = await intake.importPdf(
         sourcePath: file.path,
@@ -227,7 +225,7 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
   }) async {
     switch (result) {
       case IntakeSuccess():
-        await Navigator.of(context).push(
+        await Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (_) => _reviewScreenFor(
               drafts: result.drafts,
