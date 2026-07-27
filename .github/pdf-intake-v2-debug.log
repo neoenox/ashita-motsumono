@@ -1,0 +1,7 @@
+repair_status=1
+Traceback (most recent call last):
+  File "/tmp/repair.py", line 11, in <module>
+    prefix, suffix = block.rsplit("\n    ''',\n", 1)
+    ^^^^^^^^^^^^^^
+ValueError: not enough values to unpack (expected 2, got 1)
+apply_status=99
