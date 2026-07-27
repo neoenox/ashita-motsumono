@@ -1,0 +1,49 @@
+name: Debug PDF intake apply
+
+on:
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/pdf-intake
+          fetch-depth: 0
+
+      - name: Capture implementation output
+        shell: bash
+        run: |
+          set +e
+          ruby -ryaml -e 'print YAML.load_file(".github/workflows/apply-pdf-intake-p0.yml").dig("jobs", "apply-fixes", "steps")[2]["run"]' > /tmp/apply-pdf-intake.sh 2> /tmp/extract.log
+          extract_status=$?
+          {
+            echo "extract_status=$extract_status"
+            cat /tmp/extract.log
+            echo "--- extracted script head ---"
+            head -n 20 /tmp/apply-pdf-intake.sh
+          } > /tmp/diagnostic.log
+          if [ "$extract_status" -eq 0 ]; then
+            bash -x /tmp/apply-pdf-intake.sh >> /tmp/diagnostic.log 2>&1
+            echo "apply_status=$?" >> /tmp/diagnostic.log
+          fi
+          cat /tmp/diagnostic.log
+
+      - name: Commit diagnostic
+        if: always()
+        shell: bash
+        run: |
+          git reset --hard HEAD
+          cp /tmp/diagnostic.log .github/pdf-intake-apply-debug.log
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/pdf-intake-apply-debug.log
+          git commit -m "chore: record PDF intake apply failure"
+          git push origin HEAD:feature/pdf-intake
