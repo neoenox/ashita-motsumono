@@ -146,9 +146,11 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
         token,
         const IntakeProgress(stage: IntakeProgressStage.loadingPdf),
       );
+      final appState = context.read<AppState>();
+      final appSettings = context.read<AppSettings>();
       final intake = DocumentIntakeService(
-        appState: context.read<AppState>(),
-        appSettings: context.read<AppSettings>(),
+        appState: appState,
+        appSettings: appSettings,
       );
       final result = await intake.importPdf(
         sourcePath: file.path,
@@ -225,7 +227,7 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
   }) async {
     switch (result) {
       case IntakeSuccess():
-        await Navigator.of(context).pushReplacement(
+        await Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => _reviewScreenFor(
               drafts: result.drafts,
@@ -236,9 +238,11 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
       case IntakeDuplicate():
         await _showDuplicateDialog(duplicateLabel);
       case IntakeNoCandidates():
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('候補が見つかりませんでした')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('文字は読み取れましたがTodo候補が見つかりませんでした'),
+          ),
+        );
       case IntakeEmpty():
         ScaffoldMessenger.of(
           context,
