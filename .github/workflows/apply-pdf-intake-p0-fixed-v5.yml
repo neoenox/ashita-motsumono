@@ -1,3 +1,4 @@
+# Final rerun after diagnostic cleanup.
 name: Apply PDF intake P0 fixes (fixed v5)
 
 on:
