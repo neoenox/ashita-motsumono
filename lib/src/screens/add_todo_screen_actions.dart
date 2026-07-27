@@ -105,40 +105,25 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
   }
 
   Future<void> _pickImages() async {
-    _update(() => _busy = true);
+    final token = IntakeCancellationToken();
+    _update(() {
+      _busy = true;
+      _cancellationToken = token;
+    });
     try {
-      final service = _ocrPickService();
-      final picked = await service.pickGalleryImages();
-      if (picked.isEmpty || !mounted) return;
-
-      if (picked.length == 1) {
-        final result = await service.processPickedImage(picked.single);
-        if (!mounted) return;
-        await _handleOcrPickResult(result, showNoCandidates: true);
-        return;
-      }
-
-      final token = IntakeCancellationToken();
-      _beginIntake(
-        token,
-        IntakeProgress(
-          stage: IntakeProgressStage.recognizingImages,
-          current: 1,
-          total: picked.length,
-        ),
-      );
-      final intake = DocumentIntakeService(
-        appState: context.read<AppState>(),
-        appSettings: context.read<AppSettings>(),
-      );
-      final result = await intake.importImages(
-        sourcePaths: picked.map((file) => file.path).toList(growable: false),
-        sourceType: 'gallery',
+      final result = await _ocrPickService().pickMultipleImages(
         cancellationToken: token,
-        onProgress: _updateIntakeProgress,
+        onProgress: (progress) {
+          if (!mounted) return;
+          if (_intakeProgress == null) {
+            _beginIntake(token, progress);
+          } else {
+            _updateIntakeProgress(progress);
+          }
+        },
       );
-      if (!mounted || token.isCancelled) return;
-      await _handleIntakeResult(result, duplicateLabel: 'この画像は取り込み済みです');
+      if (result == null || !mounted || token.isCancelled) return;
+      await _handleOcrPickResult(result, showNoCandidates: true);
     } on OcrException catch (error) {
       if (kDebugMode) debugPrint('Image intake error: ${error.cause ?? error}');
       _showOcrError(error.message);
@@ -220,6 +205,17 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
             ),
           ),
         );
+      case OcrPickDuplicate():
+        await _showDuplicateDialog('この画像は取り込み済みです');
+      case OcrPickNoCandidates():
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('候補が見つかりませんでした')),
+        );
+      case OcrPickError():
+        if (result.message == DocumentIntakeService.cancelledMessage) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(result.message)));
     }
   }
 
@@ -238,27 +234,10 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
           ),
         );
       case IntakeDuplicate():
-        await showDialog<void>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('取り込み済み'),
-            content: Text(duplicateLabel),
-            actions: [
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
+        await _showDuplicateDialog(duplicateLabel);
       case IntakeNoCandidates():
-        await Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => NoCandidatesScreen(
-              documentId: result.document.id,
-              ocrText: result.ocrText,
-            ),
-          ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('候補が見つかりませんでした')),
         );
       case IntakeEmpty():
         ScaffoldMessenger.of(
@@ -270,6 +249,22 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
           context,
         ).showSnackBar(SnackBar(content: Text(result.message)));
     }
+  }
+
+  Future<void> _showDuplicateDialog(String message) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('取り込み済み'),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _pickAndOcrWithAi() async {
@@ -300,6 +295,10 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
                   _reviewScreenFor(drafts: drafts, documentId: document.id),
             ),
           );
+        case OcrPickDuplicate():
+        case OcrPickNoCandidates():
+        case OcrPickError():
+          _showOcrError('AI解析に失敗しました。画像を撮り直すか、テキスト貼り付けを使ってください。');
       }
     } on OcrException catch (error) {
       if (kDebugMode) debugPrint('Gemini error: ${error.cause ?? error}');
