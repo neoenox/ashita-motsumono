@@ -123,7 +123,7 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
         token,
         IntakeProgress(
           stage: IntakeProgressStage.recognizingImages,
-          current: 0,
+          current: 1,
           total: picked.length,
         ),
       );
@@ -336,6 +336,7 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
   void _cancelIntake() {
     final token = _cancellationToken;
     if (token == null || token.isCancelled) return;
+    if (_intakeProgress?.stage == IntakeProgressStage.saving) return;
     token.cancel();
     _update(() => _cancelRequested = true);
   }

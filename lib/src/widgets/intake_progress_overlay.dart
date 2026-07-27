@@ -18,6 +18,7 @@ class IntakeProgressOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isSaving = progress.stage == IntakeProgressStage.saving;
     final message = cancelling ? 'キャンセルしています...' : progress.message;
 
     return Material(
@@ -47,7 +48,7 @@ class IntakeProgressOverlay extends StatelessWidget {
                       ),
                       const SizedBox(height: Spacing.sm),
                       Text(
-                        '処理中はこの画面を閉じないでください。',
+                        isSaving ? '保存中はキャンセルできません。' : '処理中はこの画面を閉じないでください。',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: cs.onSurfaceVariant,
@@ -56,9 +57,15 @@ class IntakeProgressOverlay extends StatelessWidget {
                       ),
                       const SizedBox(height: Spacing.md),
                       OutlinedButton.icon(
-                        onPressed: cancelling ? null : onCancel,
+                        onPressed: cancelling || isSaving ? null : onCancel,
                         icon: const Icon(Icons.close),
-                        label: Text(cancelling ? 'キャンセル中' : 'キャンセル'),
+                        label: Text(
+                          cancelling
+                              ? 'キャンセル中'
+                              : isSaving
+                              ? '保存中'
+                              : 'キャンセル',
+                        ),
                       ),
                     ],
                   ),

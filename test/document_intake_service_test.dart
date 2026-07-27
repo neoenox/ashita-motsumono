@@ -270,6 +270,54 @@ void main() {
     expect(state.documents, isEmpty);
   });
 
+  test('rolls back when cancellation is requested before saving', () async {
+    final tempDir = await Directory.systemTemp.createTemp(
+      'document_intake_cancel_saving_',
+    );
+    final (state, settings) = await _createState();
+    addTearDown(() async {
+      await state.close();
+      state.dispose();
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    final source = File('${tempDir.path}/source.jpg')
+      ..writeAsBytesSync([1, 2, 3]);
+    final token = IntakeCancellationToken();
+    final service = DocumentIntakeService(
+      appState: state,
+      appSettings: settings,
+      ocrService: _QueueOcrService(['持ち物 水筒']),
+      temporaryDirectoryProvider: () async => tempDir,
+      documentsDirectoryProvider: () async => tempDir,
+    );
+
+    final result = await service.importImages(
+      sourcePaths: [source.path],
+      sourceType: 'gallery',
+      cancellationToken: token,
+      onProgress: (entry) {
+        if (entry.stage == IntakeProgressStage.saving) {
+          token.cancel();
+        }
+      },
+    );
+
+    expect(result, isA<IntakeError>());
+    expect(
+      (result as IntakeError).message,
+      DocumentIntakeService.cancelledMessage,
+    );
+    expect(state.documents, isEmpty);
+    final imagesDir = Directory('${tempDir.path}/document_images');
+    final remaining = await imagesDir.exists()
+        ? await imagesDir.list().toList()
+        : const <FileSystemEntity>[];
+    expect(remaining, isEmpty);
+  });
+
   test('removes copied images when database persistence fails', () async {
     final tempDir = await Directory.systemTemp.createTemp(
       'document_intake_rollback_',

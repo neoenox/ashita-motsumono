@@ -206,12 +206,14 @@ class DocumentIntakeService {
             total: 1,
           ),
         );
+        cancellationToken?.throwIfCancelled();
         final document = await _saveDocumentWithPages(
           sourceType: sourceType,
           sourceMimeType: 'application/pdf',
           sourceFingerprint: fileHash,
           ocrText: combinedText,
           pageResults: pageResults,
+          cancellationToken: cancellationToken,
         );
 
         if (drafts.isEmpty) {
@@ -288,11 +290,13 @@ class DocumentIntakeService {
             total: 1,
           ),
         );
+        cancellationToken?.throwIfCancelled();
         final document = await _saveDocumentWithPages(
           sourceType: sourceType,
           sourceMimeType: 'image/*',
           ocrText: combinedText,
           pageResults: pageResults,
+          cancellationToken: cancellationToken,
         );
 
         if (drafts.isEmpty) {
@@ -405,6 +409,7 @@ class DocumentIntakeService {
     required List<PageOcrResult> pageResults,
     String? sourceMimeType,
     String? sourceFingerprint,
+    IntakeCancellationToken? cancellationToken,
   }) async {
     if (pageResults.isEmpty) {
       throw StateError('保存対象のページがありません。');
@@ -417,7 +422,9 @@ class DocumentIntakeService {
     final persistedPaths = <String>[];
 
     try {
+      cancellationToken?.throwIfCancelled();
       for (final pageResult in pageResults) {
+        cancellationToken?.throwIfCancelled();
         final extension = _supportedExtension(pageResult.imageFile.path);
         final destPath = p.join(
           imagesDir.path,
@@ -449,7 +456,12 @@ class DocumentIntakeService {
         pages: pages,
       );
 
+      cancellationToken?.throwIfCancelled();
       await _appState.addDocumentRecord(document);
+      if (cancellationToken?.isCancelled ?? false) {
+        await _appState.deleteDocument(document.id);
+        throw const IntakeCancelledException();
+      }
       return document;
     } on Object catch (error, stackTrace) {
       for (final path in persistedPaths.reversed) {
