@@ -45,7 +45,10 @@ extension ReceiveShareHandlerRuntime on ReceiveShareHandler {
     if (files.isEmpty) return;
 
     final payloadKey = files
-        .map((file) => '${file.type.name}:${file.path}')
+        .map(
+          (file) =>
+              '${file.type.name}:${file.mimeType ?? ''}:${file.path}',
+        )
         .join('\u001f');
     final now = DateTime.now();
     final recentDuplicate =
@@ -85,30 +88,29 @@ extension ReceiveShareHandlerRuntime on ReceiveShareHandler {
   }
 
   Future<ReceiveShareResult?> process(List<SharedMediaFile> files) async {
-    SharedMediaFile? supportedFile;
-    String? mimeType;
-    var supportedIsPdf = false;
-
-    for (final file in files) {
-      if (file.path.trim().isEmpty) continue;
-      final isPdf = _isPdfPath(file.path);
-      if (file.type == SharedMediaType.image ||
-          file.type == SharedMediaType.text ||
-          isPdf) {
-        supportedFile = file;
-        supportedIsPdf = isPdf;
-        mimeType = isPdf
-            ? 'application/pdf'
-            : file.type == SharedMediaType.image
-            ? 'image/*'
-            : 'text/plain';
-        break;
-      }
-    }
-
-    if (supportedFile == null) {
+    final nonEmptyFiles = files
+        .where((file) => file.path.trim().isNotEmpty)
+        .toList(growable: false);
+    if (nonEmptyFiles.isEmpty) {
       return const ReceiveShareFailure(
         '対応している共有データは画像、PDF、テキストです。',
+        kind: ReceiveShareFailureKind.unsupportedFormat,
+      );
+    }
+
+    final imageFiles = nonEmptyFiles.where(_isImageFile).toList(growable: false);
+    final pdfFiles = nonEmptyFiles.where(_isPdfFile).toList(growable: false);
+    final textFiles = nonEmptyFiles.where(_isTextFile).toList(growable: false);
+
+    if (imageFiles.isNotEmpty && pdfFiles.isNotEmpty) {
+      return const ReceiveShareFailure(
+        '画像とPDFの同時共有は対応していません。',
+        kind: ReceiveShareFailureKind.unsupportedFormat,
+      );
+    }
+    if (pdfFiles.length > 1) {
+      return const ReceiveShareFailure(
+        'PDFは1ファイルずつ共有してください。',
         kind: ReceiveShareFailureKind.unsupportedFormat,
       );
     }
@@ -116,15 +118,12 @@ extension ReceiveShareHandlerRuntime on ReceiveShareHandler {
     _isProcessing = true;
     try {
       _evictExpiredFingerprints();
-      if (supportedIsPdf) return await _processPdf(supportedFile.path);
-      if (supportedFile.type == SharedMediaType.image) {
-        return await _processImage(supportedFile.path, mimeType: mimeType);
-      }
-      return await _processText(supportedFile.path);
-    } on OcrException catch (error) {
-      return ReceiveShareFailure(
-        error.message,
-        kind: ReceiveShareFailureKind.ocrEmpty,
+      if (imageFiles.isNotEmpty) return await _processImages(imageFiles);
+      if (pdfFiles.isNotEmpty) return await _processPdf(pdfFiles.single);
+      if (textFiles.isNotEmpty) return await _processText(textFiles.first.path);
+      return const ReceiveShareFailure(
+        '対応している共有データは画像、PDF、テキストです。',
+        kind: ReceiveShareFailureKind.unsupportedFormat,
       );
     } on StateError catch (error) {
       return ReceiveShareFailure(
