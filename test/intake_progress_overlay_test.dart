@@ -28,4 +28,31 @@ void main() {
     await tester.tap(find.text('キャンセル'));
     expect(cancelled, isTrue);
   });
+
+  testWidgets('disables cooperative cancellation while saving', (
+    tester,
+  ) async {
+    var cancelled = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: IntakeProgressOverlay(
+          progress: const IntakeProgress(
+            stage: IntakeProgressStage.saving,
+            current: 1,
+            total: 1,
+          ),
+          onCancel: () => cancelled = true,
+        ),
+      ),
+    );
+
+    expect(find.text('読み取り結果を保存中...'), findsOneWidget);
+    expect(find.text('保存中はキャンセルできません。'), findsOneWidget);
+    expect(find.text('保存中'), findsOneWidget);
+
+    final button = tester.widget<OutlinedButton>(find.byType(OutlinedButton));
+    expect(button.onPressed, isNull);
+    expect(cancelled, isFalse);
+  });
 }
