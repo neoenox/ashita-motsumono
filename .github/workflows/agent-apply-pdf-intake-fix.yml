@@ -1,9 +1,9 @@
 name: Apply PDF intake feedback fix
 
 on:
-  push:
+  pull_request:
     branches:
-      - feature/pdf-intake
+      - master
 
 permissions:
   contents: write
