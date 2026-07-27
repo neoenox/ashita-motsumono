@@ -98,9 +98,7 @@ extension ReceiveShareHandlerRuntime on ReceiveShareHandler {
     final imageFiles = nonEmptyFiles
         .where(_isImageFile)
         .toList(growable: false);
-    final pdfFiles = nonEmptyFiles
-        .where(_isPdfFile)
-        .toList(growable: false);
+    final pdfFiles = nonEmptyFiles.where(_isPdfFile).toList(growable: false);
 
     if (imageFiles.isNotEmpty && pdfFiles.isNotEmpty) {
       return const ReceiveShareFailure(
