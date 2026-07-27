@@ -25,12 +25,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Format changed Dart files
+      - name: Capture formatter changes
         run: |
-          dart format \
-            lib/src/screens/add_todo_screen_actions.dart \
-            lib/src/services/ocr_pick_service.dart \
-            test/ocr_pick_service_intake_result_test.dart
+          dart format .
+          git diff --name-only > formatted-files.txt
+          git diff --binary > format.patch
+          cat formatted-files.txt
 
       - name: Analyze
         run: |
@@ -46,9 +46,8 @@ jobs:
         with:
           name: agent-dart-diagnostics
           path: |
-            lib/src/screens/add_todo_screen_actions.dart
-            lib/src/services/ocr_pick_service.dart
-            test/ocr_pick_service_intake_result_test.dart
+            formatted-files.txt
+            format.patch
             analyze.log
             analyze.exit
           if-no-files-found: error
