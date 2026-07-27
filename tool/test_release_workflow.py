@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / '.github/workflows/ci.yml'
 RELEASE_CONFIG = ROOT / 'tool/configure_android_release.sh'
 CREATE_PLATFORMS = ROOT / 'tool/create_platforms.sh'
+PUBSPEC = ROOT / 'pubspec.yaml'
 
 
 class ReleaseWorkflowTest(unittest.TestCase):
@@ -18,6 +19,7 @@ class ReleaseWorkflowTest(unittest.TestCase):
         cls.workflow = WORKFLOW.read_text(encoding='utf-8')
         cls.release_config = RELEASE_CONFIG.read_text(encoding='utf-8')
         cls.create_platforms = CREATE_PLATFORMS.read_text(encoding='utf-8')
+        cls.pubspec = PUBSPEC.read_text(encoding='utf-8')
 
     def test_flutter_sdk_is_pinned(self) -> None:
         self.assertEqual(self.workflow.count("flutter-version: '3.44.0'"), 2)
@@ -122,6 +124,13 @@ class ReleaseWorkflowTest(unittest.TestCase):
             2,
         )
         self.assertIn('--iap-ai-product-id "$IAP_AI_ACCESS_PRODUCT_ID"', self.workflow)
+
+    def test_file_picker_stays_on_android_compatible_release(self) -> None:
+        self.assertIn(
+            'file_picker: 10.3.10',
+            self.pubspec,
+            'file_picker 11.0.x does not compile its Android Kotlin plugin',
+        )
 
     def test_platform_regeneration_preserves_locked_dependencies(self) -> None:
         backup = self.create_platforms.index(
