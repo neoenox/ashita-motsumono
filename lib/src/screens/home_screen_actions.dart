@@ -85,7 +85,10 @@ extension _HomeScreenActions on _HomeScreenState {
 
   Future<void> _showNotificationInfoIfNeeded() async {
     final prefs = await SharedPreferences.getInstance();
-    if (!mounted || (prefs.getBool(_notificationInfoShownKey) ?? false)) return;
+    if (!mounted ||
+        (prefs.getBool(_HomeScreenState._notificationInfoShownKey) ?? false)) {
+      return;
+    }
 
     final appState = context.read<AppState>();
     final messenger = ScaffoldMessenger.of(context);
@@ -121,7 +124,7 @@ extension _HomeScreenActions on _HomeScreenState {
 
     // "あとで" is a true deferral: do not persist the shown flag.
     if (!mounted || enableNotifications != true) return;
-    await prefs.setBool(_notificationInfoShownKey, true);
+    await prefs.setBool(_HomeScreenState._notificationInfoShownKey, true);
     if (!mounted) return;
 
     try {
