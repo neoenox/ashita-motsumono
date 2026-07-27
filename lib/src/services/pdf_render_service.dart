@@ -8,7 +8,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:uuid/uuid.dart';
 
@@ -22,10 +21,7 @@ class PdfImportException implements Exception {
 }
 
 class RenderedPdfPage {
-  const RenderedPdfPage({
-    required this.pageIndex,
-    required this.imageFile,
-  });
+  const RenderedPdfPage({required this.pageIndex, required this.imageFile});
 
   final int pageIndex;
   final File imageFile;
@@ -72,11 +68,16 @@ class PdfRenderService {
       );
     }
 
-    await _validatePdfHeader(pdfFile);
-    await stagingDirectory.create(recursive: true);
-    final stagingPath = stagingDirectory.path;
+    try {
+      await _validatePdfHeader(pdfFile);
+    } on PdfImportException {
+      rethrow;
+    } on Object catch (error) {
+      throw _pdfExceptionFor(error);
+    }
 
-    final document = await PdfDocument.openFile(pdfFile.path);
+    await stagingDirectory.create(recursive: true);
+    final document = await _openDocument(pdfFile);
     final renderedPages = <RenderedPdfPage>[];
 
     try {
@@ -84,39 +85,54 @@ class PdfRenderService {
         throw const PdfImportException('PDFにページがありません。');
       }
       if (document.pagesCount > _limits.maxPages) {
-        throw PdfImportException(
-          'PDFは${_limits.maxPages}ページ以下にしてください。',
-        );
+        throw PdfImportException('PDFは${_limits.maxPages}ページ以下にしてください。');
       }
 
-      for (var pageNumber = 1;
-          pageNumber <= document.pagesCount;
-          pageNumber++) {
-        final page = await document.getPage(pageNumber);
-
+      for (
+        var pageNumber = 1;
+        pageNumber <= document.pagesCount;
+        pageNumber++
+      ) {
+        final page = await _openPage(document, pageNumber);
         try {
           final rendered = await _renderPage(
             page,
             pageNumber,
-            stagingPath: stagingPath,
+            stagingPath: stagingDirectory.path,
           );
-
           if (rendered == null) {
-            throw PdfImportException(
-              '${pageNumber}ページ目を画像化できませんでした。',
-            );
+            throw PdfImportException('${pageNumber}ページ目を画像化できませんでした。');
           }
-
           renderedPages.add(rendered);
           onProgress?.call(pageNumber, document.pagesCount);
+        } on PdfImportException {
+          rethrow;
+        } on Object catch (error) {
+          throw _pdfExceptionFor(error, pageNumber: pageNumber);
         } finally {
-          await page.close();
+          await _closePageSafely(page);
         }
       }
 
       return renderedPages;
     } finally {
-      await document.close();
+      await _closeDocumentSafely(document);
+    }
+  }
+
+  Future<PdfDocument> _openDocument(File pdfFile) async {
+    try {
+      return await PdfDocument.openFile(pdfFile.path);
+    } on Object catch (error) {
+      throw _pdfExceptionFor(error);
+    }
+  }
+
+  Future<PdfPage> _openPage(PdfDocument document, int pageNumber) async {
+    try {
+      return await document.getPage(pageNumber);
+    } on Object catch (error) {
+      throw _pdfExceptionFor(error, pageNumber: pageNumber);
     }
   }
 
@@ -125,51 +141,55 @@ class PdfRenderService {
     int pageNumber, {
     required String stagingPath,
   }) async {
-    final longEdge = math.max(page.width, page.height);
-    final scale = _limits.maxLongEdge / longEdge;
-
-    final rendered = await page.render(
-      width: (page.width * scale).ceilToDouble(),
-      height: (page.height * scale).ceilToDouble(),
-      format: PdfPageImageFormat.jpeg,
-      backgroundColor: '#FFFFFF',
-      quality: _limits.jpegQuality,
-    );
-
-    if (rendered == null || rendered.bytes.isEmpty) {
-      if (scale > 0.9) {
-        final retryScale = _limits.retryLongEdge / longEdge;
-        if (retryScale < scale) {
-          final retry = await page.render(
-            width: (page.width * retryScale).ceilToDouble(),
-            height: (page.height * retryScale).ceilToDouble(),
-            format: PdfPageImageFormat.jpeg,
-            backgroundColor: '#FFFFFF',
-            quality: _limits.jpegQuality,
-          );
-          if (retry != null && retry.bytes.isNotEmpty) {
-            return _savePageImage(
-              retry.bytes,
-              pageNumber,
-              stagingDirectoryPath: stagingPath,
-            );
-          }
-        }
-      }
-      return null;
+    final width = page.width;
+    final height = page.height;
+    if (!width.isFinite || !height.isFinite || width <= 0 || height <= 0) {
+      throw PdfImportException('${pageNumber}ページ目のサイズ情報が不正です。');
     }
 
-    return _savePageImage(
-      rendered.bytes,
-      pageNumber,
-      stagingDirectoryPath: stagingPath,
-    );
+    final first = await _renderAtLongEdge(page, _limits.maxLongEdge);
+    if (first != null && first.isNotEmpty) {
+      return _savePageImage(
+        first,
+        pageNumber,
+        stagingDirectoryPath: stagingPath,
+      );
+    }
+
+    final retry = await _renderAtLongEdge(page, _limits.retryLongEdge);
+    if (retry == null || retry.isEmpty) return null;
+    return _savePageImage(retry, pageNumber, stagingDirectoryPath: stagingPath);
+  }
+
+  Future<Uint8List?> _renderAtLongEdge(
+    PdfPage page,
+    double targetLongEdge,
+  ) async {
+    if (!targetLongEdge.isFinite || targetLongEdge <= 0) return null;
+    final longEdge = math.max(page.width, page.height);
+    if (!longEdge.isFinite || longEdge <= 0) return null;
+    final scale = targetLongEdge / longEdge;
+    final renderWidth = math.max(1, (page.width * scale).ceil()).toDouble();
+    final renderHeight = math.max(1, (page.height * scale).ceil()).toDouble();
+
+    try {
+      final rendered = await page.render(
+        width: renderWidth,
+        height: renderHeight,
+        format: PdfPageImageFormat.jpeg,
+        backgroundColor: '#FFFFFF',
+        quality: _limits.jpegQuality,
+      );
+      return rendered?.bytes;
+    } on Object {
+      return null;
+    }
   }
 
   Future<RenderedPdfPage> _savePageImage(
     Uint8List bytes,
-    int pageNumber,
-    {required String stagingDirectoryPath,
+    int pageNumber, {
+    required String stagingDirectoryPath,
   }) async {
     final output = File(
       p.join(
@@ -185,20 +205,59 @@ class PdfRenderService {
     final handle = await file.open();
     try {
       final header = await handle.read(5);
-      final valid = header.length == 5 &&
+      final valid =
+          header.length == 5 &&
           header[0] == 0x25 &&
           header[1] == 0x50 &&
           header[2] == 0x44 &&
           header[3] == 0x46 &&
           header[4] == 0x2D;
-
       if (!valid) {
-        throw const PdfImportException(
-          '選択されたファイルは有効なPDFではありません。',
-        );
+        throw const PdfImportException('選択されたファイルは有効なPDFではありません。');
       }
     } finally {
       await handle.close();
+    }
+  }
+
+  PdfImportException _pdfExceptionFor(Object error, {int? pageNumber}) {
+    if (error is PdfImportException) return error;
+    final raw = error.toString().toLowerCase();
+    if (raw.contains('password') ||
+        raw.contains('encrypted') ||
+        raw.contains('encryption') ||
+        raw.contains('security handler')) {
+      return const PdfImportException(
+        '暗号化されたPDFには対応していません。暗号化を解除してから選択してください。',
+      );
+    }
+    if (pageNumber != null) {
+      return PdfImportException(
+        '${pageNumber}ページ目を読み込めませんでした。PDFが破損していないか確認してください。',
+      );
+    }
+    return const PdfImportException('PDFを開けませんでした。ファイルが破損していないか確認してください。');
+  }
+
+  Future<void> _closePageSafely(PdfPage page) async {
+    try {
+      await page.close();
+    } on Object catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('PdfRenderService: page close failed: $error\n$stackTrace');
+      }
+    }
+  }
+
+  Future<void> _closeDocumentSafely(PdfDocument document) async {
+    try {
+      await document.close();
+    } on Object catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint(
+          'PdfRenderService: document close failed: $error\n$stackTrace',
+        );
+      }
     }
   }
 

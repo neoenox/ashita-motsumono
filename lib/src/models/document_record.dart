@@ -66,7 +66,7 @@ class DocumentRecord {
     'sourceFingerprint': sourceFingerprint,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
-    'pages': pages.map((p) => p.toJson()!).toList(),
+    'pages': pages.map((p) => p.toJson()).toList(),
   };
 
   factory DocumentRecord.fromJson(Map<String, dynamic> json) {

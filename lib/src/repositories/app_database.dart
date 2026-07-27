@@ -88,7 +88,9 @@ class DbDocumentPage extends Table {
   ];
 }
 
-@DriftDatabase(tables: [DbChild, DbTodo, DbChecklistItem, DbDocument, DbDocumentPage])
+@DriftDatabase(
+  tables: [DbChild, DbTodo, DbChecklistItem, DbDocument, DbDocumentPage],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e, {this.databaseFile});
 
@@ -98,13 +100,14 @@ class AppDatabase extends _$AppDatabase {
   static const _databaseSuffixes = ['', '-wal', '-shm', '-journal'];
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
       await _createAuxiliarySchema();
+      await _migrateToV4();
     },
     onUpgrade: (m, from, to) async {
       if (from < 2) {
@@ -113,6 +116,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) {
         await _migrateToV3(m);
+      }
+      if (from < 4) {
+        await _migrateToV4();
       }
     },
     beforeOpen: (details) async {
@@ -268,7 +274,9 @@ class AppDatabase extends _$AppDatabase {
     final todoRows = await select(dbTodo).get();
     final itemRows = await select(dbChecklistItem).get();
     final docRows = await select(dbDocument).get();
-    final pageRows = await select(dbDocumentPage).get();
+    final pageRows = await (select(
+      dbDocumentPage,
+    )..orderBy([(row) => OrderingTerm.asc(row.pageIndex)])).get();
 
     final itemsByTodo = <String, List<DbChecklistItemData>>{};
     for (final item in itemRows) {
@@ -699,6 +707,19 @@ class AppDatabase extends _$AppDatabase {
       SELECT id || '-page-0', id, 0, local_image_path, COALESCE(ocr_text, '')
       FROM db_document
       WHERE local_image_path IS NOT NULL AND local_image_path != ''
+    ''');
+  }
+
+  Future<void> _migrateToV4() async {
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_db_document_source_fingerprint
+      ON db_document(source_fingerprint)
+      WHERE source_fingerprint IS NOT NULL
+    ''');
+    await customStatement('''
+      CREATE UNIQUE INDEX IF NOT EXISTS
+      idx_db_document_page_document_page_index
+      ON db_document_page(document_id, page_index)
     ''');
   }
 

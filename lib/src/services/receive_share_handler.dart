@@ -14,6 +14,7 @@ import '../app_state.dart';
 import '../models/entities.dart';
 import '../utils/text_fingerprint.dart';
 import 'app_settings.dart';
+import 'document_intake_service.dart';
 import 'extraction_service.dart';
 import 'image_file_service.dart';
 import 'ocr_service.dart';
@@ -28,6 +29,7 @@ enum ReceiveShareFailureKind {
   unsupportedFormat,
   textEmpty,
   saveFailed,
+  pdfImportFailed,
   disposed,
   unexpected,
 }
@@ -69,15 +71,20 @@ class ReceiveShareHandler {
     required AppSettings appSettings,
     ImageFileService? imageFileService,
     OcrService? ocrService,
+    DocumentIntakeService? documentIntakeService,
   }) : _appState = appState,
        _appSettings = appSettings,
        _imageFileService = imageFileService ?? ImageFileService(),
-       _ocrService = ocrService ?? OcrService();
+       _ocrService = ocrService ?? OcrService(),
+       _documentIntakeService =
+           documentIntakeService ??
+           DocumentIntakeService(appState: appState, appSettings: appSettings);
 
   final AppState _appState;
   final AppSettings _appSettings;
   final ImageFileService _imageFileService;
   final OcrService _ocrService;
+  final DocumentIntakeService _documentIntakeService;
 
   StreamSubscription<List<SharedMediaFile>>? _subscription;
   Future<void> _queue = Future<void>.value();
@@ -190,14 +197,20 @@ class ReceiveShareHandler {
   Future<ReceiveShareResult?> process(List<SharedMediaFile> files) async {
     SharedMediaFile? supportedFile;
     String? mimeType;
+    var supportedIsPdf = false;
 
     for (final file in files) {
       if (file.path.trim().isEmpty) continue;
+      final isPdf = _isPdfPath(file.path);
 
       if (file.type == SharedMediaType.image ||
-          file.type == SharedMediaType.text) {
+          file.type == SharedMediaType.text ||
+          isPdf) {
         supportedFile = file;
-        mimeType = file.type == SharedMediaType.image
+        supportedIsPdf = isPdf;
+        mimeType = isPdf
+            ? 'application/pdf'
+            : file.type == SharedMediaType.image
             ? 'image/*'
             : 'text/plain';
         break;
@@ -206,7 +219,7 @@ class ReceiveShareHandler {
 
     if (supportedFile == null) {
       return const ReceiveShareFailure(
-        '対応している共有データは画像またはテキストです。',
+        '対応している共有データは画像、PDF、テキストです。',
         kind: ReceiveShareFailureKind.unsupportedFormat,
       );
     }
@@ -216,6 +229,9 @@ class ReceiveShareHandler {
     try {
       _evictExpiredFingerprints();
 
+      if (supportedIsPdf) {
+        return await _processPdf(supportedFile.path);
+      }
       if (supportedFile.type == SharedMediaType.image) {
         return await _processImage(supportedFile.path, mimeType: mimeType);
       }
@@ -245,6 +261,47 @@ class ReceiveShareHandler {
       );
     } finally {
       _isProcessing = false;
+    }
+  }
+
+  bool _isPdfPath(String path) => path.toLowerCase().endsWith('.pdf');
+
+  Future<ReceiveShareResult> _processPdf(String sourcePath) async {
+    final intake = await _documentIntakeService.importPdf(
+      sourcePath: sourcePath,
+      sourceType: 'shared_pdf',
+    );
+
+    switch (intake) {
+      case IntakeSuccess():
+        return ReceiveShareSuccess(
+          drafts: intake.drafts,
+          documentId: intake.document.id,
+        );
+      case IntakeDuplicate():
+        return const ReceiveShareFailure(
+          'このPDFは既に取り込み済みです。',
+          kind: ReceiveShareFailureKind.duplicate,
+        );
+      case IntakeNoCandidates():
+        await _appState.deleteDocument(intake.document.id);
+        final hasText = intake.ocrText.trim().isNotEmpty;
+        return ReceiveShareFailure(
+          hasText ? 'PDFからTodo情報を抽出できませんでした。' : 'PDFから文字が見つかりませんでした。',
+          kind: hasText
+              ? ReceiveShareFailureKind.extractionEmpty
+              : ReceiveShareFailureKind.ocrEmpty,
+        );
+      case IntakeEmpty():
+        return const ReceiveShareFailure(
+          'PDFから文字が見つかりませんでした。',
+          kind: ReceiveShareFailureKind.ocrEmpty,
+        );
+      case IntakeError():
+        return ReceiveShareFailure(
+          intake.message,
+          kind: ReceiveShareFailureKind.pdfImportFailed,
+        );
     }
   }
 

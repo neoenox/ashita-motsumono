@@ -22,8 +22,8 @@ void main() {
     await db.close();
   });
 
-  test('schema version is 3', () {
-    expect(db.schemaVersion, 3);
+  test('schema version is 4', () {
+    expect(db.schemaVersion, 4);
   });
 
   test('saves and loads a child', () async {
@@ -77,6 +77,78 @@ void main() {
     final loaded = await db.loadSnapshot();
     expect(loaded.documents.length, 1);
     expect(loaded.documents.first.ocrText, '7月10日まで');
+  });
+
+  test('orders document pages and enforces v4 indexes', () async {
+    final now = DateTime(2026, 1, 1);
+    final document = DocumentRecord(
+      id: 'doc-pages',
+      sourceType: 'pdf',
+      sourceFingerprint: 'fingerprint-1',
+      createdAt: now,
+      updatedAt: now,
+      pages: const [
+        DocumentPageRecord(
+          id: 'page-2',
+          documentId: 'doc-pages',
+          pageIndex: 2,
+          localImagePath: '/tmp/page-2.jpg',
+          ocrText: '',
+        ),
+        DocumentPageRecord(
+          id: 'page-0',
+          documentId: 'doc-pages',
+          pageIndex: 0,
+          localImagePath: '/tmp/page-0.jpg',
+          ocrText: '先頭',
+        ),
+        DocumentPageRecord(
+          id: 'page-1',
+          documentId: 'doc-pages',
+          pageIndex: 1,
+          localImagePath: '/tmp/page-1.jpg',
+          ocrText: '',
+        ),
+      ],
+    );
+    await db.saveSnapshot(
+      AppSnapshot(children: [], todos: [], documents: [document]),
+    );
+
+    final loaded = await db.loadSnapshot();
+    expect(loaded.documents.single.pages.map((page) => page.pageIndex), [
+      0,
+      1,
+      2,
+    ]);
+
+    await expectLater(
+      db
+          .into(db.dbDocumentPage)
+          .insert(
+            DbDocumentPageCompanion.insert(
+              id: 'duplicate-page-index',
+              documentId: 'doc-pages',
+              pageIndex: 0,
+              localImagePath: '/tmp/duplicate.jpg',
+              ocrText: '',
+            ),
+          ),
+      throwsA(anything),
+    );
+
+    final indexes = await db
+        .customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'index' "
+          "AND name IN ('idx_db_document_source_fingerprint', "
+          "'idx_db_document_page_document_page_index')",
+        )
+        .map((row) => row.read<String>('name'))
+        .get();
+    expect(indexes.toSet(), {
+      'idx_db_document_source_fingerprint',
+      'idx_db_document_page_document_page_index',
+    });
   });
 
   test('clearAll removes all data', () async {

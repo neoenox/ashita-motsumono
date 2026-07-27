@@ -1,8 +1,9 @@
 // test/database_schema_migration_test.dart
-// schema v1相当のDBをv2へ更新し、参照修復と補助スキーマ作成を検証する。
+// 旧DBをschema v4へ更新し、参照修復・ページ制約・索引を検証する。
 
 import 'dart:io';
 
+import 'package:ashita_motsumono/src/models/entities.dart';
 import 'package:ashita_motsumono/src/repositories/app_database.dart';
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
@@ -26,7 +27,6 @@ void main() {
     });
 
     final legacy = AppDatabase(NativeDatabase(file), databaseFile: file);
-    // 現行スキーマで物理テーブルを作った後、v2追加物を除去してv1状態を再現する。
     await legacy.customSelect('SELECT 1').get();
     for (final trigger in const [
       'validate_todo_child_insert',
@@ -49,7 +49,6 @@ void main() {
     ]) {
       await legacy.customStatement('DROP TABLE IF EXISTS $table');
     }
-    // v3 で追加されたカラムがない v2 相当の DbDocument を再作成する
     await legacy.customStatement('DROP TABLE IF EXISTS db_document');
     await legacy.customStatement('''
       CREATE TABLE db_document (
@@ -124,5 +123,99 @@ void main() {
         .map((row) => row.read<String>('name'))
         .get();
     expect(validationTriggers, hasLength(6));
+
+    final indexes = await upgraded
+        .customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'index' "
+          "AND name IN ('idx_db_document_source_fingerprint', "
+          "'idx_db_document_page_document_page_index')",
+        )
+        .map((row) => row.read<String>('name'))
+        .get();
+    expect(indexes.toSet(), {
+      'idx_db_document_source_fingerprint',
+      'idx_db_document_page_document_page_index',
+    });
+  });
+
+  test('upgrades v3 data to v4 without losing document pages', () async {
+    final tempDir = await Directory.systemTemp.createTemp(
+      'ashita_schema_v4_migration_',
+    );
+    final file = File('${tempDir.path}${Platform.pathSeparator}migration.db');
+    AppDatabase? databaseToClose;
+
+    addTearDown(() async {
+      await databaseToClose?.close();
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    final v3 = AppDatabase(NativeDatabase(file), databaseFile: file);
+    final now = DateTime(2026, 7, 27);
+    await v3.saveSnapshot(
+      AppSnapshot(
+        children: [],
+        todos: [],
+        documents: [
+          DocumentRecord(
+            id: 'v3-document',
+            sourceType: 'pdf',
+            sourceFingerprint: 'v3-fingerprint',
+            createdAt: now,
+            updatedAt: now,
+            pages: const [
+              DocumentPageRecord(
+                id: 'v3-page-1',
+                documentId: 'v3-document',
+                pageIndex: 1,
+                localImagePath: '/tmp/v3-page-1.jpg',
+                ocrText: '',
+              ),
+              DocumentPageRecord(
+                id: 'v3-page-0',
+                documentId: 'v3-document',
+                pageIndex: 0,
+                localImagePath: '/tmp/v3-page-0.jpg',
+                ocrText: '本文',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    await v3.customStatement(
+      'DROP INDEX IF EXISTS idx_db_document_source_fingerprint',
+    );
+    await v3.customStatement(
+      'DROP INDEX IF EXISTS '
+      'idx_db_document_page_document_page_index',
+    );
+    await v3.customStatement('PRAGMA user_version = 3');
+    await v3.close();
+
+    final upgraded = AppDatabase(NativeDatabase(file), databaseFile: file);
+    databaseToClose = upgraded;
+    final snapshot = await upgraded.loadSnapshot();
+
+    expect(snapshot.documents, hasLength(1));
+    final document = snapshot.documents.single;
+    expect(document.sourceFingerprint, 'v3-fingerprint');
+    expect(document.pages.map((page) => page.pageIndex), [0, 1]);
+    expect(document.pages.first.ocrText, '本文');
+
+    final indexes = await upgraded
+        .customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'index' "
+          "AND name IN ('idx_db_document_source_fingerprint', "
+          "'idx_db_document_page_document_page_index')",
+        )
+        .map((row) => row.read<String>('name'))
+        .get();
+    expect(indexes.toSet(), {
+      'idx_db_document_source_fingerprint',
+      'idx_db_document_page_document_page_index',
+    });
   });
 }

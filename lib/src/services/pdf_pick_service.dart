@@ -22,7 +22,7 @@ class PdfPickService {
     }
 
     final path = result.xFiles.single.path;
-    if (path == null || path.isEmpty) return null;
+    if (path.isEmpty) return null;
 
     return File(path);
   }
