@@ -1,0 +1,129 @@
+name: Apply PDF intake P0 fixes (fixed v2)
+
+on:
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fixes:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/pdf-intake
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+
+      - name: Extract and repair implementation script
+        shell: bash
+        run: |
+          ruby -ryaml -e 'print YAML.load_file(".github/workflows/apply-pdf-intake-p0.yml").dig("jobs", "apply-fixes", "steps")[2]["run"]' > /tmp/apply-pdf-intake.sh
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('/tmp/apply-pdf-intake.sh')
+          text = path.read_text()
+          start_marker = (
+              "replace_once(\n"
+              "    'lib/src/repositories/app_database.dart',\n"
+              "    '''  Future<void> _migrateToV3"
+          )
+          end_marker = (
+              "\n)\n\nreplace_once(\n"
+              "    'lib/src/services/receive_share_handler.dart'"
+          )
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
+          block = text[start:end]
+          block = block.replace(
+              "    '''  Future<void> _migrateToV3",
+              '    """  Future<void> _migrateToV3',
+              1,
+          )
+          block = block.replace(
+              "\n    ''',\n    '''  Future<void> _migrateToV3",
+              '\n    """,\n    """  Future<void> _migrateToV3',
+              1,
+          )
+          prefix, suffix = block.rsplit("\n    ''',\n", 1)
+          block = prefix + '\n    """,\n' + suffix
+          text = text[:start] + block + text[end:]
+
+          schema_start_marker = (
+              "Path('test/database_schema_migration_test.dart')"
+              ".write_text(r'''"
+          )
+          schema_start = text.index(schema_start_marker)
+          text = text.replace(
+              schema_start_marker,
+              "Path('test/database_schema_migration_test.dart')"
+              '.write_text(r"""',
+              1,
+          )
+          schema_close_marker = "'''.replace('\\n          ', '\\n').lstrip())"
+          schema_close = text.index(schema_close_marker, schema_start)
+          text = (
+              text[:schema_close]
+              + '""".replace(\'\\n          \', \'\\n\').lstrip())'
+              + text[schema_close + len(schema_close_marker):]
+          )
+          path.write_text(text)
+          PY
+          bash /tmp/apply-pdf-intake.sh
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Format changed Dart files
+        run: |
+          dart format \
+            lib/src/services/document_intake_service.dart \
+            lib/src/services/pdf_render_service.dart \
+            lib/src/services/image_file_service.dart \
+            lib/src/services/receive_share_handler.dart \
+            lib/src/repositories/app_database.dart \
+            test/app_database_test.dart \
+            test/database_schema_migration_test.dart \
+            test/document_intake_service_test.dart
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run targeted tests
+        run: |
+          flutter test test/document_intake_service_test.dart
+          flutter test test/app_database_test.dart
+          flutter test test/database_schema_migration_test.dart
+
+      - name: Run full test suite
+        run: flutter test
+
+      - name: Commit and push fixes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm --ignore-unmatch \
+            .github/workflows/apply-pdf-intake-p0.yml \
+            .github/workflows/apply-pdf-intake-p0-pr.yml \
+            .github/workflows/debug-pdf-intake-apply.yml \
+            .github/workflows/apply-pdf-intake-p0-fixed.yml \
+            .github/workflows/debug-pdf-intake-fixed.yml \
+            .github/workflows/apply-pdf-intake-p0-fixed-v2.yml \
+            .github/pdf-intake-apply-debug.log \
+            .github/pdf-intake-fixed-debug.log
+          git add -A
+          git diff --cached --stat
+          git commit -m "fix: harden PDF intake persistence"
+          git push origin HEAD:feature/pdf-intake
