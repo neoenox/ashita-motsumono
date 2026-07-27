@@ -65,11 +65,11 @@ void main() {
     expect(checklist, isNot(contains('独自サーバーへ子ども名、Todo、OCR全文、画像を送信しない')));
   });
 
-  test('todo document points release work to the Play Console checklist', () {
+  test('todo document describes v0.7.0 roadmap', () {
     final todo = File('docs/TODO.md').readAsStringSync();
 
-    expect(todo, contains('docs/PLAY_CONSOLE_SUBMISSION.md'));
+    expect(todo, contains('v0.7.0'));
+    expect(todo, contains('PDF取り込み'));
     expect(todo, isNot(contains('v0.2.4')));
-    expect(todo, isNot(contains('0.2.0+1')));
   });
 }

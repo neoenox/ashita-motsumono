@@ -19,14 +19,9 @@ class ImageFileService {
     if (sourceLength > maxImageBytes) {
       throw StateError('画像サイズが5MBを超えています。');
     }
-    final dir = await getApplicationDocumentsDirectory();
-    final imageDir = Directory(p.join(dir.path, 'document_images'));
-    if (!await imageDir.exists()) await imageDir.create(recursive: true);
+    final imageDir = await _documentImagesDirectory();
     final rawExtension = p.extension(source.path).toLowerCase();
-    final extension = switch (rawExtension) {
-      '.png' || '.jpg' || '.jpeg' || '.webp' => rawExtension,
-      _ => '.jpg',
-    };
+    final extension = _normalizedExtension(rawExtension);
     final dest = File(p.join(imageDir.path, '${_uuid.v4()}$extension'));
     final bytes = await source.readAsBytes();
     if (bytes.isEmpty) throw StateError('画像ファイルが空です。');
@@ -35,6 +30,40 @@ class ImageFileService {
     }
     await dest.writeAsBytes(bytes, flush: true);
     return dest;
+  }
+
+  Future<File> copyFromPath(
+    String sourcePath, {
+    Directory? destinationDirectory,
+  }) async {
+    final source = File(sourcePath);
+    final sourceLength = await source.length();
+    if (sourceLength <= 0) throw StateError('画像ファイルが空です。');
+    if (sourceLength > maxImageBytes) {
+      throw StateError('画像サイズが5MBを超えています。');
+    }
+    final imageDir = destinationDirectory ?? await _documentImagesDirectory();
+    await imageDir.create(recursive: true);
+    final extension = _normalizedExtension(
+      p.extension(sourcePath).toLowerCase(),
+    );
+    final dest = File(p.join(imageDir.path, '${_uuid.v4()}$extension'));
+    await source.copy(dest.path);
+    return dest;
+  }
+
+  Future<Directory> _documentImagesDirectory() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final imageDir = Directory(p.join(dir.path, 'document_images'));
+    await imageDir.create(recursive: true);
+    return imageDir;
+  }
+
+  String _normalizedExtension(String rawExtension) {
+    return switch (rawExtension) {
+      '.png' || '.jpg' || '.jpeg' || '.webp' => rawExtension,
+      _ => '.jpg',
+    };
   }
 
   static Future<void> deleteIfExistsStrict(String path) async {

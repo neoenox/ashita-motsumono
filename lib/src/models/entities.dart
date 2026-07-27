@@ -7,6 +7,7 @@ export 'person_profile.dart';
 export 'enums.dart';
 export 'checklist_item.dart';
 export 'app_todo.dart';
+export 'document_page_record.dart';
 export 'document_record.dart';
 export 'extraction_draft.dart';
 export 'app_snapshot.dart';

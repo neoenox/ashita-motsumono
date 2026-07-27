@@ -1488,6 +1488,29 @@ class $DbDocumentTable extends DbDocument
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sourceMimeTypeMeta = const VerificationMeta(
+    'sourceMimeType',
+  );
+  @override
+  late final GeneratedColumn<String> sourceMimeType = GeneratedColumn<String>(
+    'source_mime_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceFingerprintMeta = const VerificationMeta(
+    'sourceFingerprint',
+  );
+  @override
+  late final GeneratedColumn<String> sourceFingerprint =
+      GeneratedColumn<String>(
+        'source_fingerprint',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1516,6 +1539,8 @@ class $DbDocumentTable extends DbDocument
     sourceType,
     localImagePath,
     ocrText,
+    sourceMimeType,
+    sourceFingerprint,
     createdAt,
     updatedAt,
   ];
@@ -1559,6 +1584,24 @@ class $DbDocumentTable extends DbDocument
         ocrText.isAcceptableOrUnknown(data['ocr_text']!, _ocrTextMeta),
       );
     }
+    if (data.containsKey('source_mime_type')) {
+      context.handle(
+        _sourceMimeTypeMeta,
+        sourceMimeType.isAcceptableOrUnknown(
+          data['source_mime_type']!,
+          _sourceMimeTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_fingerprint')) {
+      context.handle(
+        _sourceFingerprintMeta,
+        sourceFingerprint.isAcceptableOrUnknown(
+          data['source_fingerprint']!,
+          _sourceFingerprintMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1600,6 +1643,14 @@ class $DbDocumentTable extends DbDocument
         DriftSqlType.string,
         data['${effectivePrefix}ocr_text'],
       ),
+      sourceMimeType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_mime_type'],
+      ),
+      sourceFingerprint: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_fingerprint'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1622,6 +1673,8 @@ class DbDocumentData extends DataClass implements Insertable<DbDocumentData> {
   final String sourceType;
   final String? localImagePath;
   final String? ocrText;
+  final String? sourceMimeType;
+  final String? sourceFingerprint;
   final DateTime createdAt;
   final DateTime updatedAt;
   const DbDocumentData({
@@ -1629,6 +1682,8 @@ class DbDocumentData extends DataClass implements Insertable<DbDocumentData> {
     required this.sourceType,
     this.localImagePath,
     this.ocrText,
+    this.sourceMimeType,
+    this.sourceFingerprint,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1642,6 +1697,12 @@ class DbDocumentData extends DataClass implements Insertable<DbDocumentData> {
     }
     if (!nullToAbsent || ocrText != null) {
       map['ocr_text'] = Variable<String>(ocrText);
+    }
+    if (!nullToAbsent || sourceMimeType != null) {
+      map['source_mime_type'] = Variable<String>(sourceMimeType);
+    }
+    if (!nullToAbsent || sourceFingerprint != null) {
+      map['source_fingerprint'] = Variable<String>(sourceFingerprint);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -1658,6 +1719,12 @@ class DbDocumentData extends DataClass implements Insertable<DbDocumentData> {
       ocrText: ocrText == null && nullToAbsent
           ? const Value.absent()
           : Value(ocrText),
+      sourceMimeType: sourceMimeType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceMimeType),
+      sourceFingerprint: sourceFingerprint == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceFingerprint),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1673,6 +1740,10 @@ class DbDocumentData extends DataClass implements Insertable<DbDocumentData> {
       sourceType: serializer.fromJson<String>(json['sourceType']),
       localImagePath: serializer.fromJson<String?>(json['localImagePath']),
       ocrText: serializer.fromJson<String?>(json['ocrText']),
+      sourceMimeType: serializer.fromJson<String?>(json['sourceMimeType']),
+      sourceFingerprint: serializer.fromJson<String?>(
+        json['sourceFingerprint'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1685,6 +1756,8 @@ class DbDocumentData extends DataClass implements Insertable<DbDocumentData> {
       'sourceType': serializer.toJson<String>(sourceType),
       'localImagePath': serializer.toJson<String?>(localImagePath),
       'ocrText': serializer.toJson<String?>(ocrText),
+      'sourceMimeType': serializer.toJson<String?>(sourceMimeType),
+      'sourceFingerprint': serializer.toJson<String?>(sourceFingerprint),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1695,6 +1768,8 @@ class DbDocumentData extends DataClass implements Insertable<DbDocumentData> {
     String? sourceType,
     Value<String?> localImagePath = const Value.absent(),
     Value<String?> ocrText = const Value.absent(),
+    Value<String?> sourceMimeType = const Value.absent(),
+    Value<String?> sourceFingerprint = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => DbDocumentData(
@@ -1704,6 +1779,12 @@ class DbDocumentData extends DataClass implements Insertable<DbDocumentData> {
         ? localImagePath.value
         : this.localImagePath,
     ocrText: ocrText.present ? ocrText.value : this.ocrText,
+    sourceMimeType: sourceMimeType.present
+        ? sourceMimeType.value
+        : this.sourceMimeType,
+    sourceFingerprint: sourceFingerprint.present
+        ? sourceFingerprint.value
+        : this.sourceFingerprint,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1717,6 +1798,12 @@ class DbDocumentData extends DataClass implements Insertable<DbDocumentData> {
           ? data.localImagePath.value
           : this.localImagePath,
       ocrText: data.ocrText.present ? data.ocrText.value : this.ocrText,
+      sourceMimeType: data.sourceMimeType.present
+          ? data.sourceMimeType.value
+          : this.sourceMimeType,
+      sourceFingerprint: data.sourceFingerprint.present
+          ? data.sourceFingerprint.value
+          : this.sourceFingerprint,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1729,6 +1816,8 @@ class DbDocumentData extends DataClass implements Insertable<DbDocumentData> {
           ..write('sourceType: $sourceType, ')
           ..write('localImagePath: $localImagePath, ')
           ..write('ocrText: $ocrText, ')
+          ..write('sourceMimeType: $sourceMimeType, ')
+          ..write('sourceFingerprint: $sourceFingerprint, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1741,6 +1830,8 @@ class DbDocumentData extends DataClass implements Insertable<DbDocumentData> {
     sourceType,
     localImagePath,
     ocrText,
+    sourceMimeType,
+    sourceFingerprint,
     createdAt,
     updatedAt,
   );
@@ -1752,6 +1843,8 @@ class DbDocumentData extends DataClass implements Insertable<DbDocumentData> {
           other.sourceType == this.sourceType &&
           other.localImagePath == this.localImagePath &&
           other.ocrText == this.ocrText &&
+          other.sourceMimeType == this.sourceMimeType &&
+          other.sourceFingerprint == this.sourceFingerprint &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1761,6 +1854,8 @@ class DbDocumentCompanion extends UpdateCompanion<DbDocumentData> {
   final Value<String> sourceType;
   final Value<String?> localImagePath;
   final Value<String?> ocrText;
+  final Value<String?> sourceMimeType;
+  final Value<String?> sourceFingerprint;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1769,6 +1864,8 @@ class DbDocumentCompanion extends UpdateCompanion<DbDocumentData> {
     this.sourceType = const Value.absent(),
     this.localImagePath = const Value.absent(),
     this.ocrText = const Value.absent(),
+    this.sourceMimeType = const Value.absent(),
+    this.sourceFingerprint = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1778,6 +1875,8 @@ class DbDocumentCompanion extends UpdateCompanion<DbDocumentData> {
     required String sourceType,
     this.localImagePath = const Value.absent(),
     this.ocrText = const Value.absent(),
+    this.sourceMimeType = const Value.absent(),
+    this.sourceFingerprint = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -1790,6 +1889,8 @@ class DbDocumentCompanion extends UpdateCompanion<DbDocumentData> {
     Expression<String>? sourceType,
     Expression<String>? localImagePath,
     Expression<String>? ocrText,
+    Expression<String>? sourceMimeType,
+    Expression<String>? sourceFingerprint,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1799,6 +1900,8 @@ class DbDocumentCompanion extends UpdateCompanion<DbDocumentData> {
       if (sourceType != null) 'source_type': sourceType,
       if (localImagePath != null) 'local_image_path': localImagePath,
       if (ocrText != null) 'ocr_text': ocrText,
+      if (sourceMimeType != null) 'source_mime_type': sourceMimeType,
+      if (sourceFingerprint != null) 'source_fingerprint': sourceFingerprint,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1810,6 +1913,8 @@ class DbDocumentCompanion extends UpdateCompanion<DbDocumentData> {
     Value<String>? sourceType,
     Value<String?>? localImagePath,
     Value<String?>? ocrText,
+    Value<String?>? sourceMimeType,
+    Value<String?>? sourceFingerprint,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -1819,6 +1924,8 @@ class DbDocumentCompanion extends UpdateCompanion<DbDocumentData> {
       sourceType: sourceType ?? this.sourceType,
       localImagePath: localImagePath ?? this.localImagePath,
       ocrText: ocrText ?? this.ocrText,
+      sourceMimeType: sourceMimeType ?? this.sourceMimeType,
+      sourceFingerprint: sourceFingerprint ?? this.sourceFingerprint,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1840,6 +1947,12 @@ class DbDocumentCompanion extends UpdateCompanion<DbDocumentData> {
     if (ocrText.present) {
       map['ocr_text'] = Variable<String>(ocrText.value);
     }
+    if (sourceMimeType.present) {
+      map['source_mime_type'] = Variable<String>(sourceMimeType.value);
+    }
+    if (sourceFingerprint.present) {
+      map['source_fingerprint'] = Variable<String>(sourceFingerprint.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1859,8 +1972,385 @@ class DbDocumentCompanion extends UpdateCompanion<DbDocumentData> {
           ..write('sourceType: $sourceType, ')
           ..write('localImagePath: $localImagePath, ')
           ..write('ocrText: $ocrText, ')
+          ..write('sourceMimeType: $sourceMimeType, ')
+          ..write('sourceFingerprint: $sourceFingerprint, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DbDocumentPageTable extends DbDocumentPage
+    with TableInfo<$DbDocumentPageTable, DbDocumentPageData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DbDocumentPageTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _documentIdMeta = const VerificationMeta(
+    'documentId',
+  );
+  @override
+  late final GeneratedColumn<String> documentId = GeneratedColumn<String>(
+    'document_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pageIndexMeta = const VerificationMeta(
+    'pageIndex',
+  );
+  @override
+  late final GeneratedColumn<int> pageIndex = GeneratedColumn<int>(
+    'page_index',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _localImagePathMeta = const VerificationMeta(
+    'localImagePath',
+  );
+  @override
+  late final GeneratedColumn<String> localImagePath = GeneratedColumn<String>(
+    'local_image_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ocrTextMeta = const VerificationMeta(
+    'ocrText',
+  );
+  @override
+  late final GeneratedColumn<String> ocrText = GeneratedColumn<String>(
+    'ocr_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    documentId,
+    pageIndex,
+    localImagePath,
+    ocrText,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'db_document_page';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DbDocumentPageData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('document_id')) {
+      context.handle(
+        _documentIdMeta,
+        documentId.isAcceptableOrUnknown(data['document_id']!, _documentIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_documentIdMeta);
+    }
+    if (data.containsKey('page_index')) {
+      context.handle(
+        _pageIndexMeta,
+        pageIndex.isAcceptableOrUnknown(data['page_index']!, _pageIndexMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pageIndexMeta);
+    }
+    if (data.containsKey('local_image_path')) {
+      context.handle(
+        _localImagePathMeta,
+        localImagePath.isAcceptableOrUnknown(
+          data['local_image_path']!,
+          _localImagePathMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_localImagePathMeta);
+    }
+    if (data.containsKey('ocr_text')) {
+      context.handle(
+        _ocrTextMeta,
+        ocrText.isAcceptableOrUnknown(data['ocr_text']!, _ocrTextMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ocrTextMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {documentId, pageIndex},
+  ];
+  @override
+  DbDocumentPageData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DbDocumentPageData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      documentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}document_id'],
+      )!,
+      pageIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}page_index'],
+      )!,
+      localImagePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_image_path'],
+      )!,
+      ocrText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ocr_text'],
+      )!,
+    );
+  }
+
+  @override
+  $DbDocumentPageTable createAlias(String alias) {
+    return $DbDocumentPageTable(attachedDatabase, alias);
+  }
+}
+
+class DbDocumentPageData extends DataClass
+    implements Insertable<DbDocumentPageData> {
+  final String id;
+  final String documentId;
+  final int pageIndex;
+  final String localImagePath;
+  final String ocrText;
+  const DbDocumentPageData({
+    required this.id,
+    required this.documentId,
+    required this.pageIndex,
+    required this.localImagePath,
+    required this.ocrText,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['document_id'] = Variable<String>(documentId);
+    map['page_index'] = Variable<int>(pageIndex);
+    map['local_image_path'] = Variable<String>(localImagePath);
+    map['ocr_text'] = Variable<String>(ocrText);
+    return map;
+  }
+
+  DbDocumentPageCompanion toCompanion(bool nullToAbsent) {
+    return DbDocumentPageCompanion(
+      id: Value(id),
+      documentId: Value(documentId),
+      pageIndex: Value(pageIndex),
+      localImagePath: Value(localImagePath),
+      ocrText: Value(ocrText),
+    );
+  }
+
+  factory DbDocumentPageData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DbDocumentPageData(
+      id: serializer.fromJson<String>(json['id']),
+      documentId: serializer.fromJson<String>(json['documentId']),
+      pageIndex: serializer.fromJson<int>(json['pageIndex']),
+      localImagePath: serializer.fromJson<String>(json['localImagePath']),
+      ocrText: serializer.fromJson<String>(json['ocrText']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'documentId': serializer.toJson<String>(documentId),
+      'pageIndex': serializer.toJson<int>(pageIndex),
+      'localImagePath': serializer.toJson<String>(localImagePath),
+      'ocrText': serializer.toJson<String>(ocrText),
+    };
+  }
+
+  DbDocumentPageData copyWith({
+    String? id,
+    String? documentId,
+    int? pageIndex,
+    String? localImagePath,
+    String? ocrText,
+  }) => DbDocumentPageData(
+    id: id ?? this.id,
+    documentId: documentId ?? this.documentId,
+    pageIndex: pageIndex ?? this.pageIndex,
+    localImagePath: localImagePath ?? this.localImagePath,
+    ocrText: ocrText ?? this.ocrText,
+  );
+  DbDocumentPageData copyWithCompanion(DbDocumentPageCompanion data) {
+    return DbDocumentPageData(
+      id: data.id.present ? data.id.value : this.id,
+      documentId: data.documentId.present
+          ? data.documentId.value
+          : this.documentId,
+      pageIndex: data.pageIndex.present ? data.pageIndex.value : this.pageIndex,
+      localImagePath: data.localImagePath.present
+          ? data.localImagePath.value
+          : this.localImagePath,
+      ocrText: data.ocrText.present ? data.ocrText.value : this.ocrText,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbDocumentPageData(')
+          ..write('id: $id, ')
+          ..write('documentId: $documentId, ')
+          ..write('pageIndex: $pageIndex, ')
+          ..write('localImagePath: $localImagePath, ')
+          ..write('ocrText: $ocrText')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, documentId, pageIndex, localImagePath, ocrText);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DbDocumentPageData &&
+          other.id == this.id &&
+          other.documentId == this.documentId &&
+          other.pageIndex == this.pageIndex &&
+          other.localImagePath == this.localImagePath &&
+          other.ocrText == this.ocrText);
+}
+
+class DbDocumentPageCompanion extends UpdateCompanion<DbDocumentPageData> {
+  final Value<String> id;
+  final Value<String> documentId;
+  final Value<int> pageIndex;
+  final Value<String> localImagePath;
+  final Value<String> ocrText;
+  final Value<int> rowid;
+  const DbDocumentPageCompanion({
+    this.id = const Value.absent(),
+    this.documentId = const Value.absent(),
+    this.pageIndex = const Value.absent(),
+    this.localImagePath = const Value.absent(),
+    this.ocrText = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DbDocumentPageCompanion.insert({
+    required String id,
+    required String documentId,
+    required int pageIndex,
+    required String localImagePath,
+    required String ocrText,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       documentId = Value(documentId),
+       pageIndex = Value(pageIndex),
+       localImagePath = Value(localImagePath),
+       ocrText = Value(ocrText);
+  static Insertable<DbDocumentPageData> custom({
+    Expression<String>? id,
+    Expression<String>? documentId,
+    Expression<int>? pageIndex,
+    Expression<String>? localImagePath,
+    Expression<String>? ocrText,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (documentId != null) 'document_id': documentId,
+      if (pageIndex != null) 'page_index': pageIndex,
+      if (localImagePath != null) 'local_image_path': localImagePath,
+      if (ocrText != null) 'ocr_text': ocrText,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DbDocumentPageCompanion copyWith({
+    Value<String>? id,
+    Value<String>? documentId,
+    Value<int>? pageIndex,
+    Value<String>? localImagePath,
+    Value<String>? ocrText,
+    Value<int>? rowid,
+  }) {
+    return DbDocumentPageCompanion(
+      id: id ?? this.id,
+      documentId: documentId ?? this.documentId,
+      pageIndex: pageIndex ?? this.pageIndex,
+      localImagePath: localImagePath ?? this.localImagePath,
+      ocrText: ocrText ?? this.ocrText,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (documentId.present) {
+      map['document_id'] = Variable<String>(documentId.value);
+    }
+    if (pageIndex.present) {
+      map['page_index'] = Variable<int>(pageIndex.value);
+    }
+    if (localImagePath.present) {
+      map['local_image_path'] = Variable<String>(localImagePath.value);
+    }
+    if (ocrText.present) {
+      map['ocr_text'] = Variable<String>(ocrText.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbDocumentPageCompanion(')
+          ..write('id: $id, ')
+          ..write('documentId: $documentId, ')
+          ..write('pageIndex: $pageIndex, ')
+          ..write('localImagePath: $localImagePath, ')
+          ..write('ocrText: $ocrText, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1876,6 +2366,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $DbDocumentTable dbDocument = $DbDocumentTable(this);
+  late final $DbDocumentPageTable dbDocumentPage = $DbDocumentPageTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1885,6 +2376,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     dbTodo,
     dbChecklistItem,
     dbDocument,
+    dbDocumentPage,
   ];
 }
 
@@ -2636,6 +3128,8 @@ typedef $$DbDocumentTableCreateCompanionBuilder =
       required String sourceType,
       Value<String?> localImagePath,
       Value<String?> ocrText,
+      Value<String?> sourceMimeType,
+      Value<String?> sourceFingerprint,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -2646,6 +3140,8 @@ typedef $$DbDocumentTableUpdateCompanionBuilder =
       Value<String> sourceType,
       Value<String?> localImagePath,
       Value<String?> ocrText,
+      Value<String?> sourceMimeType,
+      Value<String?> sourceFingerprint,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -2677,6 +3173,16 @@ class $$DbDocumentTableFilterComposer
 
   ColumnFilters<String> get ocrText => $composableBuilder(
     column: $table.ocrText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceMimeType => $composableBuilder(
+    column: $table.sourceMimeType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceFingerprint => $composableBuilder(
+    column: $table.sourceFingerprint,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2720,6 +3226,16 @@ class $$DbDocumentTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get sourceMimeType => $composableBuilder(
+    column: $table.sourceMimeType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceFingerprint => $composableBuilder(
+    column: $table.sourceFingerprint,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -2755,6 +3271,16 @@ class $$DbDocumentTableAnnotationComposer
 
   GeneratedColumn<String> get ocrText =>
       $composableBuilder(column: $table.ocrText, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceMimeType => $composableBuilder(
+    column: $table.sourceMimeType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceFingerprint => $composableBuilder(
+    column: $table.sourceFingerprint,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -2798,6 +3324,8 @@ class $$DbDocumentTableTableManager
                 Value<String> sourceType = const Value.absent(),
                 Value<String?> localImagePath = const Value.absent(),
                 Value<String?> ocrText = const Value.absent(),
+                Value<String?> sourceMimeType = const Value.absent(),
+                Value<String?> sourceFingerprint = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2806,6 +3334,8 @@ class $$DbDocumentTableTableManager
                 sourceType: sourceType,
                 localImagePath: localImagePath,
                 ocrText: ocrText,
+                sourceMimeType: sourceMimeType,
+                sourceFingerprint: sourceFingerprint,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -2816,6 +3346,8 @@ class $$DbDocumentTableTableManager
                 required String sourceType,
                 Value<String?> localImagePath = const Value.absent(),
                 Value<String?> ocrText = const Value.absent(),
+                Value<String?> sourceMimeType = const Value.absent(),
+                Value<String?> sourceFingerprint = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -2824,6 +3356,8 @@ class $$DbDocumentTableTableManager
                 sourceType: sourceType,
                 localImagePath: localImagePath,
                 ocrText: ocrText,
+                sourceMimeType: sourceMimeType,
+                sourceFingerprint: sourceFingerprint,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -2853,6 +3387,216 @@ typedef $$DbDocumentTableProcessedTableManager =
       DbDocumentData,
       PrefetchHooks Function()
     >;
+typedef $$DbDocumentPageTableCreateCompanionBuilder =
+    DbDocumentPageCompanion Function({
+      required String id,
+      required String documentId,
+      required int pageIndex,
+      required String localImagePath,
+      required String ocrText,
+      Value<int> rowid,
+    });
+typedef $$DbDocumentPageTableUpdateCompanionBuilder =
+    DbDocumentPageCompanion Function({
+      Value<String> id,
+      Value<String> documentId,
+      Value<int> pageIndex,
+      Value<String> localImagePath,
+      Value<String> ocrText,
+      Value<int> rowid,
+    });
+
+class $$DbDocumentPageTableFilterComposer
+    extends Composer<_$AppDatabase, $DbDocumentPageTable> {
+  $$DbDocumentPageTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get documentId => $composableBuilder(
+    column: $table.documentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get pageIndex => $composableBuilder(
+    column: $table.pageIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localImagePath => $composableBuilder(
+    column: $table.localImagePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ocrText => $composableBuilder(
+    column: $table.ocrText,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DbDocumentPageTableOrderingComposer
+    extends Composer<_$AppDatabase, $DbDocumentPageTable> {
+  $$DbDocumentPageTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get documentId => $composableBuilder(
+    column: $table.documentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get pageIndex => $composableBuilder(
+    column: $table.pageIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localImagePath => $composableBuilder(
+    column: $table.localImagePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ocrText => $composableBuilder(
+    column: $table.ocrText,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DbDocumentPageTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DbDocumentPageTable> {
+  $$DbDocumentPageTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get documentId => $composableBuilder(
+    column: $table.documentId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get pageIndex =>
+      $composableBuilder(column: $table.pageIndex, builder: (column) => column);
+
+  GeneratedColumn<String> get localImagePath => $composableBuilder(
+    column: $table.localImagePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get ocrText =>
+      $composableBuilder(column: $table.ocrText, builder: (column) => column);
+}
+
+class $$DbDocumentPageTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DbDocumentPageTable,
+          DbDocumentPageData,
+          $$DbDocumentPageTableFilterComposer,
+          $$DbDocumentPageTableOrderingComposer,
+          $$DbDocumentPageTableAnnotationComposer,
+          $$DbDocumentPageTableCreateCompanionBuilder,
+          $$DbDocumentPageTableUpdateCompanionBuilder,
+          (
+            DbDocumentPageData,
+            BaseReferences<
+              _$AppDatabase,
+              $DbDocumentPageTable,
+              DbDocumentPageData
+            >,
+          ),
+          DbDocumentPageData,
+          PrefetchHooks Function()
+        > {
+  $$DbDocumentPageTableTableManager(
+    _$AppDatabase db,
+    $DbDocumentPageTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DbDocumentPageTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DbDocumentPageTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DbDocumentPageTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> documentId = const Value.absent(),
+                Value<int> pageIndex = const Value.absent(),
+                Value<String> localImagePath = const Value.absent(),
+                Value<String> ocrText = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DbDocumentPageCompanion(
+                id: id,
+                documentId: documentId,
+                pageIndex: pageIndex,
+                localImagePath: localImagePath,
+                ocrText: ocrText,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String documentId,
+                required int pageIndex,
+                required String localImagePath,
+                required String ocrText,
+                Value<int> rowid = const Value.absent(),
+              }) => DbDocumentPageCompanion.insert(
+                id: id,
+                documentId: documentId,
+                pageIndex: pageIndex,
+                localImagePath: localImagePath,
+                ocrText: ocrText,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DbDocumentPageTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DbDocumentPageTable,
+      DbDocumentPageData,
+      $$DbDocumentPageTableFilterComposer,
+      $$DbDocumentPageTableOrderingComposer,
+      $$DbDocumentPageTableAnnotationComposer,
+      $$DbDocumentPageTableCreateCompanionBuilder,
+      $$DbDocumentPageTableUpdateCompanionBuilder,
+      (
+        DbDocumentPageData,
+        BaseReferences<_$AppDatabase, $DbDocumentPageTable, DbDocumentPageData>,
+      ),
+      DbDocumentPageData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2865,4 +3609,6 @@ class $AppDatabaseManager {
       $$DbChecklistItemTableTableManager(_db, _db.dbChecklistItem);
   $$DbDocumentTableTableManager get dbDocument =>
       $$DbDocumentTableTableManager(_db, _db.dbDocument);
+  $$DbDocumentPageTableTableManager get dbDocumentPage =>
+      $$DbDocumentPageTableTableManager(_db, _db.dbDocumentPage);
 }

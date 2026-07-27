@@ -13,6 +13,9 @@ class DocumentImageCleaner {
       if (path != null && path.isNotEmpty) {
         yield path;
       }
+      for (final page in document.pages) {
+        yield page.localImagePath;
+      }
     }
   }
 
