@@ -50,7 +50,7 @@ extension _AddTodoScreenLayout on _AddTodoScreenState {
               ),
               const SizedBox(height: Spacing.lg),
               Text(
-                '画像・PDFから登録',
+                '画像・スクショから登録',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: Spacing.sm),
@@ -79,7 +79,7 @@ extension _AddTodoScreenLayout on _AddTodoScreenState {
                       child: _IntakeButton(
                         onPressed: _busy ? null : _pickImages,
                         icon: Icons.add_photo_alternate_outlined,
-                        label: '画像を選ぶ\n（複数可）',
+                        label: '画像を選ぶ',
                       ),
                     ),
                     const SizedBox(width: Spacing.xs),
@@ -112,6 +112,19 @@ extension _AddTodoScreenLayout on _AddTodoScreenState {
                           ),
                     icon: const Icon(Icons.auto_awesome),
                     label: const Text('AIで解析（手書きも対応）'),
+                  ),
+                ),
+              ],
+              if (!_showManual) ...[
+                const SizedBox(height: Spacing.sm),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => _update(() => _showManual = true),
+                    icon: const Icon(Icons.edit_note),
+                    label: const Text('手動で入力する'),
                   ),
                 ),
               ],
@@ -164,30 +177,18 @@ extension _AddTodoScreenLayout on _AddTodoScreenState {
                   ),
                 ],
               ),
-              const SizedBox(height: Spacing.lg),
-              const Row(
-                children: [
-                  Expanded(child: Divider()),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: Spacing.sm),
-                    child: Text('または', style: TextStyle(fontSize: 13)),
-                  ),
-                  Expanded(child: Divider()),
-                ],
-              ),
-              const SizedBox(height: Spacing.md),
-              if (!_showManual)
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _busy
-                        ? null
-                        : () => _update(() => _showManual = true),
-                    icon: const Icon(Icons.edit_note),
-                    label: const Text('手動で入力する'),
-                  ),
-                ),
               if (_showManual) ...[
+                const SizedBox(height: Spacing.lg),
+                const Row(
+                  children: [
+                    Expanded(child: Divider()),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: Spacing.sm),
+                      child: Text('または', style: TextStyle(fontSize: 13)),
+                    ),
+                    Expanded(child: Divider()),
+                  ],
+                ),
                 const SizedBox(height: Spacing.md),
                 Text('手入力', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: Spacing.md),
