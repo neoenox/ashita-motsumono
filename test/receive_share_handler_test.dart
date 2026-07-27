@@ -125,8 +125,41 @@ void main() {
       '/shared/front.jpg',
       '/shared/back.png',
     ]);
-    expect(intake.imageSourceType, 'shared_images');
+    expect(intake.imageSourceType, 'shared_image');
     expect(intake.importedPdfPath, isNull);
+  });
+
+  test('keeps a single image on the existing single-image flow', () async {
+    final (state, settings) = await _createState();
+    addTearDown(() async {
+      await state.close();
+      state.dispose();
+    });
+    final intake = _RecordingDocumentIntakeService(
+      appState: state,
+      appSettings: settings,
+    );
+    final handler = ReceiveShareHandler(
+      appState: state,
+      appSettings: settings,
+      documentIntakeService: intake,
+      shareFileStagingService: _PassthroughStagingService(),
+    );
+
+    final result = await handler.process([
+      SharedMediaFile(
+        path: '/missing/single.jpg',
+        type: SharedMediaType.image,
+        mimeType: 'image/jpeg',
+      ),
+    ]);
+
+    expect(result, isA<ReceiveShareFailure>());
+    expect(
+      (result as ReceiveShareFailure).kind,
+      ReceiveShareFailureKind.imageReadFailed,
+    );
+    expect(intake.importedImagePaths, isNull);
   });
 
   test('rejects a mixed image and PDF share before importing', () async {
@@ -160,7 +193,9 @@ void main() {
     ]);
 
     expect(result, isA<ReceiveShareFailure>());
-    expect((result as ReceiveShareFailure).message, '画像とPDFの同時共有は対応していません。');
+    final failure = result as ReceiveShareFailure;
+    expect(failure.message, '画像とPDFの同時共有は対応していません。');
+    expect(failure.kind, ReceiveShareFailureKind.unsupportedFormat);
     expect(intake.importedImagePaths, isNull);
     expect(intake.importedPdfPath, isNull);
   });
