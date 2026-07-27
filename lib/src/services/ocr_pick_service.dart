@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../app_state.dart';
 import '../models/entities.dart';
 import 'app_settings.dart';
+import 'document_intake_service.dart';
 import 'extraction_service.dart';
 import 'gemini_api_service.dart';
 import 'image_file_service.dart';
@@ -19,6 +21,39 @@ class OcrPickSuccess extends OcrPickResult {
 
 class OcrPickEmpty extends OcrPickResult {}
 
+class OcrPickDuplicate extends OcrPickResult {
+  OcrPickDuplicate({required this.existingDocumentId});
+
+  final String existingDocumentId;
+}
+
+class OcrPickNoCandidates extends OcrPickResult {
+  OcrPickNoCandidates({required this.document, required this.ocrText});
+
+  final DocumentRecord document;
+  final String ocrText;
+}
+
+class OcrPickError extends OcrPickResult {
+  OcrPickError(this.message);
+
+  final String message;
+}
+
+@visibleForTesting
+OcrPickResult ocrPickResultFromIntakeResult(IntakeResult result) {
+  return switch (result) {
+    IntakeSuccess(document: final document, drafts: final drafts) =>
+      OcrPickSuccess(document: document, drafts: drafts),
+    IntakeDuplicate(existingDocumentId: final existingDocumentId) =>
+      OcrPickDuplicate(existingDocumentId: existingDocumentId),
+    IntakeNoCandidates(document: final document, ocrText: final ocrText) =>
+      OcrPickNoCandidates(document: document, ocrText: ocrText),
+    IntakeEmpty() => OcrPickEmpty(),
+    IntakeError(message: final message) => OcrPickError(message),
+  };
+}
+
 class OcrPickService {
   OcrPickService({
     required AppState appState,
@@ -26,17 +61,27 @@ class OcrPickService {
     ImagePicker? picker,
     ImageFileService? imageFileService,
     OcrService? ocrService,
+    DocumentIntakeService? documentIntakeService,
   }) : _appState = appState,
        _appSettings = appSettings,
        _picker = picker ?? ImagePicker(),
        _imageFileService = imageFileService ?? ImageFileService(),
-       _ocrService = ocrService ?? OcrService();
+       _ocrService = ocrService ?? OcrService(),
+       _documentIntakeService =
+           documentIntakeService ??
+           DocumentIntakeService(
+             appState: appState,
+             appSettings: appSettings,
+             ocrService: ocrService,
+             imageFileService: imageFileService,
+           );
 
   final AppState _appState;
   final AppSettings _appSettings;
   final ImagePicker _picker;
   final ImageFileService _imageFileService;
   final OcrService _ocrService;
+  final DocumentIntakeService _documentIntakeService;
   GeminiApiService? _geminiService;
 
   void setGeminiProxyUrl(String url) {
@@ -54,12 +99,28 @@ class OcrPickService {
     return processPickedImage(picked, source: source);
   }
 
-  Future<List<XFile>> pickGalleryImages() {
-    return _picker.pickMultiImage(
+  Future<OcrPickResult?> pickMultipleImages({
+    IntakeProgressCallback? onProgress,
+    IntakeCancellationToken? cancellationToken,
+  }) async {
+    final picked = await _picker.pickMultiImage(
       imageQuality: 85,
       maxWidth: 2048,
       maxHeight: 2048,
     );
+    if (picked.isEmpty) return null;
+
+    if (picked.length == 1) {
+      return processPickedImage(picked.single);
+    }
+
+    final result = await _documentIntakeService.importImages(
+      sourcePaths: picked.map((file) => file.path).toList(growable: false),
+      sourceType: 'gallery',
+      onProgress: onProgress,
+      cancellationToken: cancellationToken,
+    );
+    return ocrPickResultFromIntakeResult(result);
   }
 
   Future<OcrPickResult> processPickedImage(
