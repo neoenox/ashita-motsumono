@@ -39,9 +39,7 @@ extension _ReceiveShareSources on ReceiveShareHandler {
     }
   }
 
-  Future<ReceiveShareResult> _processImages(
-    List<SharedMediaFile> files,
-  ) async {
+  Future<ReceiveShareResult> _processImages(List<SharedMediaFile> files) async {
     try {
       return await _shareFileStagingService.withStagedFiles(
         files: files,
