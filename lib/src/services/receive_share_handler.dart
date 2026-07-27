@@ -16,6 +16,7 @@ import 'document_intake_service.dart';
 import 'extraction_service.dart';
 import 'image_file_service.dart';
 import 'ocr_service.dart';
+import 'share_file_staging_service.dart';
 
 part 'receive_share_handler_runtime.dart';
 part 'receive_share_handler_sources.dart';
@@ -80,19 +81,23 @@ class ReceiveShareHandler {
     ImageFileService? imageFileService,
     OcrService? ocrService,
     DocumentIntakeService? documentIntakeService,
+    ShareFileStagingService? shareFileStagingService,
   }) : _appState = appState,
        _appSettings = appSettings,
        _imageFileService = imageFileService ?? ImageFileService(),
        _ocrService = ocrService ?? OcrService(),
        _documentIntakeService =
            documentIntakeService ??
-           DocumentIntakeService(appState: appState, appSettings: appSettings);
+           DocumentIntakeService(appState: appState, appSettings: appSettings),
+       _shareFileStagingService =
+           shareFileStagingService ?? ShareFileStagingService();
 
   final AppState _appState;
   final AppSettings _appSettings;
   final ImageFileService _imageFileService;
   final OcrService _ocrService;
   final DocumentIntakeService _documentIntakeService;
+  final ShareFileStagingService _shareFileStagingService;
 
   StreamSubscription<List<SharedMediaFile>>? _subscription;
   Future<void> _queue = Future<void>.value();

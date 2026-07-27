@@ -1,42 +1,118 @@
 part of 'receive_share_handler.dart';
 
 extension _ReceiveShareSources on ReceiveShareHandler {
-  bool _isPdfPath(String path) => path.toLowerCase().endsWith('.pdf');
+  bool _isPdfPath(String path) {
+    final uriPath = Uri.tryParse(path)?.path ?? path;
+    return uriPath.toLowerCase().endsWith('.pdf');
+  }
 
-  Future<ReceiveShareResult> _processPdf(String sourcePath) async {
-    final intake = await _documentIntakeService.importPdf(
-      sourcePath: sourcePath,
-      sourceType: 'shared_pdf',
-    );
+  bool _isPdfFile(SharedMediaFile file) =>
+      file.mimeType?.toLowerCase() == 'application/pdf' ||
+      _isPdfPath(file.path);
 
-    switch (intake) {
-      case IntakeSuccess():
-        return ReceiveShareSuccess(
-          drafts: intake.drafts,
-          documentId: intake.document.id,
-        );
-      case IntakeDuplicate():
-        return const ReceiveShareFailure(
-          'このPDFは既に取り込み済みです。',
-          kind: ReceiveShareFailureKind.duplicate,
-        );
-      case IntakeNoCandidates():
-        return ReceiveShareSuccess(
-          drafts: const [],
-          documentId: intake.document.id,
-          ocrText: intake.ocrText,
-        );
-      case IntakeEmpty():
-        return const ReceiveShareFailure(
-          'PDFから文字が見つかりませんでした。',
-          kind: ReceiveShareFailureKind.ocrEmpty,
-        );
-      case IntakeError():
-        return ReceiveShareFailure(
-          intake.message,
-          kind: ReceiveShareFailureKind.pdfImportFailed,
-        );
+  bool _isImageFile(SharedMediaFile file) =>
+      !_isPdfFile(file) &&
+      (file.type == SharedMediaType.image ||
+          (file.mimeType?.toLowerCase().startsWith('image/') ?? false));
+
+  bool _isTextFile(SharedMediaFile file) =>
+      file.type == SharedMediaType.text ||
+      (file.mimeType?.toLowerCase().startsWith('text/') ?? false);
+
+  Future<ReceiveShareResult> _processPdf(SharedMediaFile file) async {
+    try {
+      return await _shareFileStagingService.withStagedFiles(
+        files: [file],
+        action: (stagedFiles) async {
+          final intake = await _documentIntakeService.importPdf(
+            sourcePath: stagedFiles.single.path,
+            sourceType: 'shared_pdf',
+          );
+          return _mapPdfIntakeResult(intake);
+        },
+      );
+    } on ShareFileStagingException catch (error) {
+      return ReceiveShareFailure(
+        error.message,
+        kind: ReceiveShareFailureKind.pdfImportFailed,
+      );
     }
+  }
+
+  Future<ReceiveShareResult> _processMultipleImages(
+    List<SharedMediaFile> files,
+  ) async {
+    try {
+      return await _shareFileStagingService.withStagedFiles(
+        files: files,
+        action: (stagedFiles) async {
+          final intake = await _documentIntakeService.importImages(
+            sourcePaths: stagedFiles
+                .map((file) => file.path)
+                .toList(growable: false),
+            sourceType: 'shared_image',
+          );
+          return _mapImageIntakeResult(intake);
+        },
+      );
+    } on ShareFileStagingException catch (error) {
+      return ReceiveShareFailure(
+        error.message,
+        kind: ReceiveShareFailureKind.imageReadFailed,
+      );
+    }
+  }
+
+  ReceiveShareResult _mapPdfIntakeResult(IntakeResult intake) {
+    return switch (intake) {
+      IntakeSuccess() => ReceiveShareSuccess(
+        drafts: intake.drafts,
+        documentId: intake.document.id,
+      ),
+      IntakeDuplicate() => const ReceiveShareFailure(
+        'このPDFは既に取り込み済みです。',
+        kind: ReceiveShareFailureKind.duplicate,
+      ),
+      IntakeNoCandidates() => ReceiveShareSuccess(
+        drafts: const [],
+        documentId: intake.document.id,
+        ocrText: intake.ocrText,
+      ),
+      IntakeEmpty() => const ReceiveShareFailure(
+        'PDFから文字が見つかりませんでした。',
+        kind: ReceiveShareFailureKind.ocrEmpty,
+      ),
+      IntakeError() => ReceiveShareFailure(
+        intake.message,
+        kind: ReceiveShareFailureKind.pdfImportFailed,
+      ),
+    };
+  }
+
+  ReceiveShareResult _mapImageIntakeResult(IntakeResult intake) {
+    return switch (intake) {
+      IntakeSuccess() => ReceiveShareSuccess(
+        drafts: intake.drafts,
+        documentId: intake.document.id,
+      ),
+      IntakeDuplicate() => const ReceiveShareFailure(
+        'この画像は既に取り込み済みです。',
+        kind: ReceiveShareFailureKind.duplicate,
+      ),
+      IntakeNoCandidates() => ReceiveShareSuccess(
+        drafts: const [],
+        documentId: intake.document.id,
+        ocrText: intake.ocrText,
+      ),
+      IntakeEmpty() => const ReceiveShareFailure(
+        '画像から文字が見つかりませんでした。',
+        kind: ReceiveShareFailureKind.ocrEmpty,
+      ),
+      IntakeError() => ReceiveShareFailure(
+        intake.message,
+        kind: ReceiveShareFailureKind.imageReadFailed,
+      ),
+    };
   }
 
   Future<ReceiveShareResult> _processText(String rawText) async {
