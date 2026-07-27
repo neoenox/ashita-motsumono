@@ -141,4 +141,5 @@ extension ReceiveShareHandlerRuntime on ReceiveShareHandler {
       _isProcessing = false;
     }
   }
+
 }

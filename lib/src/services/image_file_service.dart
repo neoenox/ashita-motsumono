@@ -36,18 +36,30 @@ class ImageFileService {
     String sourcePath, {
     Directory? destinationDirectory,
   }) async {
-    final source = File(sourcePath);
-    final sourceLength = await source.length();
-    if (sourceLength <= 0) throw StateError('画像ファイルが空です。');
-    if (sourceLength > maxImageBytes) {
-      throw StateError('画像サイズが5MBを超えています。');
-    }
     final imageDir = destinationDirectory ?? await _documentImagesDirectory();
     await imageDir.create(recursive: true);
     final extension = _normalizedExtension(
       p.extension(sourcePath).toLowerCase(),
     );
     final dest = File(p.join(imageDir.path, '${_uuid.v4()}$extension'));
+
+    if (sourcePath.startsWith('content://')) {
+      final xFile = XFile(sourcePath);
+      final bytes = await xFile.readAsBytes();
+      if (bytes.isEmpty) throw StateError('画像ファイルが空です。');
+      if (bytes.length > maxImageBytes) {
+        throw StateError('画像サイズが5MBを超えています。');
+      }
+      await dest.writeAsBytes(bytes, flush: true);
+      return dest;
+    }
+
+    final source = File(sourcePath);
+    final sourceLength = await source.length();
+    if (sourceLength <= 0) throw StateError('画像ファイルが空です。');
+    if (sourceLength > maxImageBytes) {
+      throw StateError('画像サイズが5MBを超えています。');
+    }
     await source.copy(dest.path);
     return dest;
   }
