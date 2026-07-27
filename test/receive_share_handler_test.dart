@@ -125,11 +125,11 @@ void main() {
       '/shared/front.jpg',
       '/shared/back.png',
     ]);
-    expect(intake.imageSourceType, 'shared_image');
+    expect(intake.imageSourceType, 'shared_images');
     expect(intake.importedPdfPath, isNull);
   });
 
-  test('keeps a single image on the existing single-image flow', () async {
+  test('routes a single shared image through importImages', () async {
     final (state, settings) = await _createState();
     addTearDown(() async {
       await state.close();
@@ -148,18 +148,16 @@ void main() {
 
     final result = await handler.process([
       SharedMediaFile(
-        path: '/missing/single.jpg',
+        path: '/shared/single.jpg',
         type: SharedMediaType.image,
         mimeType: 'image/jpeg',
       ),
     ]);
 
     expect(result, isA<ReceiveShareFailure>());
-    expect(
-      (result as ReceiveShareFailure).kind,
-      ReceiveShareFailureKind.imageReadFailed,
-    );
-    expect(intake.importedImagePaths, isNull);
+    expect(intake.importedImagePaths, ['/shared/single.jpg']);
+    expect(intake.imageSourceType, 'shared_image');
+    expect(intake.importedPdfPath, isNull);
   });
 
   test('rejects a mixed image and PDF share before importing', () async {
