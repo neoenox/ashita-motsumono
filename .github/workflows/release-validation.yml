@@ -38,7 +38,6 @@ jobs:
           set -euo pipefail
           flutter pub get
           grep -A6 '^  file_picker:' pubspec.lock
-          grep -A6 '^  file_picker_android:' pubspec.lock
 
           git fetch origin master --depth=1
           git checkout origin/master -- .github/workflows/release-validation.yml
