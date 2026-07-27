@@ -1,0 +1,49 @@
+name: Format Android Share Intake
+
+on:
+  push:
+    branches:
+      - feature/android-share-intake
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/android-share-intake
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - name: Format changed Dart files
+        run: >-
+          dart format
+          lib/src/services/receive_share_handler.dart
+          lib/src/services/receive_share_handler_runtime.dart
+          lib/src/services/receive_share_handler_sources.dart
+          lib/src/services/share_file_staging_service.dart
+          test/receive_share_handler_test.dart
+      - name: Commit formatting
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            lib/src/services/receive_share_handler.dart \
+            lib/src/services/receive_share_handler_runtime.dart \
+            lib/src/services/receive_share_handler_sources.dart \
+            lib/src/services/share_file_staging_service.dart \
+            test/receive_share_handler_test.dart
+          git commit -m "style: format Android share intake"
+          git push origin HEAD:feature/android-share-intake
