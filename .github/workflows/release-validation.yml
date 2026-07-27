@@ -42,250 +42,137 @@ jobs:
           python3 <<'PY'
           from pathlib import Path
 
-          def replace(path: str, old: str, new: str, *, count: int = 1) -> None:
+          def replace_checked(path: str, old: str, new: str, expected: int = 1) -> None:
               file = Path(path)
               text = file.read_text(encoding='utf-8')
               actual = text.count(old)
-              if actual != count:
-                  raise SystemExit(f'{path}: expected {count} occurrences, found {actual}')
+              if actual != expected:
+                  raise SystemExit(f'{path}: {old!r}: expected {expected}, found {actual}')
               file.write_text(text.replace(old, new), encoding='utf-8')
 
-          replace(
-              'lib/src/screens/add_todo_screen_actions.dart',
-              '''        IntakeProgress(
-                  stage: IntakeProgressStage.recognizingImages,
-                  current: 0,
-                  total: picked.length,
-                ),''',
-              '''        IntakeProgress(
-                  stage: IntakeProgressStage.recognizingImages,
-                  current: 1,
-                  total: picked.length,
-                ),''',
-          )
-          replace(
-              'lib/src/screens/add_todo_screen_actions.dart',
-              '''  void _cancelIntake() {
-                final token = _cancellationToken;
-                if (token == null || token.isCancelled) return;
-                token.cancel();
-                _update(() => _cancelRequested = true);
-              }''',
-              '''  void _cancelIntake() {
-                final token = _cancellationToken;
-                if (token == null || token.isCancelled) return;
-                if (_intakeProgress?.stage == IntakeProgressStage.saving) return;
-                token.cancel();
-                _update(() => _cancelRequested = true);
-              }''',
-          )
+          actions = 'lib/src/screens/add_todo_screen_actions.dart'
+          replace_checked(actions, '          current: 0,\n          total: picked.length,',
+                          '          current: 1,\n          total: picked.length,')
+          replace_checked(actions,
+                          '    if (token == null || token.isCancelled) return;\n    token.cancel();',
+                          '    if (token == null || token.isCancelled) return;\n'
+                          '    if (_intakeProgress?.stage == IntakeProgressStage.saving) return;\n'
+                          '    token.cancel();')
 
-          replace(
-              'lib/src/widgets/intake_progress_overlay.dart',
-              '''    final cs = Theme.of(context).colorScheme;
-                final message = cancelling ? 'キャンセルしています...' : progress.message;
+          overlay = 'lib/src/widgets/intake_progress_overlay.dart'
+          replace_checked(overlay,
+                          '    final cs = Theme.of(context).colorScheme;\n'
+                          "    final message = cancelling ? 'キャンセルしています...' : progress.message;",
+                          '    final cs = Theme.of(context).colorScheme;\n'
+                          '    final isSaving = progress.stage == IntakeProgressStage.saving;\n'
+                          "    final message = cancelling ? 'キャンセルしています...' : progress.message;")
+          replace_checked(overlay,
+                          "                        '処理中はこの画面を閉じないでください。',",
+                          "                        isSaving\n"
+                          "                            ? '保存中はキャンセルできません。'\n"
+                          "                            : '処理中はこの画面を閉じないでください。',")
+          replace_checked(overlay,
+                          '                        onPressed: cancelling ? null : onCancel,',
+                          '                        onPressed: cancelling || isSaving ? null : onCancel,')
+          replace_checked(overlay,
+                          "                        label: Text(cancelling ? 'キャンセル中' : 'キャンセル'),",
+                          "                        label: Text(\n"
+                          "                          cancelling\n"
+                          "                              ? 'キャンセル中'\n"
+                          "                              : isSaving\n"
+                          "                              ? '保存中'\n"
+                          "                              : 'キャンセル',\n"
+                          "                        ),")
 
-                return Material(''',
-              '''    final cs = Theme.of(context).colorScheme;
-                final isSaving = progress.stage == IntakeProgressStage.saving;
-                final message = cancelling ? 'キャンセルしています...' : progress.message;
+          service = 'lib/src/services/document_intake_service.dart'
+          replace_checked(service,
+                          '        final document = await _saveDocumentWithPages(',
+                          '        cancellationToken?.throwIfCancelled();\n'
+                          '        final document = await _saveDocumentWithPages(',
+                          expected=2)
+          replace_checked(service,
+                          '          pageResults: pageResults,\n        );',
+                          '          pageResults: pageResults,\n'
+                          '          cancellationToken: cancellationToken,\n'
+                          '        );',
+                          expected=2)
+          replace_checked(service,
+                          '    String? sourceFingerprint,\n  }) async {',
+                          '    String? sourceFingerprint,\n'
+                          '    IntakeCancellationToken? cancellationToken,\n'
+                          '  }) async {')
+          replace_checked(service,
+                          '    try {\n      for (final pageResult in pageResults) {\n'
+                          '        final extension = _supportedExtension(pageResult.imageFile.path);',
+                          '    try {\n      cancellationToken?.throwIfCancelled();\n'
+                          '      for (final pageResult in pageResults) {\n'
+                          '        cancellationToken?.throwIfCancelled();\n'
+                          '        final extension = _supportedExtension(pageResult.imageFile.path);')
+          replace_checked(service,
+                          '      await _appState.addDocumentRecord(document);\n      return document;',
+                          '      cancellationToken?.throwIfCancelled();\n'
+                          '      await _appState.addDocumentRecord(document);\n'
+                          '      if (cancellationToken?.isCancelled ?? false) {\n'
+                          '        await _appState.deleteDocument(document.id);\n'
+                          '        throw const IntakeCancelledException();\n'
+                          '      }\n'
+                          '      return document;')
 
-                return Material(''',
-          )
-          replace(
-              'lib/src/widgets/intake_progress_overlay.dart',
-              '''                      Text(
-                                '処理中はこの画面を閉じないでください。',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: cs.onSurfaceVariant,
-                                  fontSize: 12,
-                                ),
-                              ),''',
-              '''                      Text(
-                                isSaving
-                                    ? '保存中はキャンセルできません。'
-                                    : '処理中はこの画面を閉じないでください。',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: cs.onSurfaceVariant,
-                                  fontSize: 12,
-                                ),
-                              ),''',
-          )
-          replace(
-              'lib/src/widgets/intake_progress_overlay.dart',
-              '''                      OutlinedButton.icon(
-                                onPressed: cancelling ? null : onCancel,
-                                icon: const Icon(Icons.close),
-                                label: Text(cancelling ? 'キャンセル中' : 'キャンセル'),
-                              ),''',
-              '''                      OutlinedButton.icon(
-                                onPressed: cancelling || isSaving ? null : onCancel,
-                                icon: const Icon(Icons.close),
-                                label: Text(
-                                  cancelling
-                                      ? 'キャンセル中'
-                                      : isSaving
-                                      ? '保存中'
-                                      : 'キャンセル',
-                                ),
-                              ),''',
-          )
-
-          replace(
-              'lib/src/services/document_intake_service.dart',
-              '''        onProgress?.call(
-                  const IntakeProgress(
-                    stage: IntakeProgressStage.saving,
-                    current: 1,
-                    total: 1,
-                  ),
-                );
-                final document = await _saveDocumentWithPages(
-                  sourceType: sourceType,
-                  sourceMimeType: 'application/pdf',
-                  sourceFingerprint: fileHash,
-                  ocrText: combinedText,
-                  pageResults: pageResults,
-                );''',
-              '''        onProgress?.call(
-                  const IntakeProgress(
-                    stage: IntakeProgressStage.saving,
-                    current: 1,
-                    total: 1,
-                  ),
-                );
-                cancellationToken?.throwIfCancelled();
-                final document = await _saveDocumentWithPages(
-                  sourceType: sourceType,
-                  sourceMimeType: 'application/pdf',
-                  sourceFingerprint: fileHash,
-                  ocrText: combinedText,
-                  pageResults: pageResults,
-                  cancellationToken: cancellationToken,
-                );''',
-          )
-          replace(
-              'lib/src/services/document_intake_service.dart',
-              '''        onProgress?.call(
-                  const IntakeProgress(
-                    stage: IntakeProgressStage.saving,
-                    current: 1,
-                    total: 1,
-                  ),
-                );
-                final document = await _saveDocumentWithPages(
-                  sourceType: sourceType,
-                  sourceMimeType: 'image/*',
-                  ocrText: combinedText,
-                  pageResults: pageResults,
-                );''',
-              '''        onProgress?.call(
-                  const IntakeProgress(
-                    stage: IntakeProgressStage.saving,
-                    current: 1,
-                    total: 1,
-                  ),
-                );
-                cancellationToken?.throwIfCancelled();
-                final document = await _saveDocumentWithPages(
-                  sourceType: sourceType,
-                  sourceMimeType: 'image/*',
-                  ocrText: combinedText,
-                  pageResults: pageResults,
-                  cancellationToken: cancellationToken,
-                );''',
-          )
-          replace(
-              'lib/src/services/document_intake_service.dart',
-              '''    String? sourceMimeType,
-                String? sourceFingerprint,
-              }) async {''',
-              '''    String? sourceMimeType,
-                String? sourceFingerprint,
-                IntakeCancellationToken? cancellationToken,
-              }) async {''',
-          )
-          replace(
-              'lib/src/services/document_intake_service.dart',
-              '''    try {
-                  for (final pageResult in pageResults) {
-                    final extension = _supportedExtension(pageResult.imageFile.path);''',
-              '''    try {
-                  cancellationToken?.throwIfCancelled();
-                  for (final pageResult in pageResults) {
-                    cancellationToken?.throwIfCancelled();
-                    final extension = _supportedExtension(pageResult.imageFile.path);''',
-          )
-          replace(
-              'lib/src/services/document_intake_service.dart',
-              '''      await _appState.addDocumentRecord(document);
-                  return document;''',
-              '''      cancellationToken?.throwIfCancelled();
-                  await _appState.addDocumentRecord(document);
-                  if (cancellationToken?.isCancelled ?? false) {
-                    await _appState.deleteDocument(document.id);
-                    throw const IntakeCancelledException();
-                  }
-                  return document;''',
-          )
-
-          test_path = Path('test/document_intake_service_test.dart')
-          test_text = test_path.read_text(encoding='utf-8')
+          test_file = Path('test/document_intake_service_test.dart')
+          text = test_file.read_text(encoding='utf-8')
           anchor = "  test('removes copied images when database persistence fails', () async {"
-          if test_text.count(anchor) != 1:
-              raise SystemExit('document intake test insertion anchor not found exactly once')
-          new_test = '''  test('rolls back when cancellation is requested before saving', () async {
-                final tempDir = await Directory.systemTemp.createTemp(
-                  'document_intake_cancel_saving_',
-                );
-                final (state, settings) = await _createState();
-                addTearDown(() async {
-                  await state.close();
-                  state.dispose();
-                  if (await tempDir.exists()) {
-                    await tempDir.delete(recursive: true);
-                  }
-                });
+          if text.count(anchor) != 1:
+              raise SystemExit('document intake test anchor mismatch')
+          test = '''  test('rolls back when cancellation is requested before saving', () async {
+            final tempDir = await Directory.systemTemp.createTemp(
+              'document_intake_cancel_saving_',
+            );
+            final (state, settings) = await _createState();
+            addTearDown(() async {
+              await state.close();
+              state.dispose();
+              if (await tempDir.exists()) {
+                await tempDir.delete(recursive: true);
+              }
+            });
 
-                final source = File('${tempDir.path}/source.jpg')
-                  ..writeAsBytesSync([1, 2, 3]);
-                final token = IntakeCancellationToken();
-                final service = DocumentIntakeService(
-                  appState: state,
-                  appSettings: settings,
-                  ocrService: _QueueOcrService(['持ち物 水筒']),
-                  temporaryDirectoryProvider: () async => tempDir,
-                  documentsDirectoryProvider: () async => tempDir,
-                );
+            final source = File('${tempDir.path}/source.jpg')
+              ..writeAsBytesSync([1, 2, 3]);
+            final token = IntakeCancellationToken();
+            final service = DocumentIntakeService(
+              appState: state,
+              appSettings: settings,
+              ocrService: _QueueOcrService(['持ち物 水筒']),
+              temporaryDirectoryProvider: () async => tempDir,
+              documentsDirectoryProvider: () async => tempDir,
+            );
 
-                final result = await service.importImages(
-                  sourcePaths: [source.path],
-                  sourceType: 'gallery',
-                  cancellationToken: token,
-                  onProgress: (entry) {
-                    if (entry.stage == IntakeProgressStage.saving) {
-                      token.cancel();
-                    }
-                  },
-                );
+            final result = await service.importImages(
+              sourcePaths: [source.path],
+              sourceType: 'gallery',
+              cancellationToken: token,
+              onProgress: (entry) {
+                if (entry.stage == IntakeProgressStage.saving) {
+                  token.cancel();
+                }
+              },
+            );
 
-                expect(result, isA<IntakeError>());
-                expect(
-                  (result as IntakeError).message,
-                  DocumentIntakeService.cancelledMessage,
-                );
-                expect(state.documents, isEmpty);
-                final imagesDir = Directory('${tempDir.path}/document_images');
-                final remaining = await imagesDir.exists()
-                    ? await imagesDir.list().toList()
-                    : const <FileSystemEntity>[];
-                expect(remaining, isEmpty);
-              });
+            expect(result, isA<IntakeError>());
+            expect(
+              (result as IntakeError).message,
+              DocumentIntakeService.cancelledMessage,
+            );
+            expect(state.documents, isEmpty);
+            final imagesDir = Directory('${tempDir.path}/document_images');
+            final remaining = await imagesDir.exists()
+                ? await imagesDir.list().toList()
+                : const <FileSystemEntity>[];
+            expect(remaining, isEmpty);
+          });
 
           '''
-          test_path.write_text(test_text.replace(anchor, new_test + anchor), encoding='utf-8')
+          test_file.write_text(text.replace(anchor, test + anchor), encoding='utf-8')
           PY
 
           dart format \
@@ -309,7 +196,6 @@ jobs:
           git push origin HEAD:feature/pdf-intake
 
       - name: Analyze patched tree
-        shell: bash
         run: python3 tool/run_flutter_analyze.py
 
       - name: Test patched tree
