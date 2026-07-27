@@ -29,9 +29,7 @@ void main() {
     expect(cancelled, isTrue);
   });
 
-  testWidgets('disables cooperative cancellation while saving', (
-    tester,
-  ) async {
+  testWidgets('disables cooperative cancellation while saving', (tester) async {
     var cancelled = false;
 
     await tester.pumpWidget(
