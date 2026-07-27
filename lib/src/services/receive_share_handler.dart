@@ -2,10 +2,8 @@
 // 他アプリからの共有Intent（画像・PDF・テキスト）を受信し、OCR/抽出処理を実行する。
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import '../app_state.dart';
@@ -16,6 +14,7 @@ import 'document_intake_service.dart';
 import 'extraction_service.dart';
 import 'image_file_service.dart';
 import 'ocr_service.dart';
+import 'share_file_staging_service.dart';
 
 part 'receive_share_handler_runtime.dart';
 part 'receive_share_handler_sources.dart';
@@ -80,19 +79,19 @@ class ReceiveShareHandler {
     ImageFileService? imageFileService,
     OcrService? ocrService,
     DocumentIntakeService? documentIntakeService,
+    ShareFileStagingService? shareFileStagingService,
   }) : _appState = appState,
        _appSettings = appSettings,
-       _imageFileService = imageFileService ?? ImageFileService(),
-       _ocrService = ocrService ?? OcrService(),
        _documentIntakeService =
            documentIntakeService ??
-           DocumentIntakeService(appState: appState, appSettings: appSettings);
+           DocumentIntakeService(appState: appState, appSettings: appSettings),
+       _shareFileStagingService =
+           shareFileStagingService ?? ShareFileStagingService();
 
   final AppState _appState;
   final AppSettings _appSettings;
-  final ImageFileService _imageFileService;
-  final OcrService _ocrService;
   final DocumentIntakeService _documentIntakeService;
+  final ShareFileStagingService _shareFileStagingService;
 
   StreamSubscription<List<SharedMediaFile>>? _subscription;
   Future<void> _queue = Future<void>.value();
@@ -107,5 +106,4 @@ class ReceiveShareHandler {
   final List<_CompletedFingerprint> _completedFingerprints = [];
   static const _maxCompletedFingerprints = 128;
   static const _fingerprintTtl = Duration(hours: 1);
-  static const _maxImageBytes = 5 * 1024 * 1024;
 }
