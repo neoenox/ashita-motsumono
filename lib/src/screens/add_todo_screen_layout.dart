@@ -83,12 +83,10 @@ extension _AddTodoScreenLayout on _AddTodoScreenState {
                       ),
                     ),
                     const SizedBox(width: Spacing.xs),
-                    Expanded(
-                      child: _IntakeButton(
-                        onPressed: _busy ? null : _pickPdf,
-                        icon: Icons.picture_as_pdf_outlined,
-                        label: 'PDFを選ぶ',
-                      ),
+                    IconButton.outlined(
+                      tooltip: 'PDFを選ぶ',
+                      onPressed: _busy ? null : _pickPdf,
+                      icon: const Icon(Icons.picture_as_pdf_outlined),
                     ),
                   ],
                 ),
