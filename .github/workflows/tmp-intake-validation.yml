@@ -5,7 +5,7 @@ on:
     branches: [feature/pdf-intake]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   export:
@@ -25,10 +25,10 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Format intake changes
+      - name: Format, validate, and persist diagnostics
         shell: bash
         run: |
-          set -euo pipefail
+          set -u
           files=(
             lib/src/screens/add_todo_screen.dart
             lib/src/screens/add_todo_screen_actions.dart
@@ -49,33 +49,23 @@ jobs:
             test/document_intake_service_test.dart
             test/intake_progress_overlay_test.dart
           )
-          dart format "${files[@]}"
-          mkdir -p build/intake-validation/formatted
-          cp --parents "${files[@]}" build/intake-validation/formatted/
 
-      - name: Analyze formatted tree
-        shell: bash
-        continue-on-error: true
-        run: |
-          set +e
-          mkdir -p build/intake-validation
-          python3 tool/run_flutter_analyze.py > build/intake-validation/flutter-analyze.log 2>&1
-          echo "$?" > build/intake-validation/flutter-analyze.exit-code
+          mkdir -p .tmp/intake-validation
+          dart format "${files[@]}" > .tmp/intake-validation/dart-format.log 2>&1
+          format_code=$?
+          python3 tool/run_flutter_analyze.py > .tmp/intake-validation/flutter-analyze.log 2>&1
+          analyze_code=$?
+          flutter test > .tmp/intake-validation/flutter-test.log 2>&1
+          test_code=$?
+          printf '%s\n' "$format_code" > .tmp/intake-validation/dart-format.exit-code
+          printf '%s\n' "$analyze_code" > .tmp/intake-validation/flutter-analyze.exit-code
+          printf '%s\n' "$test_code" > .tmp/intake-validation/flutter-test.exit-code
 
-      - name: Test formatted tree
-        shell: bash
-        continue-on-error: true
-        run: |
-          set +e
-          mkdir -p build/intake-validation
-          flutter test > build/intake-validation/flutter-test.log 2>&1
-          echo "$?" > build/intake-validation/flutter-test.exit-code
-
-      - name: Upload formatted sources and diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: intake-validation-${{ github.sha }}
-          path: build/intake-validation/
-          if-no-files-found: error
-          retention-days: 1
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          rm .github/workflows/tmp-intake-validation.yml
+          git add "${files[@]}"
+          git add -f .tmp/intake-validation
+          git add .github/workflows/tmp-intake-validation.yml
+          git commit -m 'chore: format intake changes and record validation'
+          git push origin HEAD:feature/pdf-intake
