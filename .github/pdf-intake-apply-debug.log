@@ -1,0 +1,28 @@
+extract_status=0
+--- extracted script head ---
+python3 - <<'PY'
+from pathlib import Path
+
+def replace_once(path: str, old: str, new: str) -> None:
+    target = Path(path)
+    text = target.read_text()
+    if old not in text:
+        raise SystemExit(f'Expected block not found in {path}: {old[:120]!r}')
+    target.write_text(text.replace(old, new, 1))
+
+Path('lib/src/services/document_intake_service.dart').write_text(r'''// lib/src/services/document_intake_service.dart
+// 画像・PDF・共有テキストの取り込みパイプラインを統一的に処理する。
+// ファイル選択 → コピー → OCR → 候補抽出 → 永続化 を一貫して行う。
+// 関連: pdf_render_service.dart, ocr_service.dart, extraction_service.dart, app_state.dart
+
+import 'dart:io';
+
+import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
++ python3 -
+  File "<stdin>", line 881
+    '''  Future<void> _migrateToV3(Migrator m) async {
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SyntaxError: invalid syntax. Perhaps you forgot a comma?
+apply_status=1
