@@ -238,9 +238,9 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
       case IntakeDuplicate():
         await _showDuplicateDialog(duplicateLabel);
       case IntakeNoCandidates():
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('文字は読み取れましたがTodo候補が見つかりませんでした')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('候補が見つかりませんでした')));
       case IntakeEmpty():
         ScaffoldMessenger.of(
           context,
