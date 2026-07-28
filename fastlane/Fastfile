@@ -1,0 +1,102 @@
+def truthy?(value)
+  %w[1 true yes].include?(value.to_s.downcase)
+end
+
+def required_path(value, label)
+  UI.user_error!("#{label} is required") if value.to_s.empty?
+  expanded = File.expand_path(value)
+  UI.user_error!("#{label} does not exist: #{expanded}") unless File.file?(expanded)
+  expanded
+end
+
+def allowed_release_status(value)
+  status = value.to_s.empty? ? "completed" : value.to_s
+  allowed = %w[completed draft]
+  UI.user_error!("PLAY_RELEASE_STATUS must be one of: #{allowed.join(', ')}") unless allowed.include?(status)
+  status
+end
+
+def package_name
+  "com.ashita_motsumono"
+end
+
+def play_json_key(options)
+  required_path(
+    options[:json_key] || ENV["PLAY_SERVICE_ACCOUNT_JSON_PATH"],
+    "Google Play service-account JSON",
+  )
+end
+
+def release_aab(options)
+  required_path(
+    options[:aab] || ENV["ANDROID_AAB_PATH"] || "build/app/outputs/bundle/release/app-release.aab",
+    "signed Android App Bundle",
+  )
+end
+
+def validate_only?(options)
+  truthy?(options[:validate_only] || ENV["PLAY_VALIDATE_ONLY"])
+end
+
+def release_status(options)
+  allowed_release_status(options[:release_status] || ENV["PLAY_RELEASE_STATUS"])
+end
+
+def metadata_path
+  File.expand_path("metadata/android", __dir__)
+end
+
+def upload_internal(options)
+  upload_to_play_store(
+    package_name: package_name,
+    json_key: play_json_key(options),
+    aab: release_aab(options),
+    track: "internal",
+    release_status: release_status(options),
+    metadata_path: metadata_path,
+    skip_upload_apk: true,
+    skip_upload_metadata: true,
+    skip_upload_images: true,
+    skip_upload_screenshots: true,
+    skip_upload_changelogs: false,
+    validate_only: validate_only?(options),
+  )
+end
+
+def validate_credentials(options)
+  validate_play_store_json_key(json_key: play_json_key(options))
+end
+
+def print_release_summary(options)
+  UI.message("Package: #{package_name}")
+  UI.message("Track: internal")
+  UI.message("Release status: #{release_status(options)}")
+  UI.message("Validate only: #{validate_only?(options)}")
+end
+
+def ensure_ci_release_source
+  return unless ENV["CI"] == "true"
+  UI.user_error!("Internal release must run from master or a v* tag") unless ENV["GITHUB_REF"] == "refs/heads/master" || ENV["GITHUB_REF"].to_s.start_with?("refs/tags/v")
+end
+
+def run_internal_release(options)
+  ensure_ci_release_source
+  print_release_summary(options)
+  validate_credentials(options)
+  upload_internal(options)
+end
+
+
+default_platform(:android)
+
+platform :android do
+  desc "Validate the Google Play service-account credential"
+  lane :validate_play_credentials do |options|
+    validate_credentials(options)
+  end
+
+  desc "Upload a signed AAB to the Google Play internal testing track"
+  lane :internal do |options|
+    run_internal_release(options)
+  end
+end
