@@ -39,14 +39,6 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
   bool _busy = false;
   int get _selectedCount => _reviewState.selectedCount;
 
-  String get _ocrRawText {
-    for (final draft in widget.drafts) {
-      final rawText = draft.rawText?.trim();
-      if (rawText != null && rawText.isNotEmpty) return rawText;
-    }
-    return '';
-  }
-
   @override
   void initState() {
     super.initState();
@@ -74,8 +66,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final children = context.watch<AppState>().children;
-    final hasSelection = _selectedCount > 0;
-    final rawText = _ocrRawText;
+    final rawText = _reviewState.firstNonEmptyRawText;
 
     return Scaffold(
       appBar: AppBar(
@@ -220,7 +211,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (_reviewState.length > 0 && hasSelection)
+              if (_reviewState.canBatchFix)
                 Padding(
                   padding: const EdgeInsets.only(bottom: Spacing.sm),
                   child: Row(
@@ -240,9 +231,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
                           ),
                           onPressed: _deleteSelected,
                           icon: const Icon(Icons.delete_outline, size: 18),
-                          label: Text(
-                            '削除($_selectedCount)',
-                          ),
+                          label: Text('削除($_selectedCount)'),
                         ),
                       ),
                     ],
@@ -304,9 +293,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
       ),
     ).then((confirmed) {
       if (confirmed != true || !mounted) return;
-      setState(() {
-        _reviewState.removeSelected();
-      });
+      setState(_reviewState.removeSelected);
     });
   }
 
@@ -320,13 +307,14 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final targetLabel = target == 'items' ? '持ち物' : 'タイトル';
             return AlertDialog(
               title: const Text('一括修正'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '全候補のタイトルから文字列を検索して置換します',
+                    '全候補の$targetLabelから文字列を検索して置換します',
                     style: TextStyle(
                       fontSize: 13,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -386,7 +374,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
                     Navigator.pop(ctx);
                     _applyBatchFix(
                       find: find,
-                      replace: replaceController.text,
+                      replace: replaceController.text.trim(),
                       target: target,
                     );
                   },
