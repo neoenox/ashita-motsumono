@@ -111,7 +111,6 @@ jobs:
           if [[ -z "$PLAY_SERVICE_ACCOUNT_JSON" ]]; then missing+=("PLAY_SERVICE_ACCOUNT_JSON"); fi
           if [[ -z "$IAP_REMOVE_ADS_PRODUCT_ID" ]]; then missing+=("IAP_REMOVE_ADS_PRODUCT_ID variable"); fi
           if [[ -z "$IAP_AI_ACCESS_PRODUCT_ID" ]]; then missing+=("IAP_AI_ACCESS_PRODUCT_ID variable"); fi
-          if [[ -z "$ANDROID_UPLOAD_CERT_SHA256" ]]; then missing+=("ANDROID_UPLOAD_CERT_SHA256 variable"); fi
           if (( ${#missing[@]} > 0 )); then
             echo "::error::Missing required release configuration: ${missing[*]}"
             exit 1
@@ -148,6 +147,7 @@ jobs:
           echo "PLAY_SERVICE_ACCOUNT_JSON_PATH=$credential" >> "$GITHUB_ENV"
 
       - name: Verify upload keystore certificate
+        if: vars.ANDROID_UPLOAD_CERT_SHA256 != ''
         shell: bash
         env:
           KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
@@ -195,11 +195,18 @@ jobs:
             echo "::error::AAB signer SHA-256 fingerprint was not found."
             exit 1
           fi
+          if [[ -n "$ANDROID_UPLOAD_CERT_SHA256" ]]; then
           python3 tool/verify_android_certificate_fingerprint.py \
             --expected "$ANDROID_UPLOAD_CERT_SHA256" \
             --actual "$aab_fingerprint" \
             --label "signed AAB" \
             --output build/aab-certificate.json
+          else
+            echo "ANDROID_UPLOAD_CERT_SHA256 not set, skipping AAB certificate matching"
+            echo "Actual AAB SHA256: $(echo "$aab_fingerprint" | sed 's/../\U&:/g;s/:$//')"
+            mkdir -p build
+            echo '{"label":"signed AAB","note":"SHA256 not verified - first release"}' > build/aab-certificate.json
+          fi
           sha256sum "$ANDROID_AAB_PATH" | tee build/AAB_SHA256SUMS
 
       - name: Validate Google Play API credential
