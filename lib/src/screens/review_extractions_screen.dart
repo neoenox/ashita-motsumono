@@ -39,6 +39,14 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
   bool _busy = false;
   int get _selectedCount => _reviewState.selectedCount;
 
+  String get _ocrRawText {
+    for (final draft in widget.drafts) {
+      final rawText = draft.rawText?.trim();
+      if (rawText != null && rawText.isNotEmpty) return rawText;
+    }
+    return '';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -67,6 +75,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
     final cs = Theme.of(context).colorScheme;
     final children = context.watch<AppState>().children;
     final hasSelection = _selectedCount > 0;
+    final rawText = _ocrRawText;
 
     return Scaffold(
       appBar: AppBar(
@@ -168,13 +177,17 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
                 ),
               );
             }),
-          if (widget.drafts.any((d) => (d.rawText?.isNotEmpty ?? false)))
+          if (rawText.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: Spacing.sm),
               child: Card(
                 clipBehavior: Clip.antiAlias,
                 child: ExpansionTile(
-                  leading: Icon(Icons.text_snippet_outlined, size: 20, color: cs.primary),
+                  leading: Icon(
+                    Icons.text_snippet_outlined,
+                    size: 20,
+                    color: cs.primary,
+                  ),
                   title: Text(
                     'OCR元テキスト',
                     style: Theme.of(context).textTheme.titleSmall,
@@ -188,7 +201,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
                   ),
                   children: [
                     Text(
-                      widget.drafts.first.rawText ?? '',
+                      rawText,
                       style: TextStyle(
                         fontSize: 12,
                         color: cs.onSurfaceVariant,
@@ -212,16 +225,14 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
                   padding: const EdgeInsets.only(bottom: Spacing.sm),
                   child: Row(
                     children: [
-                      if (_selectedCount < _reviewState.length) ...[
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _showBatchFixDialog,
-                            icon: const Icon(Icons.find_replace, size: 18),
-                            label: const Text('一括修正'),
-                          ),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _showBatchFixDialog,
+                          icon: const Icon(Icons.find_replace, size: 18),
+                          label: const Text('一括修正'),
                         ),
-                        const SizedBox(width: Spacing.sm),
-                      ],
+                      ),
+                      const SizedBox(width: Spacing.sm),
                       Expanded(
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
