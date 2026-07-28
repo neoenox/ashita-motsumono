@@ -19,6 +19,9 @@ class ConsentService {
 
   static const _timeout = Duration(seconds: 30);
 
+  /// UMPがプライバシー設定の再表示入口を要求しているかをUIへ通知する。
+  static final ValueNotifier<bool> privacyOptionsRequired = ValueNotifier(false);
+
   static Future<FormError?> requestConsentInfoUpdate({
     List<String>? testDeviceIds,
     DebugGeography? debugGeography,
@@ -54,6 +57,26 @@ class ConsentService {
     return ConsentInformation.instance.canRequestAds();
   }
 
+  static Future<bool> refreshPrivacyOptionsRequirement() async {
+    final status = await ConsentInformation.instance
+        .getPrivacyOptionsRequirementStatus()
+        .timeout(_timeout);
+    final required = status == PrivacyOptionsRequirementStatus.required;
+    privacyOptionsRequired.value = required;
+    return required;
+  }
+
+  static Future<void> refreshPrivacyOptionsRequirementSafely() async {
+    try {
+      await refreshPrivacyOptionsRequirement();
+    } on Object catch (error, stackTrace) {
+      debugPrint(
+        'ConsentService: privacy options status failed: $error\n$stackTrace',
+      );
+      privacyOptionsRequired.value = false;
+    }
+  }
+
   static Future<FormError?> showConsentFormIfRequired() async {
     final completer = Completer<FormError?>();
     ConsentForm.loadAndShowConsentFormIfRequired((formError) {
@@ -63,7 +86,8 @@ class ConsentService {
   }
 
   /// UMP callbackのtimeoutやplugin例外を結果へ変換し、detached Futureへ
-  /// 例外を漏らさない。
+  /// 例外を漏らさない。今回の同意取得に失敗しても、前回セッションの
+  /// 同意状態で広告を要求できるかは必ず再確認する。
   static Future<ConsentResult> runConsentFlow({
     @visibleForTesting ConsentInfoUpdater? requestInfo,
     @visibleForTesting ConsentFormPresenter? showForm,
@@ -72,6 +96,8 @@ class ConsentService {
     final updateConsentInfo = requestInfo ?? () => requestConsentInfoUpdate();
     final presentConsentForm = showForm ?? () => showConsentFormIfRequired();
     final checkAds = checkCanRequestAds ?? () => canRequestAds();
+    final usesPlatformApis =
+        requestInfo == null && showForm == null && checkCanRequestAds == null;
 
     try {
       final updateError = await updateConsentInfo();
@@ -83,6 +109,7 @@ class ConsentService {
         return ConsentResult(
           error: updateError,
           failureReason: ConsentFailureReason.infoUpdate,
+          canRequestAds: await _safeCanRequestAds(checkAds),
         );
       }
 
@@ -95,6 +122,7 @@ class ConsentService {
         return ConsentResult(
           error: formError,
           failureReason: ConsentFailureReason.form,
+          canRequestAds: await _safeCanRequestAds(checkAds),
         );
       }
 
@@ -105,18 +133,36 @@ class ConsentService {
       return ConsentResult(
         exception: error,
         failureReason: ConsentFailureReason.timeout,
+        canRequestAds: await _safeCanRequestAds(checkAds),
       );
     } on Object catch (error, stackTrace) {
       debugPrint('ConsentService: consent flow failed: $error\n$stackTrace');
       return ConsentResult(
         exception: error,
         failureReason: ConsentFailureReason.unexpected,
+        canRequestAds: await _safeCanRequestAds(checkAds),
       );
+    } finally {
+      if (usesPlatformApis) {
+        await refreshPrivacyOptionsRequirementSafely();
+      }
     }
   }
 
-  static Future<void> showPrivacyOptions() {
-    final completer = Completer<void>();
+  static Future<bool> _safeCanRequestAds(ConsentAdsChecker checkAds) async {
+    try {
+      return await checkAds();
+    } on Object catch (error, stackTrace) {
+      debugPrint(
+        'ConsentService: fallback ad requestability check failed: '
+        '$error\n$stackTrace',
+      );
+      return false;
+    }
+  }
+
+  static Future<FormError?> showPrivacyOptions() async {
+    final completer = Completer<FormError?>();
     ConsentForm.showPrivacyOptionsForm((formError) {
       if (formError != null) {
         debugPrint(
@@ -124,9 +170,13 @@ class ConsentService {
           '(${formError.errorCode}): ${formError.message}',
         );
       }
-      if (!completer.isCompleted) completer.complete();
+      if (!completer.isCompleted) completer.complete(formError);
     });
-    return completer.future.timeout(_timeout);
+    try {
+      return await completer.future.timeout(_timeout);
+    } finally {
+      await refreshPrivacyOptionsRequirementSafely();
+    }
   }
 }
 
@@ -145,5 +195,8 @@ class ConsentResult {
 
   bool get isSuccess =>
       error == null && exception == null && failureReason == null;
-  bool get adsAllowed => isSuccess && canRequestAds;
+
+  /// 同意取得処理の成否とは分けて判定する。UMPは今回の処理が失敗しても
+  /// 前回セッションの有効な同意状態を返すことがある。
+  bool get adsAllowed => canRequestAds;
 }
