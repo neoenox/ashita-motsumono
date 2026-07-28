@@ -6,14 +6,18 @@ import 'package:ashita_motsumono/src/models/entities.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  ExtractionDraft draft(String title, List<String> items) => ExtractionDraft(
+  ExtractionDraft draft(
+    String title,
+    List<String> items, {
+    String? rawText = 'OCR全文',
+  }) => ExtractionDraft(
     title: title,
     category: TodoCategory.item,
     dueDate: DateTime(2026, 7, 20),
     amount: 500,
     items: items,
     note: '元のメモ',
-    rawText: 'OCR全文',
+    rawText: rawText,
   );
 
   test('editing a candidate replaces the value used for registration', () {
@@ -69,6 +73,16 @@ void main() {
   });
 
   group('selectAll / toggleAll', () {
+    test('initial all-selected state allows batch fixing', () {
+      final state = BulkExtractionReviewState([
+        draft('a', []),
+        draft('b', []),
+      ]);
+
+      expect(state.allSelected, isTrue);
+      expect(state.canBatchFix, isTrue);
+    });
+
     test('selectAll(true) selects all drafts', () {
       final state = BulkExtractionReviewState([
         draft('a', []),
@@ -81,6 +95,7 @@ void main() {
       state.selectAll(true);
       expect(state.selectedCount, 3);
       expect(state.allSelected, true);
+      expect(state.canBatchFix, isTrue);
     });
 
     test('selectAll(false) deselects all drafts', () {
@@ -93,6 +108,7 @@ void main() {
       state.selectAll(false);
       expect(state.selectedCount, 0);
       expect(state.allSelected, false);
+      expect(state.canBatchFix, isFalse);
     });
 
     test('toggleAll switches between all/none', () {
@@ -135,6 +151,8 @@ void main() {
       state.removeSelected();
       expect(state.length, 0);
       expect(state.selectedCount, 0);
+      expect(state.canBatchFix, isFalse);
+      expect(state.firstNonEmptyRawText, isEmpty);
     });
 
     test('removing none leaves state unchanged', () {
@@ -148,6 +166,22 @@ void main() {
       expect(state.length, 2);
       expect(state.draftAt(0).title, 'a');
       expect(state.draftAt(1).title, 'b');
+    });
+
+    test('OCR reference follows the current draft state', () {
+      final state = BulkExtractionReviewState([
+        draft('empty', [], rawText: null),
+        draft('with OCR', [], rawText: '  読み取り本文  '),
+      ]);
+
+      expect(state.firstNonEmptyRawText, '読み取り本文');
+
+      state.setSelected(0, false);
+      state.removeSelected();
+
+      expect(state.length, 1);
+      expect(state.draftAt(0).title, 'empty');
+      expect(state.firstNonEmptyRawText, isEmpty);
     });
   });
 
@@ -188,6 +222,17 @@ void main() {
       final count = state.batchReplaceTitle('存在しない', '何か');
       expect(count, 0);
       expect(state.draftAt(0).title, '水筒');
+    });
+
+    test('empty find does not corrupt titles or items', () {
+      final state = BulkExtractionReviewState([
+        draft('水筒を持参', ['青い水筒']),
+      ]);
+
+      expect(state.batchReplaceTitle('', 'X'), 0);
+      expect(state.batchReplaceItems('', 'X'), 0);
+      expect(state.draftAt(0).title, '水筒を持参');
+      expect(state.draftAt(0).items, ['青い水筒']);
     });
   });
 }
