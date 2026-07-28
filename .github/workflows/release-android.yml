@@ -39,7 +39,7 @@ jobs:
       ANDROID_UPLOAD_CERT_SHA256: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 }}
       PLAY_RELEASE_STATUS: ${{ github.event_name == 'workflow_dispatch' && inputs.release_status || 'completed' }}
       PLAY_VALIDATE_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.validate_only || false }}
-      ANDROID_AAB_PATH: build/app/outputs/bundle/release/app-release.aab
+      ANDROID_AAB_PATH: ${{ github.workspace }}/build/app/outputs/bundle/release/app-release.aab
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
