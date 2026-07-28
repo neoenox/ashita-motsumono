@@ -16,6 +16,7 @@ import 'repositories/store.dart';
 import 'screens/home_screen_scope.dart';
 import 'services/ad_service.dart';
 import 'services/app_settings.dart';
+import 'services/consent_service.dart';
 import 'services/notification_service.dart';
 import 'services/purchase_provider.dart';
 import 'state/app_data_notifiers.dart';
@@ -218,10 +219,22 @@ class _BootstrapAppState extends State<BootstrapApp> {
     );
     unawaited(
       runner.run(
-        name: 'ad service initialization',
-        action: AdService.initialize,
+        name: 'consent and ad service initialization',
+        action: _initAdWithConsent,
       ),
     );
+  }
+
+  Future<void> _initAdWithConsent() async {
+    final consent = await ConsentService.runConsentFlow();
+    if (!consent.adsAllowed) {
+      debugPrint(
+        'AdService initialization skipped: consent did not allow ads '
+        '(${consent.failureReason ?? 'not requestable'}).',
+      );
+      return;
+    }
+    await AdService.initialize();
   }
 
   void _clearDependencies() {
