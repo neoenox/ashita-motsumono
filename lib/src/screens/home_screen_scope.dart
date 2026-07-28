@@ -10,6 +10,7 @@ import '../services/app_settings.dart';
 import '../services/ocr_pick_service.dart';
 import '../services/ocr_service.dart';
 import '../state/app_data_notifiers.dart';
+import '../widgets/privacy_options_entry_point.dart';
 import 'home_screen.dart';
 import 'review_extraction_screen.dart';
 import 'review_extractions_screen.dart';
@@ -95,6 +96,12 @@ class _HomeScreenScopeState extends State<HomeScreenScope> {
   Widget build(BuildContext context) {
     context.watch<ChildState>();
     context.watch<TodoState>();
-    return HomeScreen(settings: widget.settings);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        HomeScreen(settings: widget.settings),
+        const PrivacyOptionsEntryPoint(),
+      ],
+    );
   }
 }
