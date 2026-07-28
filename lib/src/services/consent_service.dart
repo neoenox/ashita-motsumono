@@ -69,10 +69,8 @@ class ConsentService {
     @visibleForTesting ConsentFormPresenter? showForm,
     @visibleForTesting ConsentAdsChecker? checkCanRequestAds,
   }) async {
-    final updateConsentInfo =
-        requestInfo ?? () => requestConsentInfoUpdate();
-    final presentConsentForm =
-        showForm ?? () => showConsentFormIfRequired();
+    final updateConsentInfo = requestInfo ?? () => requestConsentInfoUpdate();
+    final presentConsentForm = showForm ?? () => showConsentFormIfRequired();
     final checkAds = checkCanRequestAds ?? () => canRequestAds();
 
     try {
