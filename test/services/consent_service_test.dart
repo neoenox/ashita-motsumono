@@ -23,7 +23,7 @@ void main() {
       expect(result.failureReason, isNull);
     });
 
-    test('contains timeout and stops the remaining flow', () async {
+    test('uses prior consent when the current flow times out', () async {
       var formShown = false;
       var adsChecked = false;
 
@@ -40,14 +40,14 @@ void main() {
       );
 
       expect(formShown, isFalse);
-      expect(adsChecked, isFalse);
+      expect(adsChecked, isTrue);
       expect(result.isSuccess, isFalse);
-      expect(result.adsAllowed, isFalse);
+      expect(result.adsAllowed, isTrue);
       expect(result.failureReason, ConsentFailureReason.timeout);
       expect(result.exception, isA<TimeoutException>());
     });
 
-    test('contains unexpected plugin exceptions', () async {
+    test('uses prior consent after an unexpected form plugin exception', () async {
       final result = await ConsentService.runConsentFlow(
         requestInfo: () async => null,
         showForm: () async => throw StateError('plugin failure'),
@@ -55,7 +55,7 @@ void main() {
       );
 
       expect(result.isSuccess, isFalse);
-      expect(result.adsAllowed, isFalse);
+      expect(result.adsAllowed, isTrue);
       expect(result.failureReason, ConsentFailureReason.unexpected);
       expect(result.exception, isA<StateError>());
     });
@@ -70,6 +70,18 @@ void main() {
       expect(result.isSuccess, isTrue);
       expect(result.canRequestAds, isFalse);
       expect(result.adsAllowed, isFalse);
+    });
+
+    test('fails closed when the fallback ad check also fails', () async {
+      final result = await ConsentService.runConsentFlow(
+        requestInfo: () async => throw TimeoutException('UMP timeout'),
+        showForm: () async => null,
+        checkCanRequestAds: () async => throw StateError('check failed'),
+      );
+
+      expect(result.isSuccess, isFalse);
+      expect(result.adsAllowed, isFalse);
+      expect(result.failureReason, ConsentFailureReason.timeout);
     });
   });
 }
