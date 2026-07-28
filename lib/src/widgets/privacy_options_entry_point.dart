@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../services/consent_service.dart';
@@ -15,14 +13,6 @@ class PrivacyOptionsEntryPoint extends StatefulWidget {
 
 class _PrivacyOptionsEntryPointState extends State<PrivacyOptionsEntryPoint> {
   bool _busy = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(ConsentService.refreshPrivacyOptionsRequirementSafely());
-    });
-  }
 
   Future<void> _showPrivacyOptions() async {
     if (_busy) return;
