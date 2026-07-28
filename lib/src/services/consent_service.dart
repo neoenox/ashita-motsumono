@@ -59,7 +59,8 @@ class ConsentService {
 
   static Future<bool> refreshPrivacyOptionsRequirement() async {
     final status = await ConsentInformation.instance
-        .getPrivacyOptionsRequirementStatus();
+        .getPrivacyOptionsRequirementStatus()
+        .timeout(_timeout);
     final required = status == PrivacyOptionsRequirementStatus.required;
     privacyOptionsRequired.value = required;
     return required;
