@@ -43,7 +43,20 @@ jobs:
         run: flutter pub get
 
       - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed .
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build/ci-diagnostics
+          set +e
+          dart format --output=none --set-exit-if-changed . 2>&1 \
+            | tee build/ci-diagnostics/dart-format.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            dart format . >/dev/null || true
+            git diff -- . > build/ci-diagnostics/dart-format.patch
+          fi
+          exit "$status"
 
       - name: Analyze
         shell: bash
