@@ -19,6 +19,16 @@ class BulkExtractionReviewState {
 
   int get unselectedCount => _drafts.length - selectedCount;
 
+  bool get canBatchFix => _drafts.isNotEmpty && selectedCount > 0;
+
+  String get firstNonEmptyRawText {
+    for (final draft in _drafts) {
+      final rawText = draft.rawText?.trim();
+      if (rawText != null && rawText.isNotEmpty) return rawText;
+    }
+    return '';
+  }
+
   List<ExtractionDraft> get drafts => List.unmodifiable(_drafts);
 
   ExtractionDraft draftAt(int index) => _drafts[index];
@@ -55,6 +65,8 @@ class BulkExtractionReviewState {
   }
 
   int batchReplaceTitle(String find, String replace) {
+    if (find.isEmpty) return 0;
+
     var count = 0;
     for (var index = 0; index < _drafts.length; index++) {
       final draft = _drafts[index];
@@ -69,6 +81,8 @@ class BulkExtractionReviewState {
   }
 
   int batchReplaceItems(String find, String replace) {
+    if (find.isEmpty) return 0;
+
     var count = 0;
     for (var index = 0; index < _drafts.length; index++) {
       final draft = _drafts[index];
