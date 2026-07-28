@@ -74,10 +74,7 @@ void main() {
 
   group('selectAll / toggleAll', () {
     test('initial all-selected state allows batch fixing', () {
-      final state = BulkExtractionReviewState([
-        draft('a', []),
-        draft('b', []),
-      ]);
+      final state = BulkExtractionReviewState([draft('a', []), draft('b', [])]);
 
       expect(state.allSelected, isTrue);
       expect(state.canBatchFix, isTrue);
@@ -99,10 +96,7 @@ void main() {
     });
 
     test('selectAll(false) deselects all drafts', () {
-      final state = BulkExtractionReviewState([
-        draft('a', []),
-        draft('b', []),
-      ]);
+      final state = BulkExtractionReviewState([draft('a', []), draft('b', [])]);
       expect(state.selectedCount, 2);
 
       state.selectAll(false);
@@ -156,10 +150,7 @@ void main() {
     });
 
     test('removing none leaves state unchanged', () {
-      final state = BulkExtractionReviewState([
-        draft('a', []),
-        draft('b', []),
-      ]);
+      final state = BulkExtractionReviewState([draft('a', []), draft('b', [])]);
       state.selectAll(false);
       state.removeSelected();
 
@@ -215,9 +206,7 @@ void main() {
     });
 
     test('batchReplace with no match returns 0 and changes nothing', () {
-      final state = BulkExtractionReviewState([
-        draft('水筒', []),
-      ]);
+      final state = BulkExtractionReviewState([draft('水筒', [])]);
 
       final count = state.batchReplaceTitle('存在しない', '何か');
       expect(count, 0);

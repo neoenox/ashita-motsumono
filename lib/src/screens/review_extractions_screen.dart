@@ -76,9 +76,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
             IconButton(
               tooltip: _reviewState.allSelected ? 'すべて解除' : 'すべて選択',
               icon: Icon(
-                _reviewState.allSelected
-                    ? Icons.deselect
-                    : Icons.select_all,
+                _reviewState.allSelected ? Icons.deselect : Icons.select_all,
               ),
               onPressed: () {
                 setState(() => _reviewState.toggleAll());
@@ -402,16 +400,16 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
       }
     });
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$count件の候補を修正しました')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$count件の候補を修正しました')));
   }
 
   Future<void> _saveSelected() async {
     if (_selectedCount == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('登録する候補を1件以上選んでください')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('登録する候補を1件以上選んでください')));
       return;
     }
 
