@@ -20,7 +20,9 @@ class ConsentService {
   static const _timeout = Duration(seconds: 30);
 
   /// UMPがプライバシー設定の再表示入口を要求しているかをUIへ通知する。
-  static final ValueNotifier<bool> privacyOptionsRequired = ValueNotifier(false);
+  static final ValueNotifier<bool> privacyOptionsRequired = ValueNotifier(
+    false,
+  );
 
   static Future<FormError?> requestConsentInfoUpdate({
     List<String>? testDeviceIds,
