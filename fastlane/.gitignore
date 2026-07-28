@@ -1,0 +1,6 @@
+play-service-account.json
+service-account*.json
+.env
+.env.*
+report.xml
+README.txt
