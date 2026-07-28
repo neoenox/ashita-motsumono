@@ -1,0 +1,45 @@
+name: Release Automation Validation
+
+on:
+  push:
+    branches:
+      - master
+      - 'agent/**'
+      - 'feature/**'
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-automation-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-release-automation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Validate fastlane Ruby syntax
+        run: |
+          ruby -c fastlane/Appfile
+          ruby -c fastlane/Fastfile
+
+      - name: Validate workflow YAML syntax
+        run: >
+          ruby -e 'require "yaml";
+          YAML.safe_load(File.read(".github/workflows/release-android.yml"), aliases: true)'
+
+      - name: Test internal release safeguards
+        run: python3 -m unittest tool/test_internal_release_workflow.py
