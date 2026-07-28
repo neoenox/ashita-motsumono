@@ -47,18 +47,21 @@ void main() {
       expect(result.exception, isA<TimeoutException>());
     });
 
-    test('uses prior consent after an unexpected form plugin exception', () async {
-      final result = await ConsentService.runConsentFlow(
-        requestInfo: () async => null,
-        showForm: () async => throw StateError('plugin failure'),
-        checkCanRequestAds: () async => true,
-      );
+    test(
+      'uses prior consent after an unexpected form plugin exception',
+      () async {
+        final result = await ConsentService.runConsentFlow(
+          requestInfo: () async => null,
+          showForm: () async => throw StateError('plugin failure'),
+          checkCanRequestAds: () async => true,
+        );
 
-      expect(result.isSuccess, isFalse);
-      expect(result.adsAllowed, isTrue);
-      expect(result.failureReason, ConsentFailureReason.unexpected);
-      expect(result.exception, isA<StateError>());
-    });
+        expect(result.isSuccess, isFalse);
+        expect(result.adsAllowed, isTrue);
+        expect(result.failureReason, ConsentFailureReason.unexpected);
+        expect(result.exception, isA<StateError>());
+      },
+    );
 
     test('does not allow ads when UMP reports not requestable', () async {
       final result = await ConsentService.runConsentFlow(
