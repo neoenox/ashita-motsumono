@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../services/consent_service.dart';
 
-/// UMPが要求する場合だけ表示する、再同意用の恒久的な操作入口。
-class PrivacyOptionsEntryPoint extends StatefulWidget {
-  const PrivacyOptionsEntryPoint({super.key});
+/// UMPが要求する場合だけ設定画面へ表示する、再同意用の恒久的な操作入口。
+class PrivacyOptionsListTile extends StatefulWidget {
+  const PrivacyOptionsListTile({super.key});
 
   @override
-  State<PrivacyOptionsEntryPoint> createState() =>
-      _PrivacyOptionsEntryPointState();
+  State<PrivacyOptionsListTile> createState() =>
+      _PrivacyOptionsListTileState();
 }
 
-class _PrivacyOptionsEntryPointState extends State<PrivacyOptionsEntryPoint> {
+class _PrivacyOptionsListTileState extends State<PrivacyOptionsListTile> {
   bool _busy = false;
 
   Future<void> _showPrivacyOptions() async {
@@ -42,29 +42,25 @@ class _PrivacyOptionsEntryPointState extends State<PrivacyOptionsEntryPoint> {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.bottomRight,
-      child: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(16, 16, 16, 88),
-        child: ValueListenableBuilder<bool>(
-          valueListenable: ConsentService.privacyOptionsRequired,
-          builder: (context, required, _) {
-            if (!required) return const SizedBox.shrink();
-            return FloatingActionButton.extended(
-              heroTag: 'ump-privacy-options',
-              onPressed: _busy ? null : _showPrivacyOptions,
-              icon: _busy
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.privacy_tip_outlined),
-              label: const Text('広告の設定'),
-              tooltip: '広告のプライバシー設定を変更',
-            );
-          },
-        ),
-      ),
+    return ValueListenableBuilder<bool>(
+      valueListenable: ConsentService.privacyOptionsRequired,
+      builder: (context, required, _) {
+        if (!required) return const SizedBox.shrink();
+        return ListTile(
+          leading: const Icon(Icons.privacy_tip_outlined),
+          title: const Text('広告のプライバシー設定'),
+          subtitle: const Text('広告に関する同意内容を確認・変更します'),
+          trailing: _busy
+              ? const SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.chevron_right, size: 16),
+          contentPadding: EdgeInsets.zero,
+          enabled: !_busy,
+          onTap: _busy ? null : _showPrivacyOptions,
+        );
+      },
     );
   }
 }
