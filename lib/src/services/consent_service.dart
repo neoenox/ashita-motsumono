@@ -112,10 +112,7 @@ class ConsentService {
         return ConsentResult(
           error: updateError,
           failureReason: ConsentFailureReason.infoUpdate,
-          canRequestAds: await _safeCanRequestAds(
-            checkAds,
-            timeout: timeout,
-          ),
+          canRequestAds: await _safeCanRequestAds(checkAds, timeout: timeout),
         );
       }
 
@@ -128,10 +125,7 @@ class ConsentService {
         return ConsentResult(
           error: formError,
           failureReason: ConsentFailureReason.form,
-          canRequestAds: await _safeCanRequestAds(
-            checkAds,
-            timeout: timeout,
-          ),
+          canRequestAds: await _safeCanRequestAds(checkAds, timeout: timeout),
         );
       }
 
@@ -142,20 +136,14 @@ class ConsentService {
       return ConsentResult(
         exception: error,
         failureReason: ConsentFailureReason.timeout,
-        canRequestAds: await _safeCanRequestAds(
-          checkAds,
-          timeout: timeout,
-        ),
+        canRequestAds: await _safeCanRequestAds(checkAds, timeout: timeout),
       );
     } on Object catch (error, stackTrace) {
       debugPrint('ConsentService: consent flow failed: $error\n$stackTrace');
       return ConsentResult(
         exception: error,
         failureReason: ConsentFailureReason.unexpected,
-        canRequestAds: await _safeCanRequestAds(
-          checkAds,
-          timeout: timeout,
-        ),
+        canRequestAds: await _safeCanRequestAds(checkAds, timeout: timeout),
       );
     } finally {
       if (usesPlatformApis) {
