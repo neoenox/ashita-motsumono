@@ -103,18 +103,21 @@ void main() {
       expect(result.exception, isA<TimeoutException>());
     });
 
-    test('times out and fails closed when the fallback ad check stalls', () async {
-      final result = await ConsentService.runConsentFlow(
-        requestInfo: () async => throw TimeoutException('UMP timeout'),
-        showForm: () async => null,
-        checkCanRequestAds: () => Completer<bool>().future,
-        timeout: const Duration(milliseconds: 1),
-      );
+    test(
+      'times out and fails closed when the fallback ad check stalls',
+      () async {
+        final result = await ConsentService.runConsentFlow(
+          requestInfo: () async => throw TimeoutException('UMP timeout'),
+          showForm: () async => null,
+          checkCanRequestAds: () => Completer<bool>().future,
+          timeout: const Duration(milliseconds: 1),
+        );
 
-      expect(result.isSuccess, isFalse);
-      expect(result.adsAllowed, isFalse);
-      expect(result.failureReason, ConsentFailureReason.timeout);
-      expect(result.exception, isA<TimeoutException>());
-    });
+        expect(result.isSuccess, isFalse);
+        expect(result.adsAllowed, isFalse);
+        expect(result.failureReason, ConsentFailureReason.timeout);
+        expect(result.exception, isA<TimeoutException>());
+      },
+    );
   });
 }
