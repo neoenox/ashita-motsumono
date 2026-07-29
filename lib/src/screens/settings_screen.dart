@@ -12,6 +12,7 @@ import '../app_version.g.dart';
 import '../services/app_settings.dart';
 import '../services/purchase_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/privacy_options_entry_point.dart';
 
 typedef UrlAvailabilityCheck = Future<bool> Function(Uri uri);
 typedef UrlLaunchAction = Future<bool> Function(Uri uri);
@@ -177,6 +178,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: Spacing.sm),
           Text('その他', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: Spacing.sm),
+          const PrivacyOptionsListTile(),
           ListTile(
             leading: const Icon(Icons.policy_outlined),
             title: const Text('プライバシーポリシー'),
