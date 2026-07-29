@@ -7,8 +7,7 @@ class PrivacyOptionsListTile extends StatefulWidget {
   const PrivacyOptionsListTile({super.key});
 
   @override
-  State<PrivacyOptionsListTile> createState() =>
-      _PrivacyOptionsListTileState();
+  State<PrivacyOptionsListTile> createState() => _PrivacyOptionsListTileState();
 }
 
 class _PrivacyOptionsListTileState extends State<PrivacyOptionsListTile> {
