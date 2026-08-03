@@ -1,0 +1,240 @@
+name: Android Internal Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_status:
+        description: Google Play release status
+        required: true
+        default: completed
+        type: choice
+        options:
+          - completed
+          - draft
+      validate_only:
+        description: Validate the upload without publishing
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-internal-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-internal:
+    name: Build and upload internal AAB
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: google-play-internal
+    env:
+      IAP_REMOVE_ADS_PRODUCT_ID: ${{ vars.IAP_REMOVE_ADS_PRODUCT_ID }}
+      IAP_AI_ACCESS_PRODUCT_ID: ${{ vars.IAP_AI_ACCESS_PRODUCT_ID }}
+      ANDROID_UPLOAD_CERT_SHA256: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 }}
+      PLAY_RELEASE_STATUS: ${{ github.event_name == 'workflow_dispatch' && inputs.release_status || 'completed' }}
+      PLAY_VALIDATE_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.validate_only || false }}
+      ANDROID_AAB_PATH: ${{ github.workspace }}/build/app/outputs/bundle/release/app-release.aab
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify release source and version tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin master
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "::error::Internal releases must point to a commit already contained in master."
+            exit 1
+          fi
+
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            pubspec_version="$(python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          text = Path('pubspec.yaml').read_text(encoding='utf-8')
+          match = re.search(r'^version:\s*([^+\s]+)\+(\d+)\s*$', text, re.MULTILINE)
+          if match is None:
+              raise SystemExit('pubspec.yaml version must use <name>+<build-number>')
+          print(match.group(1))
+          PY
+          )"
+            expected_tag="v${pubspec_version}"
+            if [[ "$GITHUB_REF_NAME" != "$expected_tag" ]]; then
+              echo "::error::Tag $GITHUB_REF_NAME does not match pubspec version $expected_tag."
+              exit 1
+            fi
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Validate required release configuration
+        shell: bash
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          missing=()
+          if [[ -z "${{ secrets.KEYSTORE_BASE64 }}" ]]; then missing+=("KEYSTORE_BASE64"); fi
+          if [[ -z "${{ secrets.KEYSTORE_STORE_PASSWORD }}" ]]; then missing+=("KEYSTORE_STORE_PASSWORD"); fi
+          if [[ -z "${{ secrets.KEYSTORE_KEY_ALIAS }}" ]]; then missing+=("KEYSTORE_KEY_ALIAS"); fi
+          if [[ -z "${{ secrets.KEYSTORE_KEY_PASSWORD }}" ]]; then missing+=("KEYSTORE_KEY_PASSWORD"); fi
+          if [[ -z "${{ secrets.ADMOB_APP_ID }}" ]]; then missing+=("ADMOB_APP_ID"); fi
+          if [[ -z "${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}" ]]; then missing+=("ADMOB_BANNER_AD_UNIT_ID"); fi
+          if [[ -z "${{ secrets.GEMINI_PROXY_URL }}" ]]; then missing+=("GEMINI_PROXY_URL"); fi
+          if [[ -z "$PLAY_SERVICE_ACCOUNT_JSON" ]]; then missing+=("PLAY_SERVICE_ACCOUNT_JSON"); fi
+          if [[ -z "$IAP_REMOVE_ADS_PRODUCT_ID" ]]; then missing+=("IAP_REMOVE_ADS_PRODUCT_ID variable"); fi
+          if [[ -z "$IAP_AI_ACCESS_PRODUCT_ID" ]]; then missing+=("IAP_AI_ACCESS_PRODUCT_ID variable"); fi
+          if (( ${#missing[@]} > 0 )); then
+            echo "::error::Missing required release configuration: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Generate Android platform files
+        run: bash tool/create_platforms.sh
+
+      - name: Apply Android release configuration
+        run: bash tool/configure_android_release.sh
+
+      - name: Restore Android signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF_KEY
+          storeFile=app/upload-keystore.jks
+          storePassword=${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          keyAlias=${{ secrets.KEYSTORE_KEY_ALIAS }}
+          keyPassword=${{ secrets.KEYSTORE_KEY_PASSWORD }}
+          EOF_KEY
+
+      - name: Restore Google Play credential
+        shell: bash
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          credential="$RUNNER_TEMP/play-service-account.json"
+          printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON" > "$credential"
+          chmod 600 "$credential"
+          python3 -m json.tool "$credential" >/dev/null
+          echo "PLAY_SERVICE_ACCOUNT_JSON_PATH=$credential" >> "$GITHUB_ENV"
+
+      - name: Verify upload keystore certificate
+        if: vars.ANDROID_UPLOAD_CERT_SHA256 != ''
+        shell: bash
+        env:
+          KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          certificate_der="$RUNNER_TEMP/upload-certificate.der"
+          keytool -exportcert \
+            -keystore android/app/upload-keystore.jks \
+            -alias "$KEYSTORE_KEY_ALIAS" \
+            -storepass "$KEYSTORE_STORE_PASSWORD" \
+            -file "$certificate_der"
+          actual_fingerprint="$(sha256sum "$certificate_der" | awk '{print $1}')"
+          rm -f "$certificate_der"
+          python3 tool/verify_android_certificate_fingerprint.py \
+            --expected "$ANDROID_UPLOAD_CERT_SHA256" \
+            --actual "$actual_fingerprint" \
+            --label "upload keystore" \
+            --output build/upload-keystore-certificate.json
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build signed release AAB
+        env:
+          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+        run: >
+          flutter build appbundle --release
+          --dart-define=ADMOB_BANNER_AD_UNIT_ID=${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
+          --dart-define=IAP_REMOVE_ADS_PRODUCT_ID=${IAP_REMOVE_ADS_PRODUCT_ID}
+          --dart-define=IAP_AI_ACCESS_PRODUCT_ID=${IAP_AI_ACCESS_PRODUCT_ID}
+          --dart-define=GEMINI_PROXY_URL=${{ secrets.GEMINI_PROXY_URL }}
+
+      - name: Verify signed AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$ANDROID_AAB_PATH"
+          jarsigner -verify -verbose -certs "$ANDROID_AAB_PATH" \
+            | tee build/aab-signature-verification.txt
+          keytool -printcert -jarfile "$ANDROID_AAB_PATH" \
+            | tee build/aab-signer-certificate.txt
+          aab_fingerprint="$(sed -n 's/^[[:space:]]*SHA256: //p' build/aab-signer-certificate.txt | head -n 1)"
+          if [[ -z "$aab_fingerprint" ]]; then
+            echo "::error::AAB signer SHA-256 fingerprint was not found."
+            exit 1
+          fi
+          if [[ -n "$ANDROID_UPLOAD_CERT_SHA256" ]]; then
+          python3 tool/verify_android_certificate_fingerprint.py \
+            --expected "$ANDROID_UPLOAD_CERT_SHA256" \
+            --actual "$aab_fingerprint" \
+            --label "signed AAB" \
+            --output build/aab-certificate.json
+          else
+            echo "ANDROID_UPLOAD_CERT_SHA256 not set, skipping AAB certificate matching"
+            echo "Actual AAB SHA256: $(echo "$aab_fingerprint" | sed 's/../\U&:/g;s/:$//')"
+            mkdir -p build
+            echo '{"label":"signed AAB","note":"SHA256 not verified - first release"}' > build/aab-certificate.json
+          fi
+          sha256sum "$ANDROID_AAB_PATH" | tee build/AAB_SHA256SUMS
+
+      - name: Validate Google Play API credential
+        run: bundle exec fastlane android validate_play_credentials
+
+      - name: Upload AAB to internal testing
+        run: bundle exec fastlane android internal
+
+      - name: Upload release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ashita-motsumono-internal-release-${{ github.sha }}
+          path: |
+            build/app/outputs/bundle/release/app-release.aab
+            build/upload-keystore-certificate.json
+            build/aab-signature-verification.txt
+            build/aab-signer-certificate.txt
+            build/aab-certificate.json
+            build/AAB_SHA256SUMS
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Remove temporary credentials
+        if: always()
+        shell: bash
+        run: |
+          rm -f android/key.properties android/app/upload-keystore.jks
+          if [[ -n "${PLAY_SERVICE_ACCOUNT_JSON_PATH:-}" ]]; then
+            rm -f "$PLAY_SERVICE_ACCOUNT_JSON_PATH"
+          fi
