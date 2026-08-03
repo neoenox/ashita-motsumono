@@ -159,6 +159,13 @@ function Invoke-Issue60 {
     -Serial $Serial `
     -PackageName $PackageName `
     -OutputRoot $EvidenceRoot
+  $exitCode = $LASTEXITCODE
+  if ($exitCode -ne 0) {
+    throw (
+      "command failed: powershell.exe -File $Issue60Tool " +
+      "$($Arguments -join ' ') (exit $exitCode)"
+    )
+  }
 }
 
 function Invoke-Orchestrator {

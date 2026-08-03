@@ -70,6 +70,14 @@
 
 - 旧スクリプトが参照するパスは存在するが、本タスクでは読み取り・変更の対象外（sibling project）として扱った。
 
+#### B5: `Invoke-Issue60` は子PowerShellの非0終了コードを伝播しなかった
+
+- 場所: `release_validation_session.ps1` の `Invoke-Issue60`
+- 実装: `& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Issue60Tool @Arguments ...`
+- 挙動: 子PowerShell（`issue60_emulator_evidence.ps1`）が非0で終了しても `$LASTEXITCODE` を検査しておらず、セッション側が成功として続行する（子の失敗が握りつぶされる）。
+- 影響: `Preflight` / `PlanCase` / `BeginCase` / `MutateCase` / `WaitCase` / `FinalizeCase` / `Aggregate` で子ツールが失敗（verdict 不整合・ゲート失敗・通信エラー等）しても呼び出し元が成功扱いになり、証跡とセッション状態が不整合になる。
+- 対処（本PRで実施）: 子プロセス実行直後に `$exitCode = $LASTEXITCODE` を取得し、非0なら `throw`（既存 `Invoke-Checked` と同じパターン）。`throw` は terminating error となり、`release_validation_session.ps1` 自体が非0 exit（通常1）で終了するため、上位（CI・呼び出し側）が失敗を検知できる。
+
 ---
 
 ## 完了済み
