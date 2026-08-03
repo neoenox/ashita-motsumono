@@ -11,7 +11,7 @@
 ## 判定区分
 
 - **実装済み**: コードと自動テストで確認できた（実機証跡の有無を併記）
-- **実装済み（PR #140・未統合）**: PR #140（OPEN・未マージ）のコードで実装済みだが、masterへの統合は未完了
+- **実装済み・統合済み**: PR #140（merge commit `b90264b`）のコードで実装済みで、masterへの統合は完了
 - **一部実装**: 中核機能はあるが、チェック項目の一部（UI・並び替え等）が未対応
 - **未実装**: 対応するコード・テスト・UIが見つからない
 - **検証待ち**: 実装・自動検証は済んでいるが、実機/外部ゲートでの確認が未実施
@@ -21,11 +21,11 @@
 | セクション | 実装済み | 未統合 | 一部実装 | 未実装 | 検証待ち | 合計 |
 |---|--:|--:|--:|--:|--:|--:|
 | 入力経路の強化（5項目） | 4 | 0 | 1 | 0 | 0 | 5 |
-| 確認画面の修正コスト削減（6項目） | 3 | 1 | 0 | 2 | 0 | 6 |
+| 確認画面の修正コスト削減（6項目） | 4 | 0 | 0 | 2 | 0 | 6 |
 | 検証（6項目） | 0 | 0 | 0 | 0 | 6 | 6 |
-| 合計 | 7 | 1 | 1 | 2 | 6 | 17 |
+| 合計 | 8 | 0 | 1 | 2 | 6 | 17 |
 
-- 未統合 = 実装済み・PR #140で未統合（2-3）。PR #140がmasterへ統合されたら「実装済み」へ移行。
+- 未統合 0 件。2-3 は PR #140 の master 統合により「実装済み・統合済み」へ移行。
 - 各セクションの合計は5 / 6 / 6、全体は **17 項目**。
 
 ---
@@ -103,14 +103,14 @@
 - 複数候補は `ReviewExtractionsScreen._editDraft()` → `ReviewExtractionScreen(editOnly: true)` で個別編集し、`BulkExtractionReviewState.updateDraft()` で一覧へ反映
 - テスト: `test/bulk_extraction_review_state_test.dart`（編集が登録対象へ反映、選択・クリア）
 
-### 2-3. 同じ誤認識を一括修正 — **実装済み（PR #140・未統合）**
+### 2-3. 同じ誤認識を一括修正 — **実装済み・統合済み**
 
-根拠: master（`51755ce`）上の `bulk_extraction_review_state.dart` は候補単位の `updateDraft`/`setSelected` のみで一括置換APIは無いが、PR #140（`feature/review-extraction-improvements`、OPEN・未マージ）で一括修正が実装済み:
+根拠: PR #140（`feature/review-extraction-improvements`）で一括修正が実装され、masterへ統合済み（merge commit `b90264bc8770e5ef436f9a73dd31139a1bff62e0`）:
 - `BulkExtractionReviewState.batchReplaceTitle(find, replace)` / `batchReplaceItems(find, replace)` / `canBatchFix`（`lib/src/models/bulk_extraction_review_state.dart`）
 - `ReviewExtractionsScreen` 側の一括修正UI（`lib/src/screens/review_extractions_screen.dart`）
 - テスト: `test/bulk_extraction_review_state_test.dart`
 
-**PR #140 が master に未統合のため、現行masterとしては未統合（master統合後に完了扱い）。** Issue #136 の注記「PR #140で実装済み・未マージ」に一致。
+**PR #140 は master へ統合済み（merge commit `b90264bc8770e5ef436f9a73dd31139a1bff62e0`）。** 2-3 は統合済みとして完了扱い。
 
 ### 2-4. 不要候補の複数選択削除 — **実装済み**
 
@@ -203,7 +203,6 @@
 | # | 項目 | 状態 | 残タスク | 依存 |
 |---|---|---|---|---|
 | 2-1 | 元文の該当箇所とTodo候補を対応表示 | 未実装 | OCR全文の該当セグメント特定（`_splitCandidateTexts` の区間情報を `ExtractionDraft` へ保持）と、確認画面でのハイライト表示 | `extraction_service.dart` のセグメント区間出力 |
-| 2-3 | 同じ誤認識を一括修正 | 実装済み（PR #140・未統合） | PR #140 の master への統合（マージ後に完了扱い） | PR #140 が master に統合されること |
 | 2-6 | 辞書反映の取り消しUI | 未実装 | 設定画面に学習ラベル一覧＋個別/一括削除UI。`AppSettings` に個別削除API追加 | なし（`clearLearnedItemLabels` は既存） |
 
 ### 検証
@@ -221,5 +220,5 @@
 
 - 「実装済み」はコード・自動テスト・契約テストで確認できたことを意味し、実機/外部ゲートのPASSを意味しません。実機が必要な項目は「検証待ち」にしています。
 - `docs/TODO.md` のv0.7.0チェックは「PDF取り込み」「複数画像一括取り込み」「抽出失敗時の手入力移行」のみ `[x]` で、本ドキュメントの判定と一致します（TODO.md の「Android共有経路の改善」「二重登録防止」「起動中/未起動の一貫動作」は `[ ]` のままですが、コード上は実装済みです。TODO.mdの更新は本タスクのスコープ外としました）。
-- PR #140（`feature/review-extraction-improvements`）は 2-3 を実装済みだが OPEN・未マージ。本サマリでは 2-3 を「未統合」として計上し、master統合後に「実装済み」へ移行する。
+- PR #140（`feature/review-extraction-improvements`）は 2-3 を実装済みで、masterへ統合済み（merge commit `b90264bc8770e5ef436f9a73dd31139a1bff62e0`）。本サマリでは 2-3 を「実装済み・統合済み」として計上する。
 - 実機証跡（`Documents\ashita-release-evidence`）はリポジトリ外のため確認できていません。リポジトリ内の受入記録（`docs/validation/` 配下）ではAndroid通知の実測は「未実施」と明記されています。
