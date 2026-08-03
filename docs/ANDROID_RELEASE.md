@@ -52,16 +52,16 @@ WindowsでキーストアをBase64化します。
 
 必須Repository Variable：
 
+| Variable | 用途 | デフォルト |
+|---|---|---|
+| `IAP_REMOVE_ADS_PRODUCT_ID` | 広告削除商品ID | `remove_ads` |
+| `IAP_AI_ACCESS_PRODUCT_ID` | AI分析商品ID | `ai_analysis` |
+
+条件付き必須Repository Variable：
+
 | Variable | 用途 |
 |---|---|
-| `ANDROID_UPLOAD_CERT_SHA256` | Play Consoleのアップロード証明書SHA-256 |
-
-任意Repository Variable：
-
-| Variable | デフォルト |
-|---|---|
-| `IAP_REMOVE_ADS_PRODUCT_ID` | `remove_ads` |
-| `IAP_AI_ACCESS_PRODUCT_ID` | `ai_analysis` |
+| `ANDROID_UPLOAD_CERT_SHA256` | Play Consoleのアップロード証明書SHA-256（ci.ymlでは必須、release-android.ymlでは任意・照合スキップ） |
 
 ## 4. 証明書を照合する
 

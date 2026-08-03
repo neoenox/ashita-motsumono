@@ -179,12 +179,12 @@ Play Consoleで次を準備します。
 
 必須Repository Variable：
 
-- `ANDROID_UPLOAD_CERT_SHA256`
-
-任意Repository Variable：
-
 - `IAP_REMOVE_ADS_PRODUCT_ID`（未設定時`remove_ads`）
 - `IAP_AI_ACCESS_PRODUCT_ID`（未設定時`ai_analysis`）
+
+条件付き必須Repository Variable：
+
+- `ANDROID_UPLOAD_CERT_SHA256`（ci.ymlでは必須、release-android.ymlでは任意・照合スキップ）
 
 `Release Android`を`workflow_dispatch`または正式`v*`タグで実行し、次を保存します。
 
