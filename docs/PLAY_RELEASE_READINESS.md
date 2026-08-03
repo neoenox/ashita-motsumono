@@ -49,7 +49,7 @@
 
 - master最新 `51755ce`（#144）の push で `Flutter CI` / `Flutter Release Validation` / `Release Automation Validation` がすべて **success**。
 - `release-android.yml`（Android Internal Release）は **2026-07-28に `v0.7.0` タグ push で実行され success**（run `30360560641`、HEAD `fa73fdb`）。ただしこれは内部テスト配布の実行であり、Issue #98/#59の完了条件である「`ANDROID_UPLOAD_CERT_SHA256` 照合つき正式Release」の証跡ではありません。
-- Issue #98/#59コメント記載のrun `30021852905`（master `8f60384`）では `release-build` が「`IAP_AI_ACCESS_PRODUCT_ID` variable と `ANDROID_UPLOAD_CERT_SHA256` variable 未設定」で停止。→ **この2つのVariable（うち1つは必須）が以前から未設定のまま**であることが、GitHub APIの現状照会でも裏付けられました。
+- Issue #98/#59コメント記載のrun `30021852905`（master `8f60384`）では `release-build` が「`IAP_AI_ACCESS_PRODUCT_ID` variable と `ANDROID_UPLOAD_CERT_SHA256` variable 未設定」で停止。→ **この2つのVariable（いずれも必須）が以前から未設定のまま**であることが、GitHub APIの現状照会でも裏付けられました。
 
 ---
 
@@ -68,20 +68,20 @@
 | 7 | `GEMINI_PROXY_URL` | AI解析用Cloudflare Workers URL | ci.yml / release-android.yml | 同上 |
 | 8 | `PLAY_SERVICE_ACCOUNT_JSON` | Google Play APIサービスアカウントJSON | release-android.yml / PLAY_INTERNAL_RELEASE.md | 内部テスト配布で必須 |
 
-### 2.2 必須Repository Variables（1件）
+### 2.2 必須Repository Variables（2件）
 
 | # | Variable名 | 用途 | デフォルト | 監査メモ |
 |---|---|---|---|---|
-| 1 | `ANDROID_UPLOAD_CERT_SHA256` | Play Consoleアップロード証明書SHA-256（正式Releaseの照合必須） | なし（必須） | **API照会で未設定を確認**。ci.yml release-buildとrelease-android.ymlの照合に使われ、未設定ならビルド前に停止 |
-
-### 2.3 任意Repository Variables（2件）
-
-| # | Variable名 | 用途 | デフォルト |
-|---|---|---|---|
-| 1 | `IAP_REMOVE_ADS_PRODUCT_ID` | 広告削除商品ID | `remove_ads` |
-| 2 | `IAP_AI_ACCESS_PRODUCT_ID` | AI分析商品ID | `ai_analysis` |
+| 1 | `IAP_REMOVE_ADS_PRODUCT_ID` | 広告削除商品ID | `remove_ads` | ci.yml L174 / release-android.yml L112 の必須チェックで未設定ならビルド前に停止 |
+| 2 | `IAP_AI_ACCESS_PRODUCT_ID` | AI分析商品ID | `ai_analysis` | 同上（ci.yml L175 / release-android.yml L113） |
 
 API照会ではこの2件は設定済みでしたが、**値（`remove_ads`/`ai_analysis`か上書き値か）は静的には判定しません**。Play Consoleで作成する課金商品IDと一致させる必要があります。
+
+### 2.3 条件付き必須Repository Variables（1件）
+
+| # | Variable名 | 用途 | デフォルト | 監査メモ |
+|---|---|---|---|---|
+| 1 | `ANDROID_UPLOAD_CERT_SHA256` | Play Consoleアップロード証明書SHA-256（正式Releaseの照合必須） | なし（必須） | **API照会で未設定を確認**。ci.yml release-build（L176）では必須で、未設定ならビルド前に停止。release-android.ymlでは任意（L150で証明書照合をスキップ、L198-208で未設定時は照合なしで通過＝初回リリースを許容） |
 
 > 判定方針：本レポートは「設定済み/未設定」の最終判定をしません（APIではSecretsの値は照会不可、Variable値は本タスクの対象外）。設定作業はユーザーが各管理画面で行い、`docs/PLAY_CONSOLE_SUBMISSION.md` §3のチェックリストを順に埋めてください。
 
