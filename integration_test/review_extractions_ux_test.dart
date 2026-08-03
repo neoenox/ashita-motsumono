@@ -63,12 +63,8 @@ void main() {
     final drafts = List.generate(120, _draft);
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppState>.value(value: appState),
-        ],
-        child: MaterialApp(
-          home: ReviewExtractionsScreen(drafts: drafts),
-        ),
+        providers: [ChangeNotifierProvider<AppState>.value(value: appState)],
+        child: MaterialApp(home: ReviewExtractionsScreen(drafts: drafts)),
       ),
     );
     await tester.pumpAndSettle();
@@ -92,12 +88,8 @@ void main() {
     final drafts = List.generate(5, _draft);
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppState>.value(value: appState),
-        ],
-        child: MaterialApp(
-          home: ReviewExtractionsScreen(drafts: drafts),
-        ),
+        providers: [ChangeNotifierProvider<AppState>.value(value: appState)],
+        child: MaterialApp(home: ReviewExtractionsScreen(drafts: drafts)),
       ),
     );
     await tester.pumpAndSettle();
@@ -131,12 +123,8 @@ void main() {
     final drafts = List.generate(5, _draft);
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppState>.value(value: appState),
-        ],
-        child: MaterialApp(
-          home: ReviewExtractionsScreen(drafts: drafts),
-        ),
+        providers: [ChangeNotifierProvider<AppState>.value(value: appState)],
+        child: MaterialApp(home: ReviewExtractionsScreen(drafts: drafts)),
       ),
     );
     await tester.pumpAndSettle();
@@ -177,12 +165,8 @@ void main() {
     final drafts = List.generate(5, _draft);
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppState>.value(value: appState),
-        ],
-        child: MaterialApp(
-          home: ReviewExtractionsScreen(drafts: drafts),
-        ),
+        providers: [ChangeNotifierProvider<AppState>.value(value: appState)],
+        child: MaterialApp(home: ReviewExtractionsScreen(drafts: drafts)),
       ),
     );
     await tester.pumpAndSettle();
@@ -220,12 +204,8 @@ void main() {
     final drafts = List.generate(5, _draft);
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppState>.value(value: appState),
-        ],
-        child: MaterialApp(
-          home: ReviewExtractionsScreen(drafts: drafts),
-        ),
+        providers: [ChangeNotifierProvider<AppState>.value(value: appState)],
+        child: MaterialApp(home: ReviewExtractionsScreen(drafts: drafts)),
       ),
     );
     await tester.pumpAndSettle();
@@ -262,12 +242,8 @@ void main() {
     final drafts = List.generate(3, _draft);
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppState>.value(value: appState),
-        ],
-        child: MaterialApp(
-          home: ReviewExtractionsScreen(drafts: drafts),
-        ),
+        providers: [ChangeNotifierProvider<AppState>.value(value: appState)],
+        child: MaterialApp(home: ReviewExtractionsScreen(drafts: drafts)),
       ),
     );
     await tester.pumpAndSettle();
@@ -293,12 +269,8 @@ void main() {
     final drafts = List.generate(3, _draft);
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppState>.value(value: appState),
-        ],
-        child: MaterialApp(
-          home: ReviewExtractionsScreen(drafts: drafts),
-        ),
+        providers: [ChangeNotifierProvider<AppState>.value(value: appState)],
+        child: MaterialApp(home: ReviewExtractionsScreen(drafts: drafts)),
       ),
     );
     await tester.pumpAndSettle();
@@ -323,8 +295,7 @@ void main() {
   testWidgets('Issue146 - 長い日本語文字列でもレイアウトが破綻しない', (tester) async {
     final appState = await _launchTestApp(tester);
 
-    const longTitle =
-        '明日の連絡帳確認と体操着忘れ防止のための非常に長いタイトルテスト文字列そのまま表示されます';
+    const longTitle = '明日の連絡帳確認と体操着忘れ防止のための非常に長いタイトルテスト文字列そのまま表示されます';
     final drafts = [
       ExtractionDraft(
         title: longTitle,
@@ -341,12 +312,8 @@ void main() {
     ];
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppState>.value(value: appState),
-        ],
-        child: MaterialApp(
-          home: ReviewExtractionsScreen(drafts: drafts),
-        ),
+        providers: [ChangeNotifierProvider<AppState>.value(value: appState)],
+        child: MaterialApp(home: ReviewExtractionsScreen(drafts: drafts)),
       ),
     );
     await tester.pumpAndSettle();
@@ -366,12 +333,8 @@ void main() {
     final drafts = List.generate(5, _draft);
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppState>.value(value: appState),
-        ],
-        child: MaterialApp(
-          home: ReviewExtractionsScreen(drafts: drafts),
-        ),
+        providers: [ChangeNotifierProvider<AppState>.value(value: appState)],
+        child: MaterialApp(home: ReviewExtractionsScreen(drafts: drafts)),
       ),
     );
     await tester.pumpAndSettle();
@@ -379,9 +342,7 @@ void main() {
     // 画面を破棄（別ウィジェットへ置換）
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AppState>.value(value: appState),
-        ],
+        providers: [ChangeNotifierProvider<AppState>.value(value: appState)],
         child: const MaterialApp(
           home: Scaffold(body: Center(child: Text('After Dispose'))),
         ),
