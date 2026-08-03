@@ -238,6 +238,9 @@ void main() {
     expect(find.text('検索文字列を入力してください'), findsOneWidget);
     await tester.tap(find.text('キャンセル'));
     await tester.pumpAndSettle();
+    // 前のSnackBarの表示期限を過ぎさせる（次のSnackBarがキュー待ちにならないように）
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
 
     // 一致しない検索
     await tester.tap(find.text('一括修正'));
@@ -245,8 +248,9 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '存在しない');
     await tester.enterText(find.byType(TextField).at(1), 'X');
     await tester.tap(find.text('置換'));
-    await tester.pumpAndSettle();
+    await tester.pump();
     expect(find.text('0件の候補を修正しました'), findsOneWidget);
+    await tester.pumpAndSettle();
 
     // 候補が破損していない
     expect(find.text('候補0'), findsOneWidget);
