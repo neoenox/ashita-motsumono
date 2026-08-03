@@ -149,11 +149,23 @@ function Resolve-RepositoryPath {
 
 function Invoke-Issue60 {
   param([Parameter(Mandatory)][string[]]$Arguments)
-  & $Issue60Tool `
+  # B1: [CmdletBinding()] 付きスクリプトへ @Arguments を直接スプラットすると
+  # 位置引数として扱われ '-Action' が ValidateSet の値として拒否される。
+  # powershell.exe -File 経由なら argv として渡され、param() が名前付き
+  # パラメータとして正しくパースする。
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass `
+    -File $Issue60Tool `
     @Arguments `
     -Serial $Serial `
     -PackageName $PackageName `
     -OutputRoot $EvidenceRoot
+  $exitCode = $LASTEXITCODE
+  if ($exitCode -ne 0) {
+    throw (
+      "command failed: powershell.exe -File $Issue60Tool " +
+      "$($Arguments -join ' ') (exit $exitCode)"
+    )
+  }
 }
 
 function Invoke-Orchestrator {

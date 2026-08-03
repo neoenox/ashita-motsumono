@@ -175,6 +175,22 @@ void main() {
     expect(positions, orderedEquals(<int>[...positions]..sort()));
   });
 
+  test('session driver propagates a non-zero issue60 child exit', () {
+    final text = sessionDriver.readAsStringSync();
+
+    final start = text.indexOf('function Invoke-Issue60');
+    final end = text.indexOf('function Invoke-Orchestrator');
+    expect(start, greaterThanOrEqualTo(0));
+    expect(end, greaterThan(start));
+
+    final region = text.substring(start, end);
+    expect(region, contains('powershell.exe'));
+    final invocation = region.indexOf('powershell.exe');
+    final exitCheck = region.indexOf(r'$LASTEXITCODE');
+    expect(exitCheck, greaterThan(invocation));
+    expect(region, contains('throw'));
+  });
+
   test('PowerShell excludes destructive or ambiguous ADB operations', () {
     final text = joinFiles(powerShellFiles).toLowerCase();
 
@@ -246,6 +262,101 @@ if ($failed) { exit 1 }
       '-NoProfile',
       '-Command',
       parserScript,
+    ]);
+
+    expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
+  });
+
+  test('session driver throws when the issue60 child exits non-zero', () {
+    if (!Platform.isWindows) {
+      return;
+    }
+    String? shell;
+    for (final candidate in <String>['powershell', 'pwsh']) {
+      try {
+        final probe = Process.runSync(candidate, <String>[
+          '-NoLogo',
+          '-NoProfile',
+          '-Command',
+          r'$PSVersionTable.PSVersion.ToString()',
+        ]);
+        if (probe.exitCode == 0) {
+          shell = candidate;
+          break;
+        }
+      } on ProcessException {
+        continue;
+      }
+    }
+    if (shell == null) {
+      if (Platform.environment['CI'] == 'true') {
+        fail(
+          'PowerShell is required in CI to verify issue60 exit propagation.',
+        );
+      }
+      return;
+    }
+
+    final harness = r'''
+$sessionFile = (Resolve-Path 'tool/release_validation_session.ps1').Path
+$tokens = $null
+$errors = $null
+$ast = [System.Management.Automation.Language.Parser]::ParseFile(
+  $sessionFile,
+  [ref]$tokens,
+  [ref]$errors
+)
+if ($errors.Count -gt 0) {
+  foreach ($parseError in $errors) {
+    Write-Error ("parse: {0}:{1}: {2}" -f $parseError.Extent.StartLineNumber, $parseError.Extent.StartColumnNumber, $parseError.Message)
+  }
+  exit 1
+}
+$fn = $ast.Find(
+  {
+    param($node)
+    $node -is [System.Management.Automation.Language.FunctionDefinitionAst] `
+      -and $node.Name -eq 'Invoke-Issue60'
+  },
+  $true
+)
+if ($null -eq $fn) {
+  Write-Error 'Invoke-Issue60 function not found'
+  exit 1
+}
+Invoke-Expression $fn.Extent.Text
+
+$stubDir = Join-Path (
+  [IO.Path]::GetTempPath()
+) ('issue60-exit-propagation-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $stubDir | Out-Null
+$stub = Join-Path $stubDir 'issue60_emulator_evidence.ps1'
+[IO.File]::WriteAllText($stub, 'exit 42')
+
+$Issue60Tool = $stub
+$Serial = 'emulator-5554'
+$PackageName = 'com.ashita_motsumono'
+$EvidenceRoot = $stubDir
+
+$propagated = $false
+try {
+  Invoke-Issue60 @('-Action', 'Preflight') | Out-Null
+} catch {
+  $propagated = $true
+}
+[IO.Directory]::Delete($stubDir, $true)
+
+if (-not $propagated) {
+  Write-Error 'expected Invoke-Issue60 to throw on non-zero child exit'
+  exit 1
+}
+exit 0
+''';
+    final result = Process.runSync(shell, <String>[
+      '-NoLogo',
+      '-NoProfile',
+      '-Command',
+      harness,
     ]);
 
     expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
