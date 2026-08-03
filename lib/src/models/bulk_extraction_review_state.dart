@@ -6,7 +6,7 @@ import 'extraction_draft.dart';
 class BulkExtractionReviewState {
   BulkExtractionReviewState(List<ExtractionDraft> drafts)
     : _drafts = List<ExtractionDraft>.of(drafts),
-      _selected = List<bool>.filled(drafts.length, true);
+      _selected = List<bool>.generate(drafts.length, (_) => true);
 
   final List<ExtractionDraft> _drafts;
   final List<bool> _selected;
@@ -14,6 +14,20 @@ class BulkExtractionReviewState {
   int get length => _drafts.length;
 
   int get selectedCount => _selected.where((selected) => selected).length;
+
+  bool get allSelected => selectedCount == _drafts.length;
+
+  int get unselectedCount => _drafts.length - selectedCount;
+
+  bool get canBatchFix => _drafts.isNotEmpty && selectedCount > 0;
+
+  String get firstNonEmptyRawText {
+    for (final draft in _drafts) {
+      final rawText = draft.rawText?.trim();
+      if (rawText != null && rawText.isNotEmpty) return rawText;
+    }
+    return '';
+  }
 
   List<ExtractionDraft> get drafts => List.unmodifiable(_drafts);
 
@@ -27,6 +41,67 @@ class BulkExtractionReviewState {
 
   void setSelected(int index, bool selected) {
     _selected[index] = selected;
+  }
+
+  void selectAll(bool selected) {
+    for (var index = 0; index < _selected.length; index++) {
+      _selected[index] = selected;
+    }
+  }
+
+  void toggleAll() => selectAll(!allSelected);
+
+  void removeSelected() {
+    var writeIndex = 0;
+    for (var readIndex = 0; readIndex < _drafts.length; readIndex++) {
+      if (!_selected[readIndex]) {
+        _drafts[writeIndex] = _drafts[readIndex];
+        _selected[writeIndex] = _selected[readIndex];
+        writeIndex++;
+      }
+    }
+    _drafts.length = writeIndex;
+    _selected.length = writeIndex;
+  }
+
+  int batchReplaceTitle(String find, String replace) {
+    if (find.isEmpty) return 0;
+
+    var count = 0;
+    for (var index = 0; index < _drafts.length; index++) {
+      final draft = _drafts[index];
+      if (draft.title.contains(find)) {
+        _drafts[index] = draft.copyWith(
+          title: draft.title.replaceAll(find, replace),
+        );
+        count++;
+      }
+    }
+    return count;
+  }
+
+  int batchReplaceItems(String find, String replace) {
+    if (find.isEmpty) return 0;
+
+    var count = 0;
+    for (var index = 0; index < _drafts.length; index++) {
+      final draft = _drafts[index];
+      final newItems = <String>[];
+      var changed = false;
+      for (final item in draft.items) {
+        if (item.contains(find)) {
+          newItems.add(item.replaceAll(find, replace));
+          changed = true;
+        } else {
+          newItems.add(item);
+        }
+      }
+      if (changed) {
+        _drafts[index] = draft.copyWith(items: newItems);
+        count++;
+      }
+    }
+    return count;
   }
 
   List<ExtractionDraft> get selectedDrafts => [

@@ -1,7 +1,6 @@
 // lib/src/screens/review_extractions_screen.dart
-// OCR抽出結果が複数ある場合の確認画面。候補を編集・選択してまとめて登録する。
-// Stitch デザインに合わせてカード+チェックのレイアウトに刷新。
-// 関連: add_todo_screen.dart, review_extraction_screen.dart, app_state.dart
+// OCR抽出結果が複数ある場合の確認画面。候補を編集・選択・一括修正してまとめて登録する。
+// 関連: review_extraction_screen.dart, bulk_extraction_review_state.dart, app_state.dart
 
 import 'dart:async';
 
@@ -38,7 +37,6 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
   String? _personId;
   bool _saved = false;
   bool _busy = false;
-
   int get _selectedCount => _reviewState.selectedCount;
 
   @override
@@ -68,14 +66,30 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final children = context.watch<AppState>().children;
+    final rawText = _reviewState.firstNonEmptyRawText;
+
     return Scaffold(
-      appBar: AppBar(title: Text('${_reviewState.length}件の候補を確認')),
+      appBar: AppBar(
+        title: Text('${_reviewState.length}件の候補を確認'),
+        actions: [
+          if (_reviewState.length > 0)
+            IconButton(
+              tooltip: _reviewState.allSelected ? 'すべて解除' : 'すべて選択',
+              icon: Icon(
+                _reviewState.allSelected ? Icons.deselect : Icons.select_all,
+              ),
+              onPressed: () {
+                setState(() => _reviewState.toggleAll());
+              },
+            ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
           Spacing.md,
           Spacing.md,
           Spacing.md,
-          96,
+          120,
         ),
         children: [
           Card(
@@ -126,36 +140,119 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
             ),
           ),
           const SizedBox(height: Spacing.md),
-          ...List.generate(_reviewState.length, (index) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: index < _reviewState.length - 1 ? Spacing.sm : 0,
-              ),
-              child: _DraftCard(
-                draft: _reviewState.draftAt(index),
-                selected: _reviewState.isSelected(index),
-                onChanged: (value) => setState(
-                  () => _reviewState.setSelected(index, value ?? false),
+          if (_reviewState.length == 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: Spacing.xl),
+              child: Center(
+                child: Text(
+                  'すべての候補を削除しました',
+                  style: TextStyle(color: cs.onSurfaceVariant),
                 ),
-                onEdit: () => _editDraft(index),
               ),
-            );
-          }),
+            )
+          else
+            ...List.generate(_reviewState.length, (index) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: index < _reviewState.length - 1 ? Spacing.sm : 0,
+                ),
+                child: _DraftCard(
+                  draft: _reviewState.draftAt(index),
+                  selected: _reviewState.isSelected(index),
+                  onChanged: (value) => setState(
+                    () => _reviewState.setSelected(index, value ?? false),
+                  ),
+                  onEdit: () => _editDraft(index),
+                ),
+              );
+            }),
+          if (rawText.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: Spacing.sm),
+              child: Card(
+                clipBehavior: Clip.antiAlias,
+                child: ExpansionTile(
+                  leading: Icon(
+                    Icons.text_snippet_outlined,
+                    size: 20,
+                    color: cs.primary,
+                  ),
+                  title: Text(
+                    'OCR元テキスト',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  initiallyExpanded: false,
+                  childrenPadding: const EdgeInsets.fromLTRB(
+                    Spacing.md + 20 + Spacing.sm,
+                    0,
+                    Spacing.md,
+                    Spacing.md,
+                  ),
+                  children: [
+                    Text(
+                      rawText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: cs.onSurfaceVariant,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(Spacing.md),
-          child: FilledButton.icon(
-            onPressed: _busy ? null : _saveSelected,
-            icon: _busy
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.add_task),
-            label: Text('$_selectedCount件を登録'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_reviewState.canBatchFix)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Spacing.sm),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _showBatchFixDialog,
+                          icon: const Icon(Icons.find_replace, size: 18),
+                          label: const Text('一括修正'),
+                        ),
+                      ),
+                      const SizedBox(width: Spacing.sm),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: cs.error,
+                          ),
+                          onPressed: _deleteSelected,
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          label: Text('削除($_selectedCount)'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              FilledButton.icon(
+                onPressed: (_busy || _reviewState.length == 0)
+                    ? null
+                    : _saveSelected,
+                icon: _busy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add_task),
+                label: Text(
+                  _reviewState.length == 0
+                      ? '登録する候補がありません'
+                      : '$_selectedCount件を登録',
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -172,6 +269,140 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
     );
     if (!mounted || edited == null) return;
     setState(() => _reviewState.updateDraft(index, edited));
+  }
+
+  void _deleteSelected() {
+    if (_selectedCount == 0) return;
+    showAdaptiveDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('選択した候補を削除'),
+        content: Text('$_selectedCount件の候補を削除しますか？\nこの操作は元に戻せません。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('削除する'),
+          ),
+        ],
+      ),
+    ).then((confirmed) {
+      if (confirmed != true || !mounted) return;
+      setState(_reviewState.removeSelected);
+    });
+  }
+
+  void _showBatchFixDialog() {
+    final findController = TextEditingController();
+    final replaceController = TextEditingController();
+    var target = 'title';
+
+    showAdaptiveDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final targetLabel = target == 'items' ? '持ち物' : 'タイトル';
+            return AlertDialog(
+              title: const Text('一括修正'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '全候補の$targetLabelから文字列を検索して置換します',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: Spacing.md),
+                  DropdownButtonFormField<String>(
+                    value: target,
+                    decoration: const InputDecoration(
+                      labelText: '対象フィールド',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'title', child: Text('タイトル')),
+                      DropdownMenuItem(value: 'items', child: Text('持ち物')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() => target = value);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: Spacing.sm),
+                  TextField(
+                    controller: findController,
+                    decoration: const InputDecoration(
+                      labelText: '検索文字列',
+                      border: OutlineInputBorder(),
+                      hintText: '例: 水筒',
+                    ),
+                  ),
+                  const SizedBox(height: Spacing.sm),
+                  TextField(
+                    controller: replaceController,
+                    decoration: const InputDecoration(
+                      labelText: '置換文字列',
+                      border: OutlineInputBorder(),
+                      hintText: '例: 水筒（水の代わり）',
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('キャンセル'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final find = findController.text.trim();
+                    if (find.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('検索文字列を入力してください')),
+                      );
+                      return;
+                    }
+                    Navigator.pop(ctx);
+                    _applyBatchFix(
+                      find: find,
+                      replace: replaceController.text.trim(),
+                      target: target,
+                    );
+                  },
+                  child: const Text('置換'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _applyBatchFix({
+    required String find,
+    required String replace,
+    required String target,
+  }) {
+    var count = 0;
+    setState(() {
+      if (target == 'items') {
+        count = _reviewState.batchReplaceItems(find, replace);
+      } else {
+        count = _reviewState.batchReplaceTitle(find, replace);
+      }
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$count件の候補を修正しました')));
   }
 
   Future<void> _saveSelected() async {
