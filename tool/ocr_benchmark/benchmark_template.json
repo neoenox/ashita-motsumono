@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "dataset": {
+    "source": "REPOSITORY_EXTERNAL_LOCAL_ONLY",
+    "count": 0,
+    "note": "実プリントはrepository外のローカル領域で管理する。このファイルには原本・OCR全文・個人情報を保存しない。"
+  },
+  "documents": [
+    {
+      "id": "DOC-001",
+      "input_type": "printed",
+      "page_count": 1,
+      "ocr_success": true,
+      "candidate_count": 5,
+      "correct_date_candidates": 2,
+      "wrong_date_candidates": 1,
+      "correct_item_candidates": 3,
+      "unnecessary_candidates": 1,
+      "missing_extractions": 0,
+      "registered_without_edit": false,
+      "edit_count": 2,
+      "processing_time_seconds": 3.5,
+      "crash_or_freeze": false,
+      "manual_fallback_possible": true
+    }
+  ],
+  "metrics": {
+    "ingest_success_rate": null,
+    "ocr_empty_rate": null,
+    "date_precision": null,
+    "date_recall": null,
+    "item_precision": null,
+    "item_recall": null,
+    "no_edit_registration_rate": null,
+    "avg_edits_per_document": null,
+    "p95_processing_time_seconds": null,
+    "crash_rate": null
+  },
+  "verdict": {
+    "status": "BLOCKED",
+    "reason": "実プリントデータが未収集",
+    "benchmark_targets": {
+      "ingest_success_rate_min": 0.95,
+      "crash_or_data_corruption_max": 0,
+      "no_edit_registration_rate_min_printed": 0.7,
+      "manual_edit_then_registrable_min": 0.95,
+      "ocr_failure_manual_fallback_rate": 1.0,
+      "p95_processing_time": "not-unusably-long",
+      "unconfirmed_wrong_due_date_auto_register": false
+    }
+  }
+}
