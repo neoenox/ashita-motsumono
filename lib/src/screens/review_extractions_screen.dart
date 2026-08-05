@@ -66,7 +66,6 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final children = context.watch<AppState>().children;
-    final rawText = _reviewState.firstNonEmptyRawText;
 
     return Scaffold(
       appBar: AppBar(
@@ -128,7 +127,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
                   Expanded(
                     child: Text(
                       'OCRで読み取った候補を登録前に編集できます。'
-                      '日付と持ち物に誤りがないか最終チェックしてください。',
+                      '各候補の下に表示される元文と照らし合わせて確認してください。',
                       style: TextStyle(
                         fontSize: 13,
                         color: cs.onSurfaceVariant,
@@ -166,41 +165,6 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
                 ),
               );
             }),
-          if (rawText.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: Spacing.sm),
-              child: Card(
-                clipBehavior: Clip.antiAlias,
-                child: ExpansionTile(
-                  leading: Icon(
-                    Icons.text_snippet_outlined,
-                    size: 20,
-                    color: cs.primary,
-                  ),
-                  title: Text(
-                    'OCR元テキスト',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  initiallyExpanded: false,
-                  childrenPadding: const EdgeInsets.fromLTRB(
-                    Spacing.md + 20 + Spacing.sm,
-                    0,
-                    Spacing.md,
-                    Spacing.md,
-                  ),
-                  children: [
-                    Text(
-                      rawText,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: cs.onSurfaceVariant,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -450,6 +414,7 @@ class _DraftCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final rawText = draft.rawText?.trim() ?? '';
     final details = <String>[
       draft.category.label,
       if (draft.dueDate != null) _formatDate(draft.dueDate!),
@@ -494,6 +459,47 @@ class _DraftCard extends StatelessWidget {
                         color: cs.onSurfaceVariant,
                       ),
                     ),
+                    if (rawText.isNotEmpty) ...[
+                      const SizedBox(height: Spacing.sm),
+                      Container(
+                        key: ValueKey('source-text-${draft.title}'),
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(Spacing.sm),
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.text_snippet_outlined,
+                                  size: 15,
+                                  color: cs.primary,
+                                ),
+                                const SizedBox(width: Spacing.xs),
+                                Text(
+                                  'この候補の元文',
+                                  style: Theme.of(context).textTheme.labelMedium
+                                      ?.copyWith(color: cs.primary),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: Spacing.xs),
+                            Text(
+                              rawText,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: cs.onSurfaceVariant,
+                                height: 1.45,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
