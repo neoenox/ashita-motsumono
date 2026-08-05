@@ -10,10 +10,7 @@ void main() {
 
     expect(source, contains('OcrPickSuccess? pendingSuccess'));
     expect(source, contains('var handedOff = false'));
-    expect(
-      source,
-      contains('if (!handedOff && pendingSuccess != null)'),
-    );
+    expect(source, contains('if (!handedOff && pendingSuccess != null)'));
     expect(source, contains('_cleanupAbandonedOcrResult'));
   });
 
@@ -23,7 +20,10 @@ void main() {
     ).readAsStringSync();
 
     expect(source, contains('String? persistedDocumentId'));
-    expect(source, contains('await appState.deleteDocument(persistedDocumentId)'));
+    expect(
+      source,
+      contains('await appState.deleteDocument(persistedDocumentId)'),
+    );
     expect(source, contains('await ImageFileService.deleteIfExists(path)'));
   });
 }
