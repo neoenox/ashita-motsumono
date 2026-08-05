@@ -56,6 +56,16 @@ Future<_ReviewHarness> _mountReview(
   return _ReviewHarness(appState: appState, settings: settings);
 }
 
+Future<void> _dragUntilBuilt(WidgetTester tester, Finder target) async {
+  final scrollable = find.byType(Scrollable).first;
+  for (var attempt = 0; attempt < 80; attempt++) {
+    if (target.evaluate().isNotEmpty) return;
+    await tester.drag(scrollable, const Offset(0, -500));
+    await tester.pump();
+  }
+  fail('Target was not built after scrolling: $target');
+}
+
 ExtractionDraft _draft(int index) {
   return ExtractionDraft(
     title: '候補$index',
@@ -77,8 +87,9 @@ void main() {
     expect(find.text('一括修正'), findsOneWidget);
     expect(find.text('削除(120)'), findsOneWidget);
 
-    await tester.scrollUntilVisible(find.text('候補119'), 300);
-    expect(find.text('候補119'), findsOneWidget);
+    final lastCandidate = find.text('候補119');
+    await _dragUntilBuilt(tester, lastCandidate);
+    expect(lastCandidate, findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -103,17 +114,20 @@ void main() {
     expect(find.text('5件を登録'), findsOneWidget);
   });
 
-  testWidgets('候補ごとに対応するOCR元文を表示する', (tester) async {
+  testWidgets('候補ごとに対応するOCR元文を表示して全文を開ける', (tester) async {
     final harness = await _mountReview(tester, List.generate(3, _draft));
     addTearDown(() => harness.dispose(tester));
 
     expect(find.text('OCR元テキスト0'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('source-text-候補2')),
-      300,
-    );
+    final thirdSource = find.byKey(const ValueKey('source-text-候補2'));
+    await _dragUntilBuilt(tester, thirdSource);
     expect(find.text('OCR元テキスト2'), findsOneWidget);
     expect(find.text('この候補の元文'), findsWidgets);
+
+    await tester.tap(thirdSource);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AlertDialog, 'この候補の元文'), findsOneWidget);
+    expect(find.text('OCR元テキスト2'), findsWidgets);
   });
 
   testWidgets('選択候補を削除すると空状態と候補別元文が同期する', (tester) async {
@@ -184,9 +198,11 @@ void main() {
     await tester.tap(find.text('置換'));
     await tester.pumpAndSettle();
 
+    expect(find.text('3件を登録'), findsOneWidget);
     expect(find.text('候補0'), findsOneWidget);
-    expect(find.text('候補1'), findsOneWidget);
-    expect(find.text('候補2'), findsOneWidget);
+    final thirdCandidate = find.text('候補2');
+    await _dragUntilBuilt(tester, thirdCandidate);
+    expect(thirdCandidate, findsOneWidget);
     expect(find.textContaining('X'), findsNothing);
   });
 
