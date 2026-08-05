@@ -55,7 +55,7 @@ replacement = '''  Future<String?> backupDatabaseFile() async {
   }
 
   Future<AppSnapshot> loadSnapshot() async {'''
-updated, count = pattern.subn(replacement, source, count=1)
+updated, count = pattern.subn(lambda _: replacement, source, count=1)
 if count != 1:
     raise RuntimeError(f'expected one backupDatabaseFile function, replaced {count}')
 SOURCE.write_text(updated, encoding='utf-8')
