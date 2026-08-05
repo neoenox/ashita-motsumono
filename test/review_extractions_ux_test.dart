@@ -177,8 +177,7 @@ void main() {
   });
 
   testWidgets('長い日本語でもレイアウト例外を発生させない', (tester) async {
-    const longTitle =
-        '明日の連絡帳確認と体操着忘れ防止のための非常に長いタイトルテスト文字列そのまま表示されます';
+    const longTitle = '明日の連絡帳確認と体操着忘れ防止のための非常に長いタイトルテスト文字列そのまま表示されます';
     final harness = await _mountReview(tester, [
       ExtractionDraft(
         title: longTitle,
