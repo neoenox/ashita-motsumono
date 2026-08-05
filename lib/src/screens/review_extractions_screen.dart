@@ -284,7 +284,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
                   ),
                   const SizedBox(height: Spacing.md),
                   DropdownButtonFormField<String>(
-                    value: target,
+                    initialValue: target,
                     decoration: const InputDecoration(
                       labelText: '対象フィールド',
                       border: OutlineInputBorder(),
@@ -466,7 +466,9 @@ class _DraftCard extends StatelessWidget {
                         width: double.infinity,
                         padding: const EdgeInsets.all(Spacing.sm),
                         decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                          color: cs.surfaceContainerHighest.withValues(
+                            alpha: 0.45,
+                          ),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Column(
