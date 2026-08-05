@@ -403,26 +403,70 @@ async function verifyEntitlementToken(
   token: string,
   secret: string,
 ): Promise<EntitlementPayload | null> {
-  if (!secret) return null;
-  const parts = token.split('.');
-  if (parts.length !== 3) return null;
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['verify'],
+  try {
+    if (!secret) return null;
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+
+    const header = decodeBase64UrlJson(parts[0]);
+    if (
+      !isRecord(header) ||
+      header.alg !== 'HS256' ||
+      header.typ !== 'JWT'
+    ) {
+      return null;
+    }
+
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify'],
+    );
+    const valid = await crypto.subtle.verify(
+      'HMAC',
+      key,
+      base64UrlDecode(parts[2]),
+      encoder.encode(`${parts[0]}.${parts[1]}`),
+    );
+    if (!valid) return null;
+
+    const payload = decodeBase64UrlJson(parts[1]);
+    if (!isEntitlementPayload(payload)) return null;
+
+    const now = Math.floor(Date.now() / 1000);
+    if (
+      payload.exp <= now ||
+      payload.iat > now + 60 ||
+      payload.exp <= payload.iat ||
+      payload.exp - payload.iat > TOKEN_TTL_SECONDS
+    ) {
+      return null;
+    }
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isEntitlementPayload(value: unknown): value is EntitlementPayload {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.productId === 'string' &&
+    value.productId.length > 0 &&
+    (value.platform === 'android' || value.platform === 'ios') &&
+    typeof value.receiptHash === 'string' &&
+    /^[a-f0-9]{64}$/.test(value.receiptHash) &&
+    typeof value.iat === 'number' &&
+    Number.isInteger(value.iat) &&
+    typeof value.exp === 'number' &&
+    Number.isInteger(value.exp)
   );
-  const valid = await crypto.subtle.verify(
-    'HMAC',
-    key,
-    base64UrlDecode(parts[2]),
-    encoder.encode(`${parts[0]}.${parts[1]}`),
-  );
-  if (!valid) return null;
-  const payload = decodeBase64UrlJson(parts[1]) as EntitlementPayload;
-  if (!payload.exp || payload.exp <= Math.floor(Date.now() / 1000)) return null;
-  return payload;
 }
 
 async function signRs256Jwt(

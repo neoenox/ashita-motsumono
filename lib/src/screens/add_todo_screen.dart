@@ -14,6 +14,7 @@ import '../services/app_settings.dart';
 import '../services/document_intake_service.dart';
 import '../services/extraction_service.dart';
 import '../services/gemini_api_service.dart';
+import '../services/image_file_service.dart';
 import '../services/ocr_pick_service.dart';
 import '../services/ocr_service.dart';
 import '../services/pdf_pick_service.dart';
