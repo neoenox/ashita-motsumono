@@ -90,8 +90,10 @@ class _BootstrapAppState extends State<BootstrapApp> {
         setState(() => _phase = _BootstrapPhase.recoverableFailure);
       }
     } on Object catch (error, stackTrace) {
-      createdState?.dispose();
+      final purchaseProvider = _purchaseProvider;
       _clearDependencies();
+      purchaseProvider?.dispose();
+      createdState?.dispose();
       _fatalError = error;
       if (kDebugMode) {
         debugPrint('Application bootstrap failed: $error\n$stackTrace');
@@ -194,7 +196,9 @@ class _BootstrapAppState extends State<BootstrapApp> {
 
   Future<void> _restartBootstrap() async {
     final previousState = _appState;
+    final previousPurchaseProvider = _purchaseProvider;
     _clearDependencies();
+    previousPurchaseProvider?.dispose();
     if (previousState != null) {
       await previousState.close();
       previousState.dispose();
@@ -246,6 +250,7 @@ class _BootstrapAppState extends State<BootstrapApp> {
 
   @override
   void dispose() {
+    _purchaseProvider?.dispose();
     _appState?.dispose();
     super.dispose();
   }
