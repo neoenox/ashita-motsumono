@@ -20,6 +20,7 @@ import '../services/receive_share_handler.dart';
 import '../theme/app_theme.dart';
 import 'add_child_screen.dart';
 import 'add_todo_screen.dart';
+import 'learned_dictionary_screen.dart';
 import 'no_candidates_screen.dart';
 import 'review_extraction_screen.dart';
 import 'review_extractions_screen.dart';
