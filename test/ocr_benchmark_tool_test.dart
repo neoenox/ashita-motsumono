@@ -8,15 +8,11 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('OCR benchmark validator and summarizer tests pass', () async {
     final executable = Platform.isWindows ? 'python' : 'python3';
-    final result = await Process.run(
-      executable,
-      const [
-        '-m',
-        'unittest',
-        'tool/ocr_benchmark/test_summarize.py',
-      ],
-      workingDirectory: Directory.current.path,
-    );
+    final result = await Process.run(executable, const [
+      '-m',
+      'unittest',
+      'tool/ocr_benchmark/test_summarize.py',
+    ], workingDirectory: Directory.current.path);
 
     expect(
       result.exitCode,
