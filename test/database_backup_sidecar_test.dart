@@ -34,6 +34,7 @@ void main() {
     expect(await File('$backup-journal').readAsString(), 'journal');
   });
 
+  // Recovery should expose every successful copy even when one sidecar fails.
   test('a failed sidecar copy preserves other backup files', () async {
     final directory = await Directory.systemTemp.createTemp(
       'ashita_database_partial_backup_',
