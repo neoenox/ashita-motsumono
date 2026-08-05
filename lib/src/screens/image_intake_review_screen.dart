@@ -50,9 +50,7 @@ class _ImageIntakeReviewScreenState extends State<ImageIntakeReviewScreen> {
                     Icon(Icons.swap_vert, color: cs.primary),
                     const SizedBox(width: Spacing.sm),
                     const Expanded(
-                      child: Text(
-                        '上から順に読み取ります。右端のハンドルで並べ替え、不要な画像は削除してください。',
-                      ),
+                      child: Text('上から順に読み取ります。右端のハンドルで並べ替え、不要な画像は削除してください。'),
                     ),
                   ],
                 ),
@@ -84,6 +82,7 @@ class _ImageIntakeReviewScreenState extends State<ImageIntakeReviewScreen> {
                     ),
                   )
                 : ReorderableListView.builder(
+                    buildDefaultDragHandles: false,
                     padding: const EdgeInsets.fromLTRB(
                       Spacing.md,
                       0,
@@ -91,7 +90,7 @@ class _ImageIntakeReviewScreenState extends State<ImageIntakeReviewScreen> {
                       96,
                     ),
                     itemCount: _selection.length,
-                    onReorder: (oldIndex, newIndex) {
+                    onReorderItem: (oldIndex, newIndex) {
                       setState(() => _selection.reorder(oldIndex, newIndex));
                     },
                     itemBuilder: (context, index) {
