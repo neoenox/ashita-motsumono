@@ -42,11 +42,9 @@ class ImageIntakeSelectionState {
     if (oldIndex < 0 || oldIndex >= _pages.length) {
       throw RangeError.index(oldIndex, _pages, 'oldIndex');
     }
-    if (newIndex < 0 || newIndex > _pages.length) {
-      throw RangeError.range(newIndex, 0, _pages.length, 'newIndex');
+    if (newIndex < 0 || newIndex >= _pages.length) {
+      throw RangeError.range(newIndex, 0, _pages.length - 1, 'newIndex');
     }
-
-    if (newIndex > oldIndex) newIndex -= 1;
     if (newIndex == oldIndex) return;
 
     final page = _pages.removeAt(oldIndex);
