@@ -7,7 +7,7 @@
 実プリント、PDF、スクリーンショットは匿名化し、例えば次のようなリポジトリ外ディレクトリへ置きます。
 
 ```text
-C:\Users\neoen\Documents\ashita-ocr-dataset\
+C:\Users\<user>\Documents\ashita-ocr-dataset\
 ```
 
 GitHubへ保存してはいけないもの：
@@ -18,6 +18,7 @@ GitHubへ保存してはいけないもの：
 - 住所、電話番号、メールアドレス
 - QRコード
 - ローカルファイルパス
+- 個人を再識別できる任意の文字列
 
 ## 2. 1文書ずつ確認する
 
@@ -30,30 +31,59 @@ flutter drive \
   --target=test_driver/ocr_verify.dart
 ```
 
-`test_driver/ocr_verify.dart`はOCR全文を標準出力へ表示するため、実行ログをGitHubへ添付しません。記録するのは匿名化された数値・真偽値だけです。
+`test_driver/ocr_verify.dart`はOCR全文を標準出力へ表示するため、実行ログをGitHubへ添付しません。記録するのは、固定列の匿名ID・入力種別・数値・真偽値だけです。
 
 ## 3. 記録ファイルを作る
 
-`benchmark_template.json`をリポジトリ外へコピーし、`documents`へ1件ずつ記録します。テンプレートには架空の実績値を入れていません。
+`benchmark_template.json`をリポジトリ外へコピーし、`documents`へ1件ずつ記録します。テンプレートには架空の実績値や集計結果を入れていません。
 
-各文書で必須の主な値：
+### 厳格な入力スキーマ
 
-- 入力形式・ページ数
-- 取り込み、OCR、空結果の成否
-- 正解／誤検出／期待される日付・持ち物件数
-- 不要候補、抽出漏れ、修正回数
-- 修正なし登録、手動修正後登録、手入力フォールバック
-- 処理時間、クラッシュ、データ破損
-- 誤った期限を無確認で自動登録したか
+トップレベルで許可されるキーは次の3つだけです。
 
-`dataset.count`と`documents`の件数を一致させます。
+- `schema_version`
+- `dataset`
+- `documents`
+
+`dataset`で許可されるキー：
+
+- `source`
+- `count`
+
+各文書で許可されるキー：
+
+- `id`: `DOC-001`から`DOC-999999`までの匿名ID
+- `input_type`
+- `page_count`
+- `ingest_success`
+- `ocr_success`
+- `ocr_empty`
+- `candidate_count`
+- `correct_date_candidates`
+- `wrong_date_candidates`
+- `expected_date_count`
+- `correct_item_candidates`
+- `wrong_item_candidates`
+- `expected_item_count`
+- `unnecessary_candidates`
+- `missing_extractions`
+- `registered_without_edit`
+- `manual_edit_then_registrable`
+- `edit_count`
+- `processing_time_seconds`
+- `crash_or_freeze`
+- `data_corruption`
+- `manual_fallback_possible`
+- `unconfirmed_wrong_due_date_auto_register`
+
+未知キー、自由記述欄、集計済み`metrics`／`verdict`、個人名風IDはすべて拒否されます。`dataset.count`と`documents`の件数を一致させます。
 
 ## 4. 検証・集計する
 
 ```bash
 python3 tool/ocr_benchmark/summarize.py \
-  C:\Users\neoen\Documents\ashita-ocr-dataset\benchmark.json \
-  --output C:\Users\neoen\Documents\ashita-ocr-dataset\summary.json
+  C:\Users\<user>\Documents\ashita-ocr-dataset\benchmark.json \
+  --output C:\Users\<user>\Documents\ashita-ocr-dataset\summary.json
 ```
 
 品質ゲートとしてPASSを要求する場合：
@@ -65,7 +95,7 @@ python3 tool/ocr_benchmark/summarize.py benchmark.json --require-pass
 終了コード：
 
 - `0`: 入力は有効。`--require-pass`使用時はPASS
-- `2`: JSON、スキーマ、個人情報キー、整合性のエラー
+- `2`: JSON、厳格スキーマ、匿名ID、型、件数、成否・候補数整合性のエラー
 - `3`: `--require-pass`使用時にBLOCKEDまたはFAIL
 
 ## 5. 判定

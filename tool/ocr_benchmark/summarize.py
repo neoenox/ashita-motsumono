@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -23,24 +24,6 @@ _ALLOWED_INPUT_TYPES = {
     "photo",
     "handwritten_mixed",
     "other",
-}
-
-_SENSITIVE_KEYS = {
-    "ocr_text",
-    "raw_text",
-    "source_text",
-    "student_name",
-    "child_name",
-    "school_name",
-    "teacher_name",
-    "address",
-    "phone",
-    "phone_number",
-    "email",
-    "qr_code",
-    "source_path",
-    "file_path",
-    "image_path",
 }
 
 _BOOLEAN_FIELDS = (
@@ -69,6 +52,15 @@ _INTEGER_FIELDS = (
     "edit_count",
 )
 
+_ROOT_FIELDS = frozenset({"schema_version", "dataset", "documents"})
+_DATASET_FIELDS = frozenset({"source", "count"})
+_DOCUMENT_FIELDS = frozenset(
+    {"id", "input_type", "processing_time_seconds"}
+    | set(_BOOLEAN_FIELDS)
+    | set(_INTEGER_FIELDS)
+)
+_ANONYMOUS_ID_PATTERN = re.compile(r"^DOC-[0-9]{3,6}$")
+
 _TARGETS = {
     "minimum_document_count": 30,
     "ingest_success_rate_min": 0.95,
@@ -80,33 +72,32 @@ _TARGETS = {
 }
 
 
-def _normalize_key(key: str) -> str:
-    return key.strip().lower().replace("-", "_").replace(" ", "_")
-
-
-def _check_sensitive_keys(value: Any, path: str = "$") -> None:
-    if isinstance(value, dict):
-        for key, child in value.items():
-            if not isinstance(key, str):
-                raise BenchmarkValidationError(f"{path}: object keys must be strings")
-            if _normalize_key(key) in _SENSITIVE_KEYS:
-                raise BenchmarkValidationError(
-                    f"{path}.{key}: sensitive or raw source data is prohibited"
-                )
-            _check_sensitive_keys(child, f"{path}.{key}")
-    elif isinstance(value, list):
-        for index, child in enumerate(value):
-            _check_sensitive_keys(child, f"{path}[{index}]")
-
-
 def _require_mapping(value: Any, label: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise BenchmarkValidationError(f"{label} must be an object")
+    if not all(isinstance(key, str) for key in value):
+        raise BenchmarkValidationError(f"{label}: object keys must be strings")
     return value
 
 
+def _require_exact_fields(
+    value: dict[str, Any], allowed: frozenset[str], label: str
+) -> None:
+    actual = set(value)
+    unknown = sorted(actual - allowed)
+    missing = sorted(allowed - actual)
+    if unknown:
+        raise BenchmarkValidationError(
+            f"{label} contains prohibited or unknown fields: {', '.join(unknown)}"
+        )
+    if missing:
+        raise BenchmarkValidationError(
+            f"{label} is missing required fields: {', '.join(missing)}"
+        )
+
+
 def _require_bool(document: dict[str, Any], field: str, label: str) -> bool:
-    value = document.get(field)
+    value = document[field]
     if type(value) is not bool:
         raise BenchmarkValidationError(f"{label}.{field} must be a boolean")
     return value
@@ -115,7 +106,7 @@ def _require_bool(document: dict[str, Any], field: str, label: str) -> bool:
 def _require_nonnegative_int(
     document: dict[str, Any], field: str, label: str, *, minimum: int = 0
 ) -> int:
-    value = document.get(field)
+    value = document[field]
     if type(value) is not int or value < minimum:
         raise BenchmarkValidationError(
             f"{label}.{field} must be an integer >= {minimum}"
@@ -126,7 +117,7 @@ def _require_nonnegative_int(
 def _require_nonnegative_number(
     document: dict[str, Any], field: str, label: str
 ) -> float:
-    value = document.get(field)
+    value = document[field]
     if type(value) not in (int, float) or not math.isfinite(float(value)) or value < 0:
         raise BenchmarkValidationError(
             f"{label}.{field} must be a finite number >= 0"
@@ -134,24 +125,98 @@ def _require_nonnegative_number(
     return float(value)
 
 
-def validate_payload(payload: Any) -> list[dict[str, Any]]:
-    """Validate schema, privacy boundaries, and metric consistency."""
+def _validate_document_consistency(document: dict[str, Any], label: str) -> None:
+    date_candidates = (
+        document["correct_date_candidates"] + document["wrong_date_candidates"]
+    )
+    item_candidates = (
+        document["correct_item_candidates"] + document["wrong_item_candidates"]
+    )
+    minimum_candidate_count = max(date_candidates, item_candidates)
+    if document["candidate_count"] < minimum_candidate_count:
+        raise BenchmarkValidationError(
+            f"{label}.candidate_count is below the measured candidate counts"
+        )
 
-    _check_sensitive_keys(payload)
+    minimum_unnecessary = max(
+        document["wrong_date_candidates"], document["wrong_item_candidates"]
+    )
+    if document["unnecessary_candidates"] < minimum_unnecessary:
+        raise BenchmarkValidationError(
+            f"{label}.unnecessary_candidates is below the measured wrong candidates"
+        )
+
+    missing_dates = (
+        document["expected_date_count"] - document["correct_date_candidates"]
+    )
+    missing_items = (
+        document["expected_item_count"] - document["correct_item_candidates"]
+    )
+    minimum_missing = max(missing_dates, missing_items)
+    if document["missing_extractions"] < minimum_missing:
+        raise BenchmarkValidationError(
+            f"{label}.missing_extractions is below the measured extraction gaps"
+        )
+
+    if not document["ingest_success"]:
+        if document["ocr_success"]:
+            raise BenchmarkValidationError(
+                f"{label}: OCR cannot succeed when ingest_success is false"
+            )
+        if document["candidate_count"] != 0:
+            raise BenchmarkValidationError(
+                f"{label}: failed ingest cannot produce candidates"
+            )
+        if document["registered_without_edit"]:
+            raise BenchmarkValidationError(
+                f"{label}: failed ingest cannot be registered without edit"
+            )
+        if document["manual_edit_then_registrable"]:
+            raise BenchmarkValidationError(
+                f"{label}: failed ingest must use manual fallback, not candidate editing"
+            )
+
+    if document["ocr_success"] and document["ocr_empty"]:
+        raise BenchmarkValidationError(
+            f"{label}: ocr_success and ocr_empty cannot both be true"
+        )
+    if document["ocr_empty"] and document["candidate_count"] != 0:
+        raise BenchmarkValidationError(f"{label}: empty OCR cannot produce candidates")
+    if not document["ocr_success"] and document["registered_without_edit"]:
+        raise BenchmarkValidationError(
+            f"{label}: failed OCR cannot be registered without edit"
+        )
+
+    if document["registered_without_edit"]:
+        if not document["manual_edit_then_registrable"]:
+            raise BenchmarkValidationError(
+                f"{label}: registered_without_edit implies registrable"
+            )
+        if document["edit_count"] != 0:
+            raise BenchmarkValidationError(
+                f"{label}: registered_without_edit requires edit_count=0"
+            )
+
+
+def validate_payload(payload: Any) -> list[dict[str, Any]]:
+    """Validate a strict input schema, privacy boundary, and metric consistency."""
+
     root = _require_mapping(payload, "root")
-    if root.get("schema_version") != 1:
+    _require_exact_fields(root, _ROOT_FIELDS, "root")
+    if root["schema_version"] != 1:
         raise BenchmarkValidationError("schema_version must be 1")
 
-    dataset = _require_mapping(root.get("dataset"), "dataset")
-    if dataset.get("source") != "REPOSITORY_EXTERNAL_LOCAL_ONLY":
+    dataset = _require_mapping(root["dataset"], "dataset")
+    _require_exact_fields(dataset, _DATASET_FIELDS, "dataset")
+    if dataset["source"] != "REPOSITORY_EXTERNAL_LOCAL_ONLY":
         raise BenchmarkValidationError(
             "dataset.source must be REPOSITORY_EXTERNAL_LOCAL_ONLY"
         )
-    count = dataset.get("count")
+    count = dataset["count"]
     if type(count) is not int or count < 0:
         raise BenchmarkValidationError("dataset.count must be an integer >= 0")
 
-    documents = root.get("documents")
+    documents = root["documents"]
     if not isinstance(documents, list):
         raise BenchmarkValidationError("documents must be an array")
     if count != len(documents):
@@ -164,15 +229,20 @@ def validate_payload(payload: Any) -> list[dict[str, Any]]:
     for index, raw_document in enumerate(documents):
         label = f"documents[{index}]"
         document = _require_mapping(raw_document, label)
+        _require_exact_fields(document, _DOCUMENT_FIELDS, label)
 
-        document_id = document.get("id")
-        if not isinstance(document_id, str) or not document_id.strip():
-            raise BenchmarkValidationError(f"{label}.id must be a non-empty string")
+        document_id = document["id"]
+        if not isinstance(document_id, str) or not _ANONYMOUS_ID_PATTERN.fullmatch(
+            document_id
+        ):
+            raise BenchmarkValidationError(
+                f"{label}.id must match DOC- followed by 3 to 6 digits"
+            )
         if document_id in seen_ids:
             raise BenchmarkValidationError(f"{label}.id is duplicated: {document_id}")
         seen_ids.add(document_id)
 
-        input_type = document.get("input_type")
+        input_type = document["input_type"]
         if input_type not in _ALLOWED_INPUT_TYPES:
             allowed = ", ".join(sorted(_ALLOWED_INPUT_TYPES))
             raise BenchmarkValidationError(
@@ -194,22 +264,8 @@ def validate_payload(payload: Any) -> list[dict[str, Any]]:
             raise BenchmarkValidationError(
                 f"{label}.correct_item_candidates exceeds expected_item_count"
             )
-        if not document["ingest_success"] and document["ocr_success"]:
-            raise BenchmarkValidationError(
-                f"{label}: OCR cannot succeed when ingest_success is false"
-            )
-        if document["ocr_success"] and document["ocr_empty"]:
-            raise BenchmarkValidationError(
-                f"{label}: ocr_success and ocr_empty cannot both be true"
-            )
-        if (
-            document["registered_without_edit"]
-            and not document["manual_edit_then_registrable"]
-        ):
-            raise BenchmarkValidationError(
-                f"{label}: registered_without_edit implies registrable"
-            )
 
+        _validate_document_consistency(document, label)
         validated.append(document)
 
     return validated

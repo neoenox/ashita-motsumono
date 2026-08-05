@@ -2,31 +2,7 @@
   "schema_version": 1,
   "dataset": {
     "source": "REPOSITORY_EXTERNAL_LOCAL_ONLY",
-    "count": 0,
-    "note": "実プリント原本、OCR全文、個人情報、端末内パスは保存しない。documents件数とcountを一致させる。"
+    "count": 0
   },
-  "documents": [],
-  "metrics": {
-    "document_count": null,
-    "printed_document_count": null,
-    "ingest_success_rate": null,
-    "ocr_empty_rate": null,
-    "date_precision": null,
-    "date_recall": null,
-    "item_precision": null,
-    "item_recall": null,
-    "no_edit_registration_rate": null,
-    "no_edit_registration_rate_printed": null,
-    "manual_edit_then_registrable_rate": null,
-    "avg_edits_per_document": null,
-    "p95_processing_time_seconds": null,
-    "crash_rate": null,
-    "data_corruption_count": null,
-    "ocr_failure_manual_fallback_rate": null,
-    "unconfirmed_wrong_due_date_auto_register_count": null
-  },
-  "verdict": {
-    "status": "BLOCKED",
-    "reason": "匿名化済み実プリント30件以上の記録が未入力"
-  }
+  "documents": []
 }
