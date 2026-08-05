@@ -1,0 +1,109 @@
+name: Release Readiness Preflight
+
+on:
+  pull_request:
+    paths:
+      - 'pubspec.yaml'
+      - 'lib/src/app_version.g.dart'
+      - 'docs/STORE_LISTING_JA.md'
+      - 'docs/PLAY_CONSOLE_SUBMISSION.md'
+      - 'docs/ANDROID_RELEASE.md'
+      - 'docs/RELEASE_EXECUTION_PLAN.md'
+      - 'assets/store/**'
+      - 'tool/release_readiness_preflight.py'
+      - 'tool/test_release_readiness_preflight.py'
+      - 'test/release_readiness_preflight_tool_test.dart'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/release-readiness-preflight.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'pubspec.yaml'
+      - 'lib/src/app_version.g.dart'
+      - 'docs/STORE_LISTING_JA.md'
+      - 'docs/PLAY_CONSOLE_SUBMISSION.md'
+      - 'docs/ANDROID_RELEASE.md'
+      - 'docs/RELEASE_EXECUTION_PLAN.md'
+      - 'assets/store/**'
+      - 'tool/release_readiness_preflight.py'
+      - 'tool/test_release_readiness_preflight.py'
+      - 'test/release_readiness_preflight_tool_test.dart'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/release-readiness-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-readiness:
+    name: Static release readiness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run preflight unit tests
+        run: python3 -m unittest tool/test_release_readiness_preflight.py
+
+      - name: Validate v0.7.0 release candidate
+        run: >-
+          python3 tool/release_readiness_preflight.py
+          --root .
+          --expected-version-prefix 0.7.0+
+          --output build/release-readiness/static-preflight.json
+
+      - name: Upload static preflight evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-readiness-static-${{ github.sha }}
+          path: build/release-readiness/static-preflight.json
+          if-no-files-found: error
+          retention-days: 7
+
+  configuration-presence:
+    name: Release configuration presence
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' }}
+    needs: static-readiness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check required setting names without exposing values
+        env:
+          HAS_SECRET_KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 != '' }}
+          HAS_SECRET_KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD != '' }}
+          HAS_SECRET_KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD != '' }}
+          HAS_SECRET_KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS != '' }}
+          HAS_SECRET_ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID != '' }}
+          HAS_SECRET_ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID != '' }}
+          HAS_SECRET_GEMINI_PROXY_URL: ${{ secrets.GEMINI_PROXY_URL != '' }}
+          HAS_VARIABLE_ANDROID_UPLOAD_CERT_SHA256: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 != '' }}
+          HAS_VARIABLE_IAP_REMOVE_ADS_PRODUCT_ID: ${{ vars.IAP_REMOVE_ADS_PRODUCT_ID != '' }}
+          HAS_VARIABLE_IAP_AI_ACCESS_PRODUCT_ID: ${{ vars.IAP_AI_ACCESS_PRODUCT_ID != '' }}
+        run: >-
+          python3 tool/release_readiness_preflight.py
+          --root .
+          --expected-version-prefix 0.7.0+
+          --check-configuration
+          --output build/release-readiness/configuration-preflight.json
+
+      - name: Upload configuration preflight evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-readiness-configuration-${{ github.sha }}
+          path: build/release-readiness/configuration-preflight.json
+          if-no-files-found: warn
+          retention-days: 7
