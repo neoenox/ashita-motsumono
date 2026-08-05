@@ -17,6 +17,15 @@ void main() {
       expect(result, DateTime(2026, 8, 10));
     });
 
+    test('strong deadline language wins over an earlier action word', () {
+      final result = DateExtractor.extract(
+        '提出物を本日配布しました。期限は8月10日です。',
+        DateTime(2026, 8, 5),
+      );
+
+      expect(result, DateTime(2026, 8, 10));
+    });
+
     test('nearest deadline date wins when multiple concrete dates exist', () {
       final result = DateExtractor.extract(
         '2026年8月5日に配布しました。提出期限は8月10日です。',
