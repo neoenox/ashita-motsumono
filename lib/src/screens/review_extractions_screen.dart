@@ -84,7 +84,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
         ],
       ),
       body: ListView(
-        cacheExtent: 1200,
+        cacheExtent: _reviewState.length <= 20 ? 10000 : 1200,
         padding: const EdgeInsets.fromLTRB(
           Spacing.md,
           Spacing.md,
