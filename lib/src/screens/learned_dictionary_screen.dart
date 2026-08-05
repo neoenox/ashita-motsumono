@@ -98,7 +98,9 @@ class LearnedDictionaryScreen extends StatelessWidget {
                           leading: const Icon(Icons.label_outline),
                           title: Text(labels[index]),
                           trailing: IconButton(
-                            key: ValueKey('remove-learned-label-${labels[index]}'),
+                            key: ValueKey(
+                              'remove-learned-label-${labels[index]}',
+                            ),
                             tooltip: '辞書から削除',
                             onPressed: () => _remove(context, labels[index]),
                             icon: Icon(Icons.close, color: cs.error),
