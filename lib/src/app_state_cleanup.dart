@@ -33,14 +33,11 @@ extension CleanupAppStateOperations on AppState {
       });
 
   Future<void> _runPostDeleteCleanup(Iterable<String> todoIds) async {
-    await _runPostDeleteBestEffort(
-      'notification cancellation',
-      () async {
-        for (final todoId in todoIds) {
-          await _notificationCoordinator.executeCanceledTodo(todoId);
-        }
-      },
-    );
+    await _runPostDeleteBestEffort('notification cancellation', () async {
+      for (final todoId in todoIds) {
+        await _notificationCoordinator.executeCanceledTodo(todoId);
+      }
+    });
     await _runPostDeleteBestEffort(
       'document image cleanup',
       _retryPendingFileCleanup,
