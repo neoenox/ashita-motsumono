@@ -203,8 +203,8 @@ def validate_payload(payload: Any) -> list[dict[str, Any]]:
 
     root = _require_mapping(payload, "root")
     _require_exact_fields(root, _ROOT_FIELDS, "root")
-    if root["schema_version"] != 1:
-        raise BenchmarkValidationError("schema_version must be 1")
+    if type(root["schema_version"]) is not int or root["schema_version"] != 1:
+        raise BenchmarkValidationError("schema_version must be integer 1")
 
     dataset = _require_mapping(root["dataset"], "dataset")
     _require_exact_fields(dataset, _DATASET_FIELDS, "dataset")
@@ -243,7 +243,7 @@ def validate_payload(payload: Any) -> list[dict[str, Any]]:
         seen_ids.add(document_id)
 
         input_type = document["input_type"]
-        if input_type not in _ALLOWED_INPUT_TYPES:
+        if not isinstance(input_type, str) or input_type not in _ALLOWED_INPUT_TYPES:
             allowed = ", ".join(sorted(_ALLOWED_INPUT_TYPES))
             raise BenchmarkValidationError(
                 f"{label}.input_type must be one of: {allowed}"

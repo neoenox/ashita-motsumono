@@ -87,6 +87,20 @@ class OcrBenchmarkSummaryTest(unittest.TestCase):
         with self.assertRaises(BenchmarkValidationError):
             validate_payload(payload)
 
+    def test_schema_version_rejects_boolean(self) -> None:
+        payload = _payload([])
+        payload["schema_version"] = True
+
+        with self.assertRaises(BenchmarkValidationError):
+            validate_payload(payload)
+
+    def test_input_type_rejects_non_string(self) -> None:
+        document = _document(1)
+        document["input_type"] = ["printed"]
+
+        with self.assertRaises(BenchmarkValidationError):
+            validate_payload(_payload([document]))
+
     def test_dataset_count_must_match_documents(self) -> None:
         payload = copy.deepcopy(_payload([_document(1)]))
         payload["dataset"]["count"] = 2
