@@ -156,36 +156,7 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
     }
   }
 
-  Future<void> _pickImages() async {
-    final token = IntakeCancellationToken();
-    _update(() {
-      _busy = true;
-      _cancellationToken = token;
-    });
-    try {
-      final result = await _ocrPickService().pickMultipleImages(
-        cancellationToken: token,
-        onProgress: (progress) {
-          if (!mounted) return;
-          if (_intakeProgress == null) {
-            _beginIntake(token, progress);
-          } else {
-            _updateIntakeProgress(progress);
-          }
-        },
-      );
-      if (result == null || !mounted || token.isCancelled) return;
-      await _handleOcrPickResult(result, showNoCandidates: true);
-    } on OcrException catch (error) {
-      if (kDebugMode) debugPrint('Image intake error: ${error.cause ?? error}');
-      _showOcrError(error.message);
-    } on Object catch (error) {
-      if (kDebugMode) debugPrint('Image intake error: $error');
-      _showOcrError('画像の取り込みに失敗しました。');
-    } finally {
-      _endIntake();
-    }
-  }
+  Future<void> _pickImages() => _pickImagesWithReview();
 
   Future<void> _pickPdf() async {
     _update(() => _busy = true);
