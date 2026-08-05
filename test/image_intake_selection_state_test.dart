@@ -13,29 +13,33 @@ void main() {
       XFile('/tmp/page-c.jpg'),
     ]);
 
-    state.reorder(0, 3);
+    state.reorder(0, 2);
 
-    expect(
-      state.files.map((file) => file.path),
-      ['/tmp/page-b.jpg', '/tmp/page-c.jpg', '/tmp/page-a.jpg'],
-    );
-  });
-
-  test('removes excluded image without mutating the original order of others', () {
-    final state = ImageIntakeSelectionState([
-      XFile('/tmp/page-a.jpg'),
-      XFile('/tmp/page-b.jpg'),
-      XFile('/tmp/page-c.jpg'),
+    expect(state.files.map((file) => file.path), [
+      '/tmp/page-b.jpg',
+      '/tmp/page-c.jpg',
+      '/tmp/page-a.jpg',
     ]);
-
-    final removed = state.removeAt(1);
-
-    expect(removed.file.path, '/tmp/page-b.jpg');
-    expect(
-      state.files.map((file) => file.path),
-      ['/tmp/page-a.jpg', '/tmp/page-c.jpg'],
-    );
   });
+
+  test(
+    'removes excluded image without mutating the original order of others',
+    () {
+      final state = ImageIntakeSelectionState([
+        XFile('/tmp/page-a.jpg'),
+        XFile('/tmp/page-b.jpg'),
+        XFile('/tmp/page-c.jpg'),
+      ]);
+
+      final removed = state.removeAt(1);
+
+      expect(removed.file.path, '/tmp/page-b.jpg');
+      expect(state.files.map((file) => file.path), [
+        '/tmp/page-a.jpg',
+        '/tmp/page-c.jpg',
+      ]);
+    },
+  );
 
   test('allows all images to be excluded', () {
     final state = ImageIntakeSelectionState([XFile('/tmp/page-a.jpg')]);
