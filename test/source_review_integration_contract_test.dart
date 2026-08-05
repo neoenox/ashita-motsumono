@@ -7,10 +7,7 @@ void main() {
     final workflow = File('.github/workflows/ci.yml').readAsStringSync();
 
     expect(workflow, contains('needs: analyze-and-test'));
-    expect(
-      workflow,
-      contains('needs.analyze-and-test.result == \'success\''),
-    );
+    expect(workflow, contains('needs.analyze-and-test.result == \'success\''));
     expect(workflow, contains('Verify release source is latest master'));
     expect(workflow, contains('git rev-parse origin/master'));
   });
@@ -67,9 +64,7 @@ void main() {
   });
 
   test('Worker entitlement tokens fail closed on malformed input', () {
-    final source = File(
-      'workers/gemini-proxy/src/index.ts',
-    ).readAsStringSync();
+    final source = File('workers/gemini-proxy/src/index.ts').readAsStringSync();
 
     expect(source, contains("header.alg !== 'HS256'"));
     expect(source, contains("header.typ !== 'JWT'"));
