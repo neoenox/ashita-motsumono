@@ -17,6 +17,24 @@ void main() {
       expect(result, DateTime(2026, 8, 10));
     });
 
+    test('nearest deadline date wins when multiple concrete dates exist', () {
+      final result = DateExtractor.extract(
+        '2026年8月5日に配布しました。提出期限は8月10日です。',
+        DateTime(2026, 8, 5),
+      );
+
+      expect(result, DateTime(2026, 8, 10));
+    });
+
+    test('date immediately before made deadline wins over distribution date', () {
+      final result = DateExtractor.extract(
+        '8月5日配布、8月10日までに提出してください。',
+        DateTime(2026, 8, 5),
+      );
+
+      expect(result, DateTime(2026, 8, 10));
+    });
+
     test('class notation is not treated as a slash date', () {
       final result = DateExtractor.extract(
         '1-2組は水筒を持参してください。',
