@@ -284,8 +284,13 @@ class AppDatabase extends _$AppDatabase {
       final source = File('$sourcePath$suffix');
       if (!await source.exists()) continue;
       final destination = File('$backupBasePath$suffix');
-      await source.copy(destination.path);
-      copiedPaths.add(destination.path);
+      try {
+        await source.copy(destination.path);
+        copiedPaths.add(destination.path);
+      } on Object {
+        // 破損・権限・容量不足などで一部をコピーできなくても、
+        // 既に退避できたファイルは復旧証跡として残す。
+      }
     }
     return copiedPaths;
   }
