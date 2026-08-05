@@ -98,6 +98,25 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> removeLearnedItemLabel(String label) async {
+    final normalized = label.trim();
+    if (normalized.isEmpty || !_learnedItemLabels.contains(normalized)) return;
+
+    final previous = _learnedItemLabels;
+    final next = _learnedItemLabels
+        .where((item) => item != normalized)
+        .toList(growable: false);
+    _learnedItemLabels = next;
+    notifyListeners();
+    try {
+      await _prefs.setStringList(_keyLearnedItemLabels, next);
+    } on Object {
+      _learnedItemLabels = previous;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   Future<void> setThemeMode(ThemeMode mode) async {
     final raw = switch (mode) {
       ThemeMode.dark => 'dark',
