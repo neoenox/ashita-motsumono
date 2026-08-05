@@ -1,5 +1,5 @@
 // test/review_extractions_ux_test.dart
-// OCR確認画面の大量候補・選択・削除・一括置換・OCR参照をCIで検証する。
+// OCR確認画面の大量候補・選択・削除・一括置換・候補ごとの元文をCIで検証する。
 
 import 'package:ashita_motsumono/src/app_state.dart';
 import 'package:ashita_motsumono/src/models/entities.dart';
@@ -103,12 +103,24 @@ void main() {
     expect(find.text('5件を登録'), findsOneWidget);
   });
 
-  testWidgets('選択候補を削除すると空状態とOCR参照が同期する', (tester) async {
+  testWidgets('候補ごとに対応するOCR元文を表示する', (tester) async {
     final harness = await _mountReview(tester, List.generate(3, _draft));
     addTearDown(() => harness.dispose(tester));
 
-    await tester.scrollUntilVisible(find.text('OCR元テキスト'), 300);
-    expect(find.text('OCR元テキスト'), findsOneWidget);
+    expect(find.text('OCR元テキスト0'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('source-text-候補2')),
+      300,
+    );
+    expect(find.text('OCR元テキスト2'), findsOneWidget);
+    expect(find.text('この候補の元文'), findsWidgets);
+  });
+
+  testWidgets('選択候補を削除すると空状態と候補別元文が同期する', (tester) async {
+    final harness = await _mountReview(tester, List.generate(3, _draft));
+    addTearDown(() => harness.dispose(tester));
+
+    expect(find.text('OCR元テキスト0'), findsOneWidget);
     await tester.tap(find.text('削除(3)'));
     await tester.pumpAndSettle();
     expect(find.text('選択した候補を削除'), findsOneWidget);
@@ -118,7 +130,8 @@ void main() {
 
     expect(find.text('すべての候補を削除しました'), findsOneWidget);
     expect(find.text('登録する候補がありません'), findsOneWidget);
-    expect(find.text('OCR元テキスト'), findsNothing);
+    expect(find.text('この候補の元文'), findsNothing);
+    expect(find.text('OCR元テキスト0'), findsNothing);
   });
 
   testWidgets('タイトルと持ち物を一括置換できる', (tester) async {
