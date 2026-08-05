@@ -33,4 +33,30 @@ void main() {
     expect(await File('$backup-shm').readAsString(), 'shm');
     expect(await File('$backup-journal').readAsString(), 'journal');
   });
+
+  test('a failed sidecar copy preserves other backup files', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'ashita_database_partial_backup_',
+    );
+    addTearDown(() async {
+      if (await directory.exists()) {
+        await directory.delete(recursive: true);
+      }
+    });
+
+    final source = '${directory.path}/ashita_motsumono.db';
+    final backup = '${directory.path}/ashita_motsumono_corrupt.db';
+    await File(source).writeAsString('db');
+    await File('$source-wal').writeAsString('wal');
+    await File('$source-shm').writeAsString('shm');
+    await Directory('$backup-wal').create();
+
+    final copied = await AppDatabase.backupDatabaseFilesAtPath(source, backup);
+
+    expect(copied, contains(backup));
+    expect(copied, contains('$backup-shm'));
+    expect(copied, isNot(contains('$backup-wal')));
+    expect(await File(backup).readAsString(), 'db');
+    expect(await File('$backup-shm').readAsString(), 'shm');
+  });
 }
