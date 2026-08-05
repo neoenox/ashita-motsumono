@@ -26,6 +26,15 @@ void main() {
       expect(result, DateTime(2026, 8, 10));
     });
 
+    test('submit language selects its adjacent date', () {
+      final result = DateExtractor.extract(
+        '8月5日に配布しました。8月10日に提出してください。',
+        DateTime(2026, 8, 5),
+      );
+
+      expect(result, DateTime(2026, 8, 10));
+    });
+
     test(
       'date immediately before made deadline wins over distribution date',
       () {
