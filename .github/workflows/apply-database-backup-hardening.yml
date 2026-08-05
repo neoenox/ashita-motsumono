@@ -1,22 +1,24 @@
 name: Apply database backup hardening
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/source-review-database-backup-20260805
+      - master
 
 permissions:
   contents: write
 
 jobs:
   apply-and-validate:
-    if: github.actor != 'github-actions[bot]'
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      github.head_ref == 'agent/source-review-database-backup-20260805'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
       - name: Set up Flutter
@@ -49,4 +51,4 @@ jobs:
           git add lib/src/repositories/app_database.dart test/database_backup_sidecar_test.dart
           git add -u tool/apply_database_backup_hardening.py .github/workflows/apply-database-backup-hardening.yml
           git commit -m "fix: preserve SQLite sidecars in corrupt database backups"
-          git push origin HEAD:${{ github.ref_name }}
+          git push origin HEAD:${{ github.head_ref }}
