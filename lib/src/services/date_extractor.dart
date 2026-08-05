@@ -19,9 +19,10 @@ class DateExtractor {
   static final _ambiguousDeadlinePattern = RegExp(
     r'(今月末|月末|始業式の日|終業式の日|入学式の日|卒園式の日|卒業式の日|運動会の日|遠足の日)',
   );
-  static final _deadlineKeywordPattern = RegExp(
-    r'(提出期限|提出日|持参日|締切|期限|提出|持参|まで)',
+  static final _strongDeadlineKeywordPattern = RegExp(
+    r'(提出期限|提出日|持参日|締切|期限|まで)',
   );
+  static final _actionDateKeywordPattern = RegExp(r'(提出|持参)');
 
   static const _deadlineSearchRadius = 32;
 
@@ -56,11 +57,24 @@ class DateExtractor {
     final candidates = _dateCandidates(text, now);
     if (candidates.isEmpty) return null;
 
-    for (final keyword in _deadlineKeywordPattern.allMatches(text)) {
-      _DateCandidate? best;
-      var bestDistance = _deadlineSearchRadius + 1;
-      var bestIsAfterKeyword = false;
+    return _nearestDateForKeywords(
+          text,
+          candidates,
+          _strongDeadlineKeywordPattern,
+        ) ??
+        _nearestDateForKeywords(text, candidates, _actionDateKeywordPattern);
+  }
 
+  static DateTime? _nearestDateForKeywords(
+    String text,
+    List<_DateCandidate> candidates,
+    RegExp keywordPattern,
+  ) {
+    _DateCandidate? best;
+    var bestDistance = _deadlineSearchRadius + 1;
+    var bestIsAfterKeyword = false;
+
+    for (final keyword in keywordPattern.allMatches(text)) {
       for (final candidate in candidates) {
         final distance = _distanceBetween(candidate, keyword);
         if (distance > _deadlineSearchRadius) continue;
@@ -74,10 +88,9 @@ class DateExtractor {
           bestIsAfterKeyword = isAfterKeyword;
         }
       }
-
-      if (best != null) return best.value;
     }
-    return null;
+
+    return best?.value;
   }
 
   static int _distanceBetween(_DateCandidate candidate, RegExpMatch keyword) {
