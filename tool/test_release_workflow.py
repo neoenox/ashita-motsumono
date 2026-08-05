@@ -24,6 +24,21 @@ class ReleaseWorkflowTest(unittest.TestCase):
     def test_flutter_sdk_is_pinned(self) -> None:
         self.assertEqual(self.workflow.count("flutter-version: '3.44.0'"), 2)
 
+    def test_release_build_requires_validated_latest_master(self) -> None:
+        self.assertGreaterEqual(self.workflow.count('needs: analyze-and-test'), 2)
+        self.assertIn(
+            "needs.analyze-and-test.result == 'success'",
+            self.workflow,
+        )
+        self.assertIn("github.ref == 'refs/heads/master'", self.workflow)
+        self.assertIn(
+            '- name: Verify release source is latest master',
+            self.workflow,
+        )
+        self.assertIn('git fetch origin master --force', self.workflow)
+        self.assertIn('git rev-parse origin/master', self.workflow)
+        self.assertIn('if [[ "$GITHUB_SHA" != "$master_sha" ]]', self.workflow)
+
     def test_upload_keystore_certificate_is_verified_before_builds(self) -> None:
         verify = self.workflow.index('- name: Verify upload keystore certificate')
         apk_build = self.workflow.index('- name: Build release APK (signed)')
