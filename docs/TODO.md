@@ -5,11 +5,11 @@
 ## 現在の状態
 
 - Play Console内部テスト配布済み版: `v0.6.3+2`
-- 最新master: `de2d2d47e23bf4f7f44e9807af43f37124e21a18`
+- v0.7.0機能統合commit: `de2d2d47e23bf4f7f44e9807af43f37124e21a18`
 - v0.7.0のコード側対象: masterへ統合済み
   - PR #159: OCR QA、匿名ベンチマーク、Play release readiness
   - PR #160: 複数画像の並べ替え・除外、OCR元文対応、読み取り辞書管理
-- 最新master CI: `flutter-ci-master / success`
+- v0.7.0機能統合後のmaster CI: `flutter-ci-master / success`
 - 現在の残作業: 実データ・物理Android・通知・正式署名・Play内部テストなどの外部受入
 
 ## v0.7.0 実装状況
