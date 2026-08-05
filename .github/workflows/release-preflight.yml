@@ -1,0 +1,184 @@
+name: Formal Release Configuration Preflight
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-preflight:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.head_ref == 'agent/release-preflight-20260805'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      IAP_REMOVE_ADS_PRODUCT_ID: ${{ vars.IAP_REMOVE_ADS_PRODUCT_ID }}
+      IAP_AI_ACCESS_PRODUCT_ID: ${{ vars.IAP_AI_ACCESS_PRODUCT_ID }}
+      ANDROID_UPLOAD_CERT_SHA256: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Validate required release configuration
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+          KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+          ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
+          GEMINI_PROXY_URL: ${{ secrets.GEMINI_PROXY_URL }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -n "${KEYSTORE_BASE64:-}" ]] || missing+=("KEYSTORE_BASE64")
+          [[ -n "${KEYSTORE_STORE_PASSWORD:-}" ]] || missing+=("KEYSTORE_STORE_PASSWORD")
+          [[ -n "${KEYSTORE_KEY_PASSWORD:-}" ]] || missing+=("KEYSTORE_KEY_PASSWORD")
+          [[ -n "${KEYSTORE_KEY_ALIAS:-}" ]] || missing+=("KEYSTORE_KEY_ALIAS")
+          [[ -n "${ADMOB_APP_ID:-}" ]] || missing+=("ADMOB_APP_ID")
+          [[ -n "${ADMOB_BANNER_AD_UNIT_ID:-}" ]] || missing+=("ADMOB_BANNER_AD_UNIT_ID")
+          [[ -n "${GEMINI_PROXY_URL:-}" ]] || missing+=("GEMINI_PROXY_URL")
+          [[ -n "${IAP_REMOVE_ADS_PRODUCT_ID:-}" ]] || missing+=("IAP_REMOVE_ADS_PRODUCT_ID variable")
+          [[ -n "${IAP_AI_ACCESS_PRODUCT_ID:-}" ]] || missing+=("IAP_AI_ACCESS_PRODUCT_ID variable")
+          [[ -n "${ANDROID_UPLOAD_CERT_SHA256:-}" ]] || missing+=("ANDROID_UPLOAD_CERT_SHA256 variable")
+          if (( ${#missing[@]} > 0 )); then
+            echo "::error::Missing required formal-release configuration: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Validate non-secret configuration formats
+        shell: bash
+        env:
+          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+          ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
+          GEMINI_PROXY_URL: ${{ secrets.GEMINI_PROXY_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/release-preflight
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+          from urllib.parse import urlparse
+
+          app_id = os.environ['ADMOB_APP_ID']
+          banner_id = os.environ['ADMOB_BANNER_AD_UNIT_ID']
+          gemini_url = os.environ['GEMINI_PROXY_URL']
+          remove_ads = os.environ['IAP_REMOVE_ADS_PRODUCT_ID']
+          ai_access = os.environ['IAP_AI_ACCESS_PRODUCT_ID']
+          fingerprint = re.sub(r'[^0-9A-Fa-f]', '', os.environ['ANDROID_UPLOAD_CERT_SHA256'])
+
+          checks = {
+              'admob_app_id_format': bool(re.fullmatch(r'ca-app-pub-\d{16}~\d{10}', app_id)),
+              'admob_banner_id_format': bool(re.fullmatch(r'ca-app-pub-\d{16}/\d{10}', banner_id)),
+              'gemini_proxy_https': False,
+              'iap_remove_ads_format': bool(re.fullmatch(r'[A-Za-z0-9_.]+', remove_ads)),
+              'iap_ai_access_format': bool(re.fullmatch(r'[A-Za-z0-9_.]+', ai_access)),
+              'iap_product_ids_distinct': remove_ads != ai_access,
+              'upload_certificate_sha256_format': bool(re.fullmatch(r'[0-9A-Fa-f]{64}', fingerprint)),
+          }
+          parsed = urlparse(gemini_url)
+          checks['gemini_proxy_https'] = parsed.scheme == 'https' and bool(parsed.netloc)
+
+          failed = [name for name, passed in checks.items() if not passed]
+          Path('build/release-preflight/configuration-format.json').write_text(
+              json.dumps({'checks': checks}, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          if failed:
+              raise SystemExit('Invalid release configuration: ' + ', '.join(failed))
+          PY
+
+      - name: Restore and inspect Android upload keystore
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/release-preflight
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload-keystore.jks"
+          test -s "$RUNNER_TEMP/upload-keystore.jks"
+          keytool -list \
+            -keystore "$RUNNER_TEMP/upload-keystore.jks" \
+            -alias "$KEYSTORE_KEY_ALIAS" \
+            -storepass "$KEYSTORE_STORE_PASSWORD" \
+            >/dev/null
+          keytool -exportcert \
+            -keystore "$RUNNER_TEMP/upload-keystore.jks" \
+            -alias "$KEYSTORE_KEY_ALIAS" \
+            -storepass "$KEYSTORE_STORE_PASSWORD" \
+            -file "$RUNNER_TEMP/upload-certificate.der" \
+            >/dev/null
+          actual_fingerprint="$(sha256sum "$RUNNER_TEMP/upload-certificate.der" | awk '{print $1}')"
+          python3 tool/verify_android_certificate_fingerprint.py \
+            --expected "$ANDROID_UPLOAD_CERT_SHA256" \
+            --actual "$actual_fingerprint" \
+            --label "formal release upload keystore" \
+            --output build/release-preflight/upload-keystore-certificate.json
+
+      - name: Write sanitized preflight summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          config = json.loads(
+              Path('build/release-preflight/configuration-format.json').read_text(encoding='utf-8')
+          )
+          certificate = json.loads(
+              Path('build/release-preflight/upload-keystore-certificate.json').read_text(encoding='utf-8')
+          )
+          summary = {
+              'source_sha': os.environ['GITHUB_SHA'],
+              'external_calls_performed': False,
+              'play_upload_performed': False,
+              'configuration_formats_valid': all(config['checks'].values()),
+              'upload_keystore_certificate_matches': certificate.get('matches') is True,
+          }
+          Path('build/release-preflight/preflight-summary.json').write_text(
+              json.dumps(summary, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          if not all(
+              [
+                  summary['configuration_formats_valid'],
+                  summary['upload_keystore_certificate_matches'],
+              ]
+          ):
+              raise SystemExit('Formal release preflight did not pass')
+          PY
+
+      - name: Upload sanitized preflight evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ashita-motsumono-formal-release-preflight-${{ github.sha }}
+          path: build/release-preflight/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove temporary signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$RUNNER_TEMP/upload-keystore.jks" "$RUNNER_TEMP/upload-certificate.der"
