@@ -12,6 +12,7 @@ class DateExtractor {
   static final _slashDatePattern = RegExp(
     r'(?<![\d第])(\d{1,2})\s*[/\-]\s*(\d{1,2})(?!\s*(?:組|教室|回|番|\d))',
   );
+  static final _relativeDatePattern = RegExp(r'(明後日|翌日|明日|今日|本日)');
   static final _relativeWeekdayPattern = RegExp(
     r'(今週|来週|次の)の?\s*([月火水木金土日])曜(?:日)?',
   );
@@ -19,6 +20,8 @@ class DateExtractor {
     r'(今月末|月末|始業式の日|終業式の日|入学式の日|卒園式の日|卒業式の日|運動会の日|遠足の日)',
   );
   static final _deadlineKeywordPattern = RegExp(r'(提出期限|提出日|持参日|締切|期限|まで)');
+
+  static const _deadlineSearchRadius = 32;
 
   static const _weekdayMap = <String, int>{
     '月': DateTime.monday,
@@ -48,20 +51,94 @@ class DateExtractor {
   }
 
   static DateTime? _extractDeadlineDate(String text, DateTime now) {
+    final candidates = _dateCandidates(text, now);
+    if (candidates.isEmpty) return null;
+
     for (final keyword in _deadlineKeywordPattern.allMatches(text)) {
-      final start = keyword.start > 24 ? keyword.start - 24 : 0;
-      final end = keyword.end + 24 < text.length
-          ? keyword.end + 24
-          : text.length;
-      final window = text.substring(start, end);
-      DateTime? result = _extractConcreteDate(window);
-      result ??= _extractMonthDayDate(window, now);
-      result ??= _extractSlashDate(window, now);
-      result ??= _extractRelativeDate(window, now);
-      result ??= _extractRelativeWeekday(window, now);
-      if (result != null) return result;
+      _DateCandidate? best;
+      var bestDistance = _deadlineSearchRadius + 1;
+      var bestIsAfterKeyword = false;
+
+      for (final candidate in candidates) {
+        final distance = _distanceBetween(candidate, keyword);
+        if (distance > _deadlineSearchRadius) continue;
+        final isAfterKeyword = candidate.start >= keyword.end;
+        if (distance < bestDistance ||
+            (distance == bestDistance &&
+                isAfterKeyword &&
+                !bestIsAfterKeyword)) {
+          best = candidate;
+          bestDistance = distance;
+          bestIsAfterKeyword = isAfterKeyword;
+        }
+      }
+
+      if (best != null) return best.value;
     }
     return null;
+  }
+
+  static int _distanceBetween(_DateCandidate candidate, RegExpMatch keyword) {
+    if (candidate.end <= keyword.start) {
+      return keyword.start - candidate.end;
+    }
+    if (candidate.start >= keyword.end) {
+      return candidate.start - keyword.end;
+    }
+    return 0;
+  }
+
+  static List<_DateCandidate> _dateCandidates(String text, DateTime now) {
+    final candidates = <_DateCandidate>[];
+
+    for (final match in _fullDatePattern.allMatches(text)) {
+      final value = _safeDate(
+        int.parse(match.group(1)!),
+        int.parse(match.group(2)!),
+        int.parse(match.group(3)!),
+      );
+      if (value != null) {
+        candidates.add(_DateCandidate(value, match.start, match.end));
+      }
+    }
+
+    for (final match in _monthDayPattern.allMatches(text)) {
+      final value = _futureMonthDay(
+        now,
+        int.parse(match.group(1)!),
+        int.parse(match.group(2)!),
+      );
+      if (value != null) {
+        candidates.add(_DateCandidate(value, match.start, match.end));
+      }
+    }
+
+    for (final match in _slashDatePattern.allMatches(text)) {
+      final value = _futureMonthDay(
+        now,
+        int.parse(match.group(1)!),
+        int.parse(match.group(2)!),
+      );
+      if (value != null) {
+        candidates.add(_DateCandidate(value, match.start, match.end));
+      }
+    }
+
+    for (final match in _relativeDatePattern.allMatches(text)) {
+      final value = _extractRelativeDate(match.group(0)!, now);
+      if (value != null) {
+        candidates.add(_DateCandidate(value, match.start, match.end));
+      }
+    }
+
+    for (final match in _relativeWeekdayPattern.allMatches(text)) {
+      final value = _extractRelativeWeekday(match.group(0)!, now);
+      if (value != null) {
+        candidates.add(_DateCandidate(value, match.start, match.end));
+      }
+    }
+
+    return candidates;
   }
 
   static bool hasAmbiguousDeadline(String text) {
@@ -166,4 +243,12 @@ class DateExtractor {
     // 過去の月日は黙って翌年にロールせず、呼び出し元で確認を促す
     return null;
   }
+}
+
+class _DateCandidate {
+  const _DateCandidate(this.value, this.start, this.end);
+
+  final DateTime value;
+  final int start;
+  final int end;
 }
