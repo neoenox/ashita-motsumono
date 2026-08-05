@@ -171,10 +171,10 @@ void main() {
     await tester.tap(find.text('置換'));
     await tester.pumpAndSettle();
 
-    expect(find.text('0件の候補を修正しました'), findsOneWidget);
     expect(find.text('候補0'), findsOneWidget);
     expect(find.text('候補1'), findsOneWidget);
     expect(find.text('候補2'), findsOneWidget);
+    expect(find.textContaining('X'), findsNothing);
   });
 
   testWidgets('長い日本語でもレイアウト例外を発生させない', (tester) async {
