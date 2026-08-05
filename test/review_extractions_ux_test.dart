@@ -107,6 +107,7 @@ void main() {
     final harness = await _mountReview(tester, List.generate(3, _draft));
     addTearDown(() => harness.dispose(tester));
 
+    await tester.scrollUntilVisible(find.text('OCR元テキスト'), 300);
     expect(find.text('OCR元テキスト'), findsOneWidget);
     await tester.tap(find.text('削除(3)'));
     await tester.pumpAndSettle();
@@ -168,7 +169,7 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '存在しない');
     await tester.enterText(find.byType(TextField).at(1), 'X');
     await tester.tap(find.text('置換'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('0件の候補を修正しました'), findsOneWidget);
     expect(find.text('候補0'), findsOneWidget);
