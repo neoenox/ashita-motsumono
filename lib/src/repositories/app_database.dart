@@ -262,11 +262,32 @@ class AppDatabase extends _$AppDatabase {
       RegExp(r'[:.]'),
       '-',
     );
-    final backup = File(
-      p.join(source.parent.path, 'ashita_motsumono_corrupt_$stamp.db'),
+    final backupBasePath = p.join(
+      source.parent.path,
+      'ashita_motsumono_corrupt_$stamp.db',
     );
-    await source.copy(backup.path);
-    return backup.path;
+    final copiedPaths = await backupDatabaseFilesAtPath(
+      source.path,
+      backupBasePath,
+    );
+    if (copiedPaths.isEmpty) return null;
+    return copiedPaths.join('\n');
+  }
+
+  @visibleForTesting
+  static Future<List<String>> backupDatabaseFilesAtPath(
+    String sourcePath,
+    String backupBasePath,
+  ) async {
+    final copiedPaths = <String>[];
+    for (final suffix in _databaseSuffixes) {
+      final source = File('$sourcePath$suffix');
+      if (!await source.exists()) continue;
+      final destination = File('$backupBasePath$suffix');
+      await source.copy(destination.path);
+      copiedPaths.add(destination.path);
+    }
+    return copiedPaths;
   }
 
   Future<AppSnapshot> loadSnapshot() async {
