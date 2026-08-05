@@ -1,0 +1,110 @@
+name: Source Review Integration Apply
+
+on:
+  push:
+    branches:
+      - agent/source-review-integration-20260805
+
+permissions:
+  contents: write
+
+concurrency:
+  group: source-review-integration-apply
+  cancel-in-progress: false
+
+jobs:
+  integrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out integration branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/source-review-integration-20260805
+          fetch-depth: 0
+
+      - name: Assemble exact validated PR contents
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          master_sha='bb296e7243028d0b841439179a403c7b0c12327b'
+          correctness_sha='ddbabed6b34913cec221be891fc3548a4720a430'
+          ocr_sha='23bae715a5ef27fc41d8f443c94db95d533d777b'
+          purchase_sha='3039813dbdad6f3385994068749b0c923c1299d8'
+          worker_sha='4db9255539d649db90cd397329049deadea50fb6'
+          database_sha='9054d3c462cd336b36df8c94bbab69b648647c60'
+
+          git fetch --no-tags origin \
+            refs/heads/master:refs/remotes/origin/master \
+            refs/heads/agent/source-review-correctness-fixes-20260805:refs/remotes/origin/source-review-correctness \
+            refs/heads/agent/source-review-ocr-cleanup-20260805:refs/remotes/origin/source-review-ocr \
+            refs/heads/agent/source-review-purchase-lifecycle-20260805:refs/remotes/origin/source-review-purchase \
+            refs/heads/agent/source-review-worker-jwt-20260805:refs/remotes/origin/source-review-worker \
+            refs/heads/agent/source-review-database-backup-20260805:refs/remotes/origin/source-review-database
+
+          test "$(git rev-parse origin/master)" = "$master_sha"
+          test "$(git rev-parse origin/source-review-correctness)" = "$correctness_sha"
+          test "$(git rev-parse origin/source-review-ocr)" = "$ocr_sha"
+          test "$(git rev-parse origin/source-review-purchase)" = "$purchase_sha"
+          test "$(git rev-parse origin/source-review-worker)" = "$worker_sha"
+          test "$(git rev-parse origin/source-review-database)" = "$database_sha"
+
+          for source_sha in \
+            "$correctness_sha" \
+            "$ocr_sha" \
+            "$purchase_sha" \
+            "$worker_sha" \
+            "$database_sha"; do
+            test "$(git merge-base "$master_sha" "$source_sha")" = "$master_sha"
+          done
+
+          git checkout "$correctness_sha" -- \
+            lib/src/app_state_cleanup.dart \
+            lib/src/screens/home_screen.dart \
+            lib/src/screens/home_screen_scope.dart \
+            lib/src/services/app_settings.dart \
+            lib/src/services/date_extractor.dart \
+            lib/src/services/sensitive_data_cleaner.dart \
+            test/source_review_regression_test.dart
+
+          git checkout "$ocr_sha" -- \
+            lib/src/screens/add_todo_screen.dart \
+            lib/src/screens/add_todo_screen_actions.dart \
+            test/ocr_cleanup_contract_test.dart
+
+          git checkout "$purchase_sha" -- \
+            lib/src/bootstrap_app.dart \
+            test/bootstrap_purchase_lifecycle_contract_test.dart
+
+          git checkout "$worker_sha" -- \
+            workers/gemini-proxy/src/index.ts \
+            test/worker_entitlement_token_contract_test.dart
+
+          git checkout "$database_sha" -- \
+            lib/src/repositories/app_database.dart \
+            test/database_backup_sidecar_test.dart
+
+          rm .github/workflows/source-review-integration-apply.yml
+
+          test -f .github/workflows/ci.yml
+          test -f tool/test_release_workflow.py
+          test -f test/source_review_regression_test.dart
+          test -f test/ocr_cleanup_contract_test.dart
+          test -f test/bootstrap_purchase_lifecycle_contract_test.dart
+          test -f test/worker_entitlement_token_contract_test.dart
+          test -f test/database_backup_sidecar_test.dart
+
+          git diff --check
+          git status --short
+
+      - name: Commit integrated validation head
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'test: integrate source review fixes for validation'
+          git push origin HEAD:agent/source-review-integration-20260805
