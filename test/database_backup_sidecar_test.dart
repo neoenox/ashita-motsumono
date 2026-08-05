@@ -4,6 +4,7 @@ import 'package:ashita_motsumono/src/repositories/app_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  // A failed WAL checkpoint must not reduce the recoverable backup set.
   test('corrupt database backup includes SQLite sidecars', () async {
     final directory = await Directory.systemTemp.createTemp(
       'ashita_database_backup_',
