@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:ashita_motsumono/src/services/app_settings.dart';
 import 'package:ashita_motsumono/src/services/date_extractor.dart';
+import 'package:ashita_motsumono/src/services/sensitive_data_cleaner.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -49,6 +50,39 @@ void main() {
     expect(settings.learnedItemLabels, hasLength(100));
     expect(settings.learnedItemLabels.first, '新しい持ち物');
     expect(settings.learnedItemLabels, isNot(contains('既存99')));
+  });
+
+  test('corrupt database sidecar backups are removed', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'ashita_sensitive_cleanup_',
+    );
+    addTearDown(() async {
+      if (await directory.exists()) {
+        await directory.delete(recursive: true);
+      }
+    });
+
+    final removable = [
+      'ashita_motsumono_corrupt_test.db',
+      'ashita_motsumono_corrupt_test.db-wal',
+      'ashita_motsumono_corrupt_test.db-shm',
+      'ashita_motsumono_corrupt_test.db-journal',
+    ];
+    for (final name in removable) {
+      await File('${directory.path}/$name').writeAsString(name);
+    }
+    final unrelated = File('${directory.path}/keep.txt');
+    await unrelated.writeAsString('keep');
+
+    final cleaner = SensitiveDataCleaner(
+      directoryProvider: () async => directory,
+    );
+    await cleaner.clearResidualFiles();
+
+    for (final name in removable) {
+      expect(await File('${directory.path}/$name').exists(), isFalse);
+    }
+    expect(await unrelated.exists(), isTrue);
   });
 
   test('post-delete cleanup is limited to captured todo ids', () {
