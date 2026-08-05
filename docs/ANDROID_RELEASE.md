@@ -38,7 +38,7 @@ WindowsでキーストアをBase64化します。
 )
 ```
 
-必須Secrets：
+正式Releaseと内部テスト配布で共通の必須Secrets：
 
 | Secret | 用途 |
 |---|---|
@@ -50,18 +50,20 @@ WindowsでキーストアをBase64化します。
 | `ADMOB_BANNER_AD_UNIT_ID` | 本番バナー広告ユニットID |
 | `GEMINI_PROXY_URL` | AI解析用Cloudflare Workers URL |
 
-必須Repository Variable：
+正式Releaseと内部テスト配布で共通の必須Repository Variables：
+
+| Variable | 用途 |
+|---|---|
+| `IAP_REMOVE_ADS_PRODUCT_ID` | 広告削除商品ID |
+| `IAP_AI_ACCESS_PRODUCT_ID` | AI分析商品ID |
+
+正式Release（`.github/workflows/ci.yml`）で必須のRepository Variable：
 
 | Variable | 用途 |
 |---|---|
 | `ANDROID_UPLOAD_CERT_SHA256` | Play Consoleのアップロード証明書SHA-256 |
 
-任意Repository Variable：
-
-| Variable | デフォルト |
-|---|---|
-| `IAP_REMOVE_ADS_PRODUCT_ID` | `remove_ads` |
-| `IAP_AI_ACCESS_PRODUCT_ID` | `ai_analysis` |
+内部テスト配布（`.github/workflows/release-android.yml`）では、さらに`PLAY_SERVICE_ACCOUNT_JSON` Secretが必須です。`ANDROID_UPLOAD_CERT_SHA256`は値がある場合だけ照合されます。値なしで内部テストworkflowが進行しても、`playSigning`または`formalRelease`のPASS証跡にはなりません。
 
 ## 4. 証明書を照合する
 
@@ -77,11 +79,11 @@ Play Consoleのアップロード証明書SHA-256と一致することを確認�
 
 ## 5. 正式Releaseを実行する
 
-`workflow_dispatch`または正式`v*`タグを使用します。
+`workflow_dispatch`または正式`v*`タグを使用します。タグを使う場合は、リリース対象のversionと最新masterを再確認してから作成します。
 
 ```bash
-git tag v0.6.3
-git push origin v0.6.3
+git tag v<version>
+git push origin v<version>
 ```
 
 生成される正式artifact：
@@ -94,15 +96,17 @@ git push origin v0.6.3
 
 ## 6. CIの署名・ハッシュ検証
 
-Release Androidジョブは次の順で検証します。
+正式Release jobは次の順で検証します。
 
-1. キーストア証明書のSHA-256を計算
-2. APKを`apksigner verify --verbose --print-certs`で検証
-3. AABを`jarsigner -verify -verbose -certs`で検証
-4. `keytool -printcert -jarfile`でAAB証明書を取得
-5. キーストア、APK、AABを`ANDROID_UPLOAD_CERT_SHA256`と照合
-6. APK/AABのSHA-256を記録・再照合
-7. すべて成功した場合だけ`release-manifest.json`を生成
+1. Analyzeと全Flutter testの成功を確認
+2. Release sourceが最新`origin/master`と一致することを確認
+3. キーストア証明書のSHA-256を計算
+4. APKを`apksigner verify --verbose --print-certs`で検証
+5. AABを`jarsigner -verify -verbose -certs`で検証
+6. `keytool -printcert -jarfile`でAAB証明書を取得
+7. キーストア、APK、AABを`ANDROID_UPLOAD_CERT_SHA256`と照合
+8. APK/AABのSHA-256を記録・再照合
+9. すべて成功した場合だけ`release-manifest.json`を生成
 
 APK artifact：
 
@@ -147,6 +151,7 @@ python .\tool\release_execution_orchestrator.py evaluate `
 - SHA-256は公開情報としてRepository Variableへ登録可能
 - 証跡JSONへSecretsを記録しない
 - PRや通常pushでは署名済みPlay成果物を生成しない
+- Secret／Variableの値をログやPR本文へ貼らない
 
 ## 9. 提出前確認
 
