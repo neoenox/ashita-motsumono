@@ -1,0 +1,52 @@
+name: Apply database backup hardening
+
+on:
+  push:
+    branches:
+      - agent/source-review-database-backup-20260805
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+
+      - name: Apply database backup patch
+        run: python3 tool/apply_database_backup_hardening.py
+
+      - name: Format and validate backup behavior
+        run: |
+          dart format lib/src/repositories/app_database.dart test/database_backup_sidecar_test.dart
+          flutter pub get
+          flutter test test/database_backup_sidecar_test.dart
+
+      - name: Remove one-shot tooling
+        run: |
+          rm tool/apply_database_backup_hardening.py
+          rm .github/workflows/apply-database-backup-hardening.yml
+
+      - name: Commit branch changes
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/src/repositories/app_database.dart test/database_backup_sidecar_test.dart
+          git add -u tool/apply_database_backup_hardening.py .github/workflows/apply-database-backup-hardening.yml
+          git commit -m "fix: preserve SQLite sidecars in corrupt database backups"
+          git push origin HEAD:${{ github.ref_name }}
