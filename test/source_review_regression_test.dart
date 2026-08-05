@@ -86,9 +86,7 @@ void main() {
   });
 
   test('post-delete cleanup is limited to captured todo ids', () {
-    final source = File(
-      'lib/src/app_state_cleanup.dart',
-    ).readAsStringSync();
+    final source = File('lib/src/app_state_cleanup.dart').readAsStringSync();
 
     expect(source, contains('executeCanceledTodo(todoId)'));
     expect(source, contains('_runPostDeleteCleanup(todoIdsToCancel)'));
