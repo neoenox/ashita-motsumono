@@ -1,0 +1,52 @@
+name: Apply Worker entitlement hardening
+
+on:
+  push:
+    branches:
+      - agent/source-review-worker-jwt-20260805
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+
+      - name: Apply hardening patch
+        run: python3 tool/apply_worker_entitlement_hardening.py
+
+      - name: Format and validate contract
+        run: |
+          dart format test/worker_entitlement_token_contract_test.dart
+          flutter pub get
+          flutter test test/worker_entitlement_token_contract_test.dart
+
+      - name: Remove one-shot tooling
+        run: |
+          rm tool/apply_worker_entitlement_hardening.py
+          rm .github/workflows/apply-worker-entitlement-hardening.yml
+
+      - name: Commit branch changes
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add workers/gemini-proxy/src/index.ts test/worker_entitlement_token_contract_test.dart
+          git add -u tool/apply_worker_entitlement_hardening.py .github/workflows/apply-worker-entitlement-hardening.yml
+          git commit -m "fix: harden Worker entitlement token validation"
+          git push origin HEAD:${{ github.ref_name }}
