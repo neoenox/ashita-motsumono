@@ -776,6 +776,8 @@ void main() {
       expect(find.text('3件の候補を確認'), findsOneWidget);
       expect(find.text('持ち物：水着・帽子・タオル'), findsOneWidget);
       expect(find.text('集金 500円'), findsOneWidget);
+      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await _pumpUi(tester);
       expect(find.text('申込書を提出'), findsOneWidget);
 
       await tester.tap(find.text('3件を登録'));
