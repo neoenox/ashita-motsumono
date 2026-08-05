@@ -460,45 +460,52 @@ class _DraftCard extends StatelessWidget {
                       ),
                     ),
                     if (rawText.isNotEmpty) ...[
-                      const SizedBox(height: Spacing.sm),
-                      Container(
-                        key: ValueKey('source-text-${draft.title}'),
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(Spacing.sm),
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest.withValues(
-                            alpha: 0.45,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                      const SizedBox(height: Spacing.xs),
+                      Semantics(
+                        button: true,
+                        label: 'この候補の元文を全文表示',
+                        child: InkWell(
+                          key: ValueKey('source-text-${draft.title}'),
+                          borderRadius: BorderRadius.circular(6),
+                          onTap: () => _showSourceText(context, rawText),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: Spacing.xs,
+                              vertical: 4,
+                            ),
+                            child: Row(
                               children: [
                                 Icon(
                                   Icons.text_snippet_outlined,
-                                  size: 15,
+                                  size: 14,
                                   color: cs.primary,
                                 ),
                                 const SizedBox(width: Spacing.xs),
                                 Text(
                                   'この候補の元文',
-                                  style: Theme.of(context).textTheme.labelMedium
+                                  style: Theme.of(context).textTheme.labelSmall
                                       ?.copyWith(color: cs.primary),
+                                ),
+                                const SizedBox(width: Spacing.xs),
+                                Expanded(
+                                  child: Text(
+                                    rawText,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.open_in_full,
+                                  size: 13,
+                                  color: cs.onSurfaceVariant,
                                 ),
                               ],
                             ),
-                            const SizedBox(height: Spacing.xs),
-                            Text(
-                              rawText,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: cs.onSurfaceVariant,
-                                height: 1.45,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ],
@@ -517,6 +524,22 @@ class _DraftCard extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _showSourceText(BuildContext context, String rawText) {
+  return showAdaptiveDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('この候補の元文'),
+      content: SingleChildScrollView(child: SelectableText(rawText)),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('閉じる'),
+        ),
+      ],
+    ),
+  );
 }
 
 String _formatDate(DateTime date) => '${date.year}/${date.month}/${date.day}';
