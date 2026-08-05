@@ -26,14 +26,17 @@ void main() {
       expect(result, DateTime(2026, 8, 10));
     });
 
-    test('date immediately before made deadline wins over distribution date', () {
-      final result = DateExtractor.extract(
-        '8月5日配布、8月10日までに提出してください。',
-        DateTime(2026, 8, 5),
-      );
+    test(
+      'date immediately before made deadline wins over distribution date',
+      () {
+        final result = DateExtractor.extract(
+          '8月5日配布、8月10日までに提出してください。',
+          DateTime(2026, 8, 5),
+        );
 
-      expect(result, DateTime(2026, 8, 10));
-    });
+        expect(result, DateTime(2026, 8, 10));
+      },
+    );
 
     test('class notation is not treated as a slash date', () {
       final result = DateExtractor.extract(
