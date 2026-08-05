@@ -27,10 +27,21 @@ void main() {
     final source = File(
       'lib/src/services/date_extractor.dart',
     ).readAsStringSync();
+    final functionStart = source.indexOf(
+      'static DateTime? _extractDeadlineDate',
+    );
+    final functionEnd = source.indexOf(
+      'static DateTime? _nearestDateForKeywords',
+      functionStart,
+    );
 
-    final explicit = source.indexOf('_explicitDeadlineKeywordPattern');
-    final action = source.indexOf('_actionDateKeywordPattern');
-    final generic = source.indexOf('_genericDeadlineKeywordPattern');
+    expect(functionStart, greaterThanOrEqualTo(0));
+    expect(functionEnd, greaterThan(functionStart));
+
+    final functionBody = source.substring(functionStart, functionEnd);
+    final explicit = functionBody.indexOf('_explicitDeadlineKeywordPattern');
+    final action = functionBody.indexOf('_actionDateKeywordPattern');
+    final generic = functionBody.indexOf('_genericDeadlineKeywordPattern');
 
     expect(explicit, greaterThanOrEqualTo(0));
     expect(action, greaterThan(explicit));
