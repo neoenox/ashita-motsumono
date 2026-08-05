@@ -18,6 +18,7 @@ REQUIRED_FILES = (
     "pubspec.yaml",
     "lib/src/app_version.g.dart",
     "docs/STORE_LISTING_JA.md",
+    "docs/RELEASE_NOTES_V070_JA.md",
     "docs/PLAY_CONSOLE_SUBMISSION.md",
     "docs/ANDROID_RELEASE.md",
     "docs/RELEASE_EXECUTION_PLAN.md",
