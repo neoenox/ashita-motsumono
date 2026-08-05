@@ -2,9 +2,10 @@
 
 対象リポジトリ：`kaenozu/ashita-motsumono`  
 正式アプリ名：`あしたもつもの`  
-Application ID：`com.ashita_motsumono`
+Application ID：`com.ashita_motsumono`  
+基準日：2026-08-05
 
-この文書はAndroid通知実測からGoogle Play提出までの唯一の実行順を定義します。推奨の操作入口は`tool/release_validation_session.ps1`です。詳細なコマンドは`docs/RELEASE_VALIDATION_SESSION.md`を参照してください。
+この文書はAndroid通知実測からGoogle Play提出までの唯一の実行順を定義します。推奨の操作入口は`tool/release_validation_session.ps1`です。現在の外部ゲート状況は`docs/PLAY_RELEASE_READINESS.md`を参照してください。
 
 ## 1. 実行順
 
@@ -25,18 +26,18 @@ releaseSession
 → internalTest
 ```
 
-`playSigning`と`playSubmission`を分離し、Play App Signingとアップロード証明書が確定した段階で正式AABを生成できるようにします。ストア掲載・データセーフティ・広告申告は正式Release後にIssue #94で完了します。
+`playSigning`と`playSubmission`を分離します。Play App Signingとアップロード証明書を確定した後に正式AABを生成し、その後にストア掲載・内部テストを完了します。
 
 ## 2. 判定原則
 
-- CI成功、静的設定、ビルド、インストール、ローカルAPK起動を実通知・Play配布・広告・課金のPASSとして代用しない。
+- CI成功、静的設定、ビルド、インストール、ローカルAPK起動を、実通知・Play配布・広告・課金のPASSとして代用しない。
 - 環境診断と通知権限確認後にRelease sessionを開始する。
 - Issue #60の3ケース集約まで検証対象masterを実質的に凍結する。
 - 3ケースのSource SHAを同一にし、集約時の最新`origin/master`と一致させる。
 - Todo作成前後のAlarm登録差分がない場合は通知ケースをPASSにしない。
-- 証跡不足は`FAIL`ではなく`INCONCLUSIVE`、環境崩壊は`BLOCKED`とする。
+- 証跡不足は`INCONCLUSIVE`、環境崩壊は`BLOCKED`、確認された不具合は`FAIL`とする。
 - Play Console、GitHub Actions、APK/AAB、内部テストを同一Source SHAと正式Run IDで関連付ける。
-- Secrets、キーストア、パスワード、AdMob ID、Gemini Proxy URLを証跡JSONへ保存しない。
+- Secrets、キーストア、パスワード、AdMob ID、Gemini Proxy URLを証跡へ保存しない。
 
 ## 3. 単一証跡ルート
 
@@ -44,7 +45,15 @@ releaseSession
 $evidence = Join-Path $HOME 'Documents\ashita-release-evidence'
 ```
 
-Issue #60の証跡、Release session、Play Console証跡、release manifest、内部テスト証跡、最終readinessを別ルートへ分散させません。
+次を別ルートへ分散させません。
+
+- `release-session.json`
+- `ISSUE60_SUMMARY\issue60-summary.json`
+- `play-console-evidence.json`
+- `release-manifest.json`
+- `internal-test-evidence.json`
+- `release-readiness.json`
+- `release-readiness.md`
 
 ## 4. 環境診断と初期インストール
 
@@ -136,7 +145,7 @@ NormalがPASSするまでRebootへ進みません。
 - `Recommendation=ELIGIBLE_FOR_CLOSE_REVIEW`
 - Normal=`PASS`
 - Reboot=`PASS`
-- install-rは`MY_PACKAGE_REPLACED`確認済み`PASS`、または通知証跡完備でbroadcast因果関係だけ未確認の`INCONCLUSIVE`
+- install-rは`MY_PACKAGE_REPLACED`確認済み`PASS`、または通知証跡完備でbroadcast因果関係だけ未確認の限定的`INCONCLUSIVE`
 - Todo作成前後のAlarm登録差分あり
 - 3ケースがRelease sessionと同じSource SHA
 - 集約前の`git fetch origin`後も最新clean `origin/master`
@@ -167,7 +176,7 @@ Play Consoleで次を準備します。
 
 ## 8. Issue #59：formalRelease
 
-必須GitHub Secrets：
+### 必須GitHub Secrets
 
 - `KEYSTORE_BASE64`
 - `KEYSTORE_STORE_PASSWORD`
@@ -177,16 +186,15 @@ Play Consoleで次を準備します。
 - `ADMOB_BANNER_AD_UNIT_ID`
 - `GEMINI_PROXY_URL`
 
-必須Repository Variable：
+### 必須Repository Variables
 
+- `IAP_REMOVE_ADS_PRODUCT_ID`
+- `IAP_AI_ACCESS_PRODUCT_ID`
 - `ANDROID_UPLOAD_CERT_SHA256`
 
-任意Repository Variable：
+`.github/workflows/ci.yml`の正式Release jobは、Analyzeと全testの成功、最新master一致、上記設定をすべて要求します。
 
-- `IAP_REMOVE_ADS_PRODUCT_ID`（未設定時`remove_ads`）
-- `IAP_AI_ACCESS_PRODUCT_ID`（未設定時`ai_analysis`）
-
-`Release Android`を`workflow_dispatch`または正式`v*`タグで実行し、次を保存します。
+`workflow_dispatch`または正式`v*`タグで実行し、次を保存します。
 
 - `ashita-motsumono-signed-release-apk`
 - `ashita-motsumono-signed-release-aab`
@@ -202,11 +210,11 @@ formalReleaseゲート：
 - Play Console、キーストア、APK、AABの証明書SHA-256一致
 - 証明書照合がすべて`matches: true`
 - APK/AAB SHA-256が有効
-- artifact名、両方の課金商品ID、Run IDが一致
+- artifact名、両課金商品ID、Run IDが一致
 
 ## 9. Issue #94：playSubmission
 
-正式Release後、`play-console-evidence.json`へ次を追記します。
+正式Release後、`play-console-evidence.json`へ確認済み事実だけを追記します。
 
 - `privacyPolicyRegistered=true`
 - `storeListingComplete=true`
@@ -217,6 +225,19 @@ formalReleaseゲート：
 ストア掲載には説明文、アイコン、スクリーンショット、カテゴリ、連絡先を含めます。データセーフティと審査説明を実装・プライバシーポリシーと一致させます。
 
 ## 10. Issue #94：internalTest
+
+内部テストworkflowは`.github/workflows/release-android.yml`です。
+
+### 必須追加Secret
+
+- `PLAY_SERVICE_ACCOUNT_JSON`
+
+### 必須Repository Variables
+
+- `IAP_REMOVE_ADS_PRODUCT_ID`
+- `IAP_AI_ACCESS_PRODUCT_ID`
+
+`ANDROID_UPLOAD_CERT_SHA256`はこのworkflowでは条件付きです。値がある場合だけ証明書照合を実行します。未設定で内部配布が成功しても、`playSigning`または`formalRelease`の証跡として流用しません。
 
 正式AABをGoogle Play内部テストへアップロードし、Play Store経由でインストールします。
 
