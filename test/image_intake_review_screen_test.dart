@@ -7,7 +7,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 
 void main() {
-  testWidgets('shows selected pages and removes excluded images', (tester) async {
+  testWidgets('shows selected pages and removes excluded images', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: ImageIntakeReviewScreen(
