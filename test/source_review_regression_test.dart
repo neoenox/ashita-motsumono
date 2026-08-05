@@ -44,6 +44,15 @@ void main() {
       expect(result, DateTime(2026, 8, 10));
     });
 
+    test('submission action wins over an unrelated generic range ending', () {
+      final result = DateExtractor.extract(
+        '8月5日から8月7日まで休業です。8月10日に提出してください。',
+        DateTime(2026, 8, 5),
+      );
+
+      expect(result, DateTime(2026, 8, 10));
+    });
+
     test(
       'date immediately before made deadline wins over distribution date',
       () {
