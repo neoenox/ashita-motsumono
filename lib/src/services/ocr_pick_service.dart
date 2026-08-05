@@ -99,16 +99,35 @@ class OcrPickService {
     return processPickedImage(picked, source: source);
   }
 
-  Future<OcrPickResult?> pickMultipleImages({
-    IntakeProgressCallback? onProgress,
-    IntakeCancellationToken? cancellationToken,
-  }) async {
-    final picked = await _picker.pickMultiImage(
+  Future<List<XFile>> pickMultipleImageFiles() {
+    return _picker.pickMultiImage(
       imageQuality: 85,
       maxWidth: 2048,
       maxHeight: 2048,
     );
+  }
+
+  Future<OcrPickResult?> pickMultipleImages({
+    IntakeProgressCallback? onProgress,
+    IntakeCancellationToken? cancellationToken,
+  }) async {
+    final picked = await pickMultipleImageFiles();
     if (picked.isEmpty) return null;
+    return processPickedImages(
+      picked,
+      onProgress: onProgress,
+      cancellationToken: cancellationToken,
+    );
+  }
+
+  Future<OcrPickResult> processPickedImages(
+    List<XFile> picked, {
+    IntakeProgressCallback? onProgress,
+    IntakeCancellationToken? cancellationToken,
+  }) async {
+    if (picked.isEmpty) {
+      throw ArgumentError.value(picked, 'picked', '1件以上の画像が必要です');
+    }
 
     if (picked.length == 1) {
       return processPickedImage(picked.single);

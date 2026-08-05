@@ -66,7 +66,6 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final children = context.watch<AppState>().children;
-    final rawText = _reviewState.firstNonEmptyRawText;
 
     return Scaffold(
       appBar: AppBar(
@@ -128,7 +127,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
                   Expanded(
                     child: Text(
                       'OCRで読み取った候補を登録前に編集できます。'
-                      '日付と持ち物に誤りがないか最終チェックしてください。',
+                      '各候補の下に表示される元文と照らし合わせて確認してください。',
                       style: TextStyle(
                         fontSize: 13,
                         color: cs.onSurfaceVariant,
@@ -166,41 +165,6 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
                 ),
               );
             }),
-          if (rawText.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: Spacing.sm),
-              child: Card(
-                clipBehavior: Clip.antiAlias,
-                child: ExpansionTile(
-                  leading: Icon(
-                    Icons.text_snippet_outlined,
-                    size: 20,
-                    color: cs.primary,
-                  ),
-                  title: Text(
-                    'OCR元テキスト',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  initiallyExpanded: false,
-                  childrenPadding: const EdgeInsets.fromLTRB(
-                    Spacing.md + 20 + Spacing.sm,
-                    0,
-                    Spacing.md,
-                    Spacing.md,
-                  ),
-                  children: [
-                    Text(
-                      rawText,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: cs.onSurfaceVariant,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -320,7 +284,7 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
                   ),
                   const SizedBox(height: Spacing.md),
                   DropdownButtonFormField<String>(
-                    value: target,
+                    initialValue: target,
                     decoration: const InputDecoration(
                       labelText: '対象フィールド',
                       border: OutlineInputBorder(),
@@ -450,6 +414,7 @@ class _DraftCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final rawText = draft.rawText?.trim() ?? '';
     final details = <String>[
       draft.category.label,
       if (draft.dueDate != null) _formatDate(draft.dueDate!),
@@ -494,6 +459,56 @@ class _DraftCard extends StatelessWidget {
                         color: cs.onSurfaceVariant,
                       ),
                     ),
+                    if (rawText.isNotEmpty) ...[
+                      const SizedBox(height: Spacing.xs),
+                      Semantics(
+                        button: true,
+                        label: 'この候補の元文を全文表示',
+                        child: InkWell(
+                          key: ValueKey('source-text-${draft.title}'),
+                          borderRadius: BorderRadius.circular(6),
+                          onTap: () => _showSourceText(context, rawText),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: Spacing.xs,
+                              vertical: 4,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.text_snippet_outlined,
+                                  size: 14,
+                                  color: cs.primary,
+                                ),
+                                const SizedBox(width: Spacing.xs),
+                                Text(
+                                  'この候補の元文',
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(color: cs.primary),
+                                ),
+                                const SizedBox(width: Spacing.xs),
+                                Expanded(
+                                  child: Text(
+                                    rawText,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.open_in_full,
+                                  size: 13,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -509,6 +524,22 @@ class _DraftCard extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _showSourceText(BuildContext context, String rawText) {
+  return showAdaptiveDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('この候補の元文'),
+      content: SingleChildScrollView(child: SelectableText(rawText)),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('閉じる'),
+        ),
+      ],
+    ),
+  );
 }
 
 String _formatDate(DateTime date) => '${date.year}/${date.month}/${date.day}';

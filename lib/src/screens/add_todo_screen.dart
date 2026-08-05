@@ -25,6 +25,7 @@ import '../utils/clipboard_helper.dart';
 import '../utils/date_picker.dart';
 import '../utils/string_utils.dart';
 import '../widgets/intake_progress_overlay.dart';
+import 'image_intake_review_screen.dart';
 import 'no_candidates_screen.dart';
 import 'review_extraction_screen.dart';
 import 'review_extractions_screen.dart';
@@ -32,6 +33,7 @@ import 'widgets/child_dropdown.dart';
 
 part 'add_todo_screen_layout.dart';
 part 'add_todo_screen_actions.dart';
+part 'add_todo_image_review_actions.dart';
 
 @visibleForTesting
 Future<void> requestAiImageAnalysisWithDisclosure(

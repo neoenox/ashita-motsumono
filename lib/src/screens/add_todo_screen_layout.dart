@@ -77,7 +77,7 @@ extension _AddTodoScreenLayout on _AddTodoScreenState {
                     const SizedBox(width: Spacing.xs),
                     Expanded(
                       child: _IntakeButton(
-                        onPressed: _busy ? null : _pickImages,
+                        onPressed: _busy ? null : _pickImagesWithReview,
                         icon: Icons.add_photo_alternate_outlined,
                         label: '画像を選ぶ',
                       ),

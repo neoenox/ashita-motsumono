@@ -157,13 +157,29 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
   }
 
   Future<void> _pickImages() async {
-    final token = IntakeCancellationToken();
-    _update(() {
-      _busy = true;
-      _cancellationToken = token;
-    });
+    _update(() => _busy = true);
     try {
-      final result = await _ocrPickService().pickMultipleImages(
+      final service = _ocrPickService();
+      final picked = await service.pickMultipleImageFiles();
+      if (!mounted || picked.isEmpty) return;
+
+      _update(() => _busy = false);
+      final selected = picked.length == 1
+          ? picked
+          : await Navigator.of(context).push<List<XFile>>(
+              MaterialPageRoute(
+                builder: (_) => ImageIntakeReviewScreen(files: picked),
+              ),
+            );
+      if (!mounted || selected == null || selected.isEmpty) return;
+
+      final token = IntakeCancellationToken();
+      _update(() {
+        _busy = true;
+        _cancellationToken = token;
+      });
+      final result = await service.processPickedImages(
+        selected,
         cancellationToken: token,
         onProgress: (progress) {
           if (!mounted) return;
@@ -174,7 +190,7 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
           }
         },
       );
-      if (result == null || !mounted || token.isCancelled) return;
+      if (!mounted || token.isCancelled) return;
       await _handleOcrPickResult(result, showNoCandidates: true);
     } on OcrException catch (error) {
       if (kDebugMode) debugPrint('Image intake error: ${error.cause ?? error}');

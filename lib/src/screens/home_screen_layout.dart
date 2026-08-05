@@ -29,8 +29,25 @@ extension _HomeScreenLayout on _HomeScreenState {
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
               if (value == 'export') unawaited(_exportData(state));
+              if (value == 'dictionary') {
+                unawaited(
+                  pushAdaptive<void>(
+                    context,
+                    (_) => LearnedDictionaryScreen(settings: widget.settings),
+                  ),
+                );
+              }
             },
             itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'dictionary',
+                child: ListTile(
+                  leading: Icon(Icons.spellcheck),
+                  title: Text('読み取り辞書'),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
               const PopupMenuItem(
                 value: 'export',
                 child: ListTile(
