@@ -26,9 +26,7 @@ void main() {
     );
 
     expect(find.text('学習済み 2件'), findsOneWidget);
-    await tester.tap(
-      find.byKey(const ValueKey('remove-learned-label-水筒')),
-    );
+    await tester.tap(find.byKey(const ValueKey('remove-learned-label-水筒')));
     await tester.pumpAndSettle();
 
     expect(settings.learnedItemLabels, ['軍手']);
