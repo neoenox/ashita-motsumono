@@ -1,34 +1,32 @@
 # Google Play公開準備状況
 
-基準日：2026-08-05  
-対象master：`e5fe676443319f55b2be5302aae322d1b5c6677e`  
+基準日：2026-08-06
+対象master：`b51ed3c6285976344fb3625dbdb3765150787e8f`
 アプリバージョン：`0.7.0+3`
 
 ## 結論
 
 判定は`KEEP_BLOCKED_EXTERNAL_RELEASE_GATES`です。
 
-コード品質ゲートと署名済みAPK/AABを生成・検証する仕組みは整っていますが、通知実測、Play App Signing、本番アップロード証明書、正式Release、Play Console入力、内部テストの外部証跡が揃っていません。CI成功やPR用の一時署名成果物を、正式なPlay提出証跡の代替にしません。
+コード品質ゲートと署名済みAPK/AABを生成・検証する仕組みは整っています。現行masterのworkflow_dispatchでも署名済みAPK/AAB、証明書照合、release manifest、artifact uploadが成功しています。一方、通知実測、Play ConsoleのPlay App Signing確認、Play Console入力、内部テストの外部証跡は揃っていません。CIの自動証跡をPlay配布・実機受入の代替にしません。
 
 ## 最新のコード・CI状態
 
-統合PR #158で次が成功しています。
+現行master `b51ed3c6285976344fb3625dbdb3765150787e8f`で次が成功しています。
 
-- Release Automation Validation `30974846475`: SUCCESS
-- Flutter CI `30974846504`: SUCCESS
-- Flutter Release Validation `30974846503`: SUCCESS
+- Release Automation Validation `31057386580`: SUCCESS
+- Release Readiness Preflight `31057386919`: SUCCESS
+- Flutter Release Validation `31057384779`: SUCCESS
+- Flutter CI `31088423419`: SUCCESS
   - Dart format
   - Analyze
   - 全Flutter test
-  - release APK build
-  - release AAB build
-  - artifact verification/upload
+  - 署名済みrelease APK/AAB build
+  - APK/AAB/キーストア証明書照合
+  - release manifest生成
+  - artifact upload
 
-PR #158はmasterへsquash merge済みです。
-
-- master commit：`e5fe676443319f55b2be5302aae322d1b5c6677e`
-- merge後`flutter-ci-master`：SUCCESS
-- run：`30978701905`
+`31088423419`のrelease manifestは現行master SHAと一致し、APK/AAB/キーストア証明書の照合結果はすべて`matches=true`です。これは自動artifactの確認であり、Play Consoleでの証明書登録・内部テスト配布の確認ではありません。cleanな現行masterとこのmanifestを使ったorchestratorの`--report-only`評価は`KEEP_BLOCKED`（`releaseSession=PASS`、Issue #60／Play signing／formalRelease／Play submission／internalTestは外部証跡不足でBLOCKED）でした。
 
 正式Release jobは、Analyzeと全testの成功後、かつ最新masterだけから実行できるよう制限されています。
 
@@ -48,8 +46,8 @@ releaseSession
 | Issue | ゲート | 状態 | 残作業 |
 |---:|---|---|---|
 | #60 | `issue60` | BLOCKED | Normal／Reboot／install-r通知実測、同一Source SHAで集約 |
-| #98 | `playSigning` | BLOCKED | Play App Signing、本番upload証明書SHA-256、商品ID、証跡 |
-| #59 | `formalRelease` | BLOCKED | 正式workflow/tag run、manifest、証明書・hash照合 |
+| #98 | `playSigning` | BLOCKED | CI上の証明書照合は完了。Play ConsoleのPlay App Signing、upload証明書、商品IDの外部証跡が未確認 |
+| #59 | `formalRelease` | PASS_AUTOMATED_ARTIFACT | run `31088423419`で署名APK/AAB、manifest、証明書・hash照合を確認。ordered orchestrator gateはPlay signing証跡不足でBLOCKED。tag/Release公開やPlay uploadは未実施 |
 | #94 | `playSubmission` | BLOCKED | ストア掲載、データセーフティ、広告申告、審査情報 |
 | #94 | `internalTest` | BLOCKED | Play経由インストール、OCR・通知・広告・課金・AI・復元等 |
 
@@ -113,9 +111,9 @@ releaseSession
 2. Play ConsoleでアプリとPlay App Signingを設定
 3. 本番upload keystoreとPlay ConsoleのSHA-256を一致確認
 4. 課金商品IDを作成しRepository Variablesと一致確認
-5. 正式masterからRelease workflowまたは正式タグを実行
-6. manifest、証明書、APK/AAB hashを検証
-7. Play Consoleのストア掲載・データセーフティ等を完了
+5. 正式masterからの署名artifactを運用対象として確定
+6. manifest、証明書、APK/AAB hashを検証（run `31088423419`で自動確認済み）
+7. Play ConsoleのPlay App Signing、ストア掲載、データセーフティ等を完了
 8. 正式AABを内部テストへ配布
 9. Play経由端末でOCR、通知、広告、課金、AI、購入復元、削除、exportを確認
 10. orchestratorが`READY_FOR_SUBMISSION`を返した後だけ審査提出
