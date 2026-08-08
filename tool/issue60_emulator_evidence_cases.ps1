@@ -519,12 +519,14 @@ function Aggregate {
   $reboot = Result $RebootCaseName 'reboot'
   $install = Result $InstallCaseName 'install-r'
   $sources = @(
-    $normal.SourceSha,
-    $reboot.SourceSha,
-    $install.SourceSha
-  ) |
-    Where-Object { $_ } |
-    Select-Object -Unique
+    @(
+      $normal.SourceSha,
+      $reboot.SourceSha,
+      $install.SourceSha
+    ) |
+      Where-Object { $_ } |
+      Select-Object -Unique
+  )
   $sourceConsistent = $sources.Count -eq 1
   $git = GitState
   $currentSourceMatches = (
