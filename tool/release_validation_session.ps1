@@ -746,7 +746,7 @@ function Finalize-Case {
   $result = Read-JsonFile $resultPath
   $case.status = 'FINALIZED'
   $case.verdict = [string]$result.Verdict
-  $case.resultPath = $resultPath
+  $case | Add-Member -NotePropertyName 'resultPath' -NotePropertyValue $resultPath -Force
   Set-CaseState $context.state $CaseType $case
   Save-State $context.state
   $result
