@@ -129,8 +129,21 @@ function Invoke-Checked {
     "command=$FilePath $($Arguments -join ' ')",
     "host_time=$(Get-Date -Format o)"
   ) | Out-File $LogPath -Encoding utf8
-  $output = & $FilePath @Arguments 2>&1
-  $exitCode = $LASTEXITCODE
+  $previousErrorActionPreference = $ErrorActionPreference
+  try {
+    # Native tools such as adb and Gradle commonly emit informational output
+    # on stderr. It must remain log data; only the process exit code decides
+    # whether this checked command failed.
+    $ErrorActionPreference = 'Continue'
+    $output = @(
+      & $FilePath @Arguments 2>&1 |
+        ForEach-Object { $_.ToString() }
+    )
+    $exitCode = $LASTEXITCODE
+  }
+  finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
   $output | Out-File $LogPath -Append -Encoding utf8
   "exit_code=$exitCode" | Out-File $LogPath -Append -Encoding utf8
   if ($exitCode -ne 0) {
