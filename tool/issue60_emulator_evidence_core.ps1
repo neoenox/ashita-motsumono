@@ -27,8 +27,22 @@ function Adb([string[]]$AdbArguments, [string]$Out, [switch]$AllowFailure) {
     "command=adb -s $global:Issue60Serial $($AdbArguments -join ' ')",
     "host_time=$(Get-Date -Format o)"
   ) | Out-File $Out -Encoding utf8
-  $text = & (Resolve-Issue60AdbExecutable) -s $global:Issue60Serial @AdbArguments 2>&1
-  $code = $LASTEXITCODE
+  $previousErrorActionPreference = $ErrorActionPreference
+  try {
+    # adb writes normal progress (for example, pull/install summaries) to
+    # stderr. PowerShell 5.1 promotes native stderr to a terminating error
+    # under Stop, even when the process exits successfully. Capture both
+    # streams as text and use the native exit code as the only verdict.
+    $ErrorActionPreference = 'Continue'
+    $text = @(
+      & (Resolve-Issue60AdbExecutable) -s $global:Issue60Serial @AdbArguments 2>&1 |
+        ForEach-Object { $_.ToString() }
+    )
+    $code = $LASTEXITCODE
+  }
+  finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
   $text | Out-File $Out -Append -Encoding utf8
   "exit_code=$code" | Out-File $Out -Append -Encoding utf8
   if ($code -ne 0 -and -not $AllowFailure) {
