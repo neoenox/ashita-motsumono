@@ -191,6 +191,20 @@ void main() {
     expect(region, contains('throw'));
   });
 
+  test('finalization initializes resultPath for legacy and new case state', () {
+    final text = sessionDriver.readAsStringSync();
+    final finalizeStart = text.indexOf('function Finalize-Case');
+    final finalizeEnd = text.indexOf('function Evaluate-Release');
+    expect(finalizeStart, greaterThanOrEqualTo(0));
+    expect(finalizeEnd, greaterThan(finalizeStart));
+
+    final finalizeRegion = text.substring(finalizeStart, finalizeEnd);
+    expect(
+      finalizeRegion,
+      contains("Add-Member -NotePropertyName 'resultPath'"),
+    );
+  });
+
   test('PowerShell excludes destructive or ambiguous ADB operations', () {
     final text = joinFiles(powerShellFiles).toLowerCase();
 
