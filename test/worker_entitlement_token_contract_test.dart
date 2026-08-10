@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('worker validates entitlement token structure and lifetime', () {
-    final source = File('workers/gemini-proxy/src/index.ts').readAsStringSync();
+    final source = File(
+      'workers/gemini-proxy/src/index.ts',
+    ).readAsStringSync().replaceAll('\r\n', '\n').replaceAll('\r', '\n');
 
     expect(source, contains("header.alg !== 'HS256'"));
     expect(source, contains("header.typ !== 'JWT'"));

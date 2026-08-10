@@ -160,11 +160,15 @@ class _ImageIntakeReviewScreenState extends State<ImageIntakeReviewScreen> {
   }
 
   String _displayName(XFile file, int originalIndex) {
-    final name = file.name.trim();
-    if (name.isNotEmpty) return name;
+    final name = file.name.trim().replaceAll('\\', '/');
+    final nameSeparator = name.lastIndexOf('/');
+    final basename = nameSeparator >= 0
+        ? name.substring(nameSeparator + 1)
+        : name;
+    if (basename.isNotEmpty) return basename;
     final path = file.path.replaceAll('\\', '/');
     final slash = path.lastIndexOf('/');
-    final basename = slash >= 0 ? path.substring(slash + 1) : path;
-    return basename.isEmpty ? '画像${originalIndex + 1}' : basename;
+    final pathBasename = slash >= 0 ? path.substring(slash + 1) : path;
+    return pathBasename.isEmpty ? '画像${originalIndex + 1}' : pathBasename;
   }
 }
