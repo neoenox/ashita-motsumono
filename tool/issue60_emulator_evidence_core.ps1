@@ -52,8 +52,22 @@ function Adb([string[]]$AdbArguments, [string]$Out, [switch]$AllowFailure) {
 }
 
 function AdbText([string[]]$AdbArguments) {
-  $x = & (Resolve-Issue60AdbExecutable) -s $global:Issue60Serial @AdbArguments 2>$null
-  if ($LASTEXITCODE -ne 0) {
+  $previousErrorActionPreference = $ErrorActionPreference
+  try {
+    # PowerShell 5.1 promotes native stderr to a terminating error under
+    # Stop, even when redirected with 2>$null. Capture both streams as text
+    # and use the native exit code as the only verdict (same as Adb above).
+    $ErrorActionPreference = 'Continue'
+    $x = @(
+      & (Resolve-Issue60AdbExecutable) -s $global:Issue60Serial @AdbArguments 2>&1 |
+        ForEach-Object { $_.ToString() }
+    )
+    $code = $LASTEXITCODE
+  }
+  finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
+  if ($code -ne 0) {
     return ''
   }
   ($x | Out-String).Trim()
