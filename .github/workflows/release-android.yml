@@ -101,7 +101,7 @@ jobs:
         run: |
           set -euo pipefail
           missing=()
-          if [[ -z "${{ secrets.KEYSTORE_BASE64 }}" ]]; then missing+=("KEYSTORE_BASE64"); fi
+          if [[ -z "${{ secrets.KEYSTORE_FILE_B64 }}" ]]; then missing+=("KEYSTORE_FILE_B64"); fi
           if [[ -z "${{ secrets.KEYSTORE_STORE_PASSWORD }}" ]]; then missing+=("KEYSTORE_STORE_PASSWORD"); fi
           if [[ -z "${{ secrets.KEYSTORE_KEY_ALIAS }}" ]]; then missing+=("KEYSTORE_KEY_ALIAS"); fi
           if [[ -z "${{ secrets.KEYSTORE_KEY_PASSWORD }}" ]]; then missing+=("KEYSTORE_KEY_PASSWORD"); fi
@@ -126,7 +126,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+          echo "${{ secrets.KEYSTORE_FILE_B64 }}" | base64 --decode > android/app/upload-keystore.jks
           cat > android/key.properties <<EOF_KEY
           storeFile=app/upload-keystore.jks
           storePassword=${{ secrets.KEYSTORE_STORE_PASSWORD }}
