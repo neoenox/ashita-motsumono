@@ -5,6 +5,8 @@
 ## 現在の状態
 
 - Play Console内部テスト配布済み版: `v0.6.3+2`
+- Play Console審査完了済み: クローズドテスト(Alpha)で公開中 `v0.7.0`（2026-08-10 1:49 公開、トラック: クローズド テスト - Alpha）
+- テスター: Google Group `aimitsumori-testers`（1名登録済み）、オプトインリンク取得済み
 - v0.7.0機能統合commit: `de2d2d47e23bf4f7f44e9807af43f37124e21a18`
 - v0.7.0のコード側対象: masterへ統合済み
   - PR #159: OCR QA、匿名ベンチマーク、Play release readiness
@@ -71,7 +73,8 @@
 - [ ] Play App Signingと正式アップロード証明書の照合（Issue #98）
 - [ ] 正式署名済みAPK/AABのRelease実行（Issue #59）
 - [ ] Play内部テストで通知・広告・課金・購入復元・AI・削除・exportを確認（Issue #94）
-- [ ] Play Console提出・審査・公開
+- [x] Play Console提出・審査・公開（審査完了 2026-08-10）
+- [ ] クローズドテスト14日間継続・テスター12人達成を監視（達成後に本番公開手続きへ）
 
 ## v0.7.0 スコープ外
 
