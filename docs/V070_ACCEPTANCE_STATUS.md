@@ -1,7 +1,7 @@
 # v0.7.0 受入状況
 
-基準日：2026-08-06
-対象master：`b51ed3c6285976344fb3625dbdb3765150787e8f`
+基準日：2026-08-16
+対象master：`b010a9d646182e9591b269d8731b60f02ffb860b`
 アプリバージョン：`0.7.0+3`  
 関連Issue：#60、#59、#98、#94、#136、#146
 
@@ -9,16 +9,33 @@
 
 判定は`KEEP_BLOCKED_EXTERNAL_ACCEPTANCE`です。
 
-コード統合、Flutter Analyze、全Flutter test、署名済みRelease APK/AABの生成・証明書照合、release manifest生成は、現行masterのCIで成功しています。一方、実プリント30件以上、全入力経路の実機通し確認、通知のNormal/Reboot/install-r、旧版アップグレード、購入復元、Play Console内部テストは未完了です。
+コード統合、Flutter Analyze、全Flutter test、署名済みRelease APK/AABの生成・証明書照合、release manifest生成は、現行masterのCIで成功しています。Play Consoleのクローズドテスト(Alpha)ではv0.7.0が公開中です。一方、実プリント30件以上、全入力経路の実機通し確認、通知のNormal/Reboot/install-r、旧版アップグレード、購入復元、本番提出は未完了です。さらに、現行masterからのPlay再配布（`Android Internal Release`）はkeystore証明書フィンガープリント不一致で失敗しており、署名鍵の整合性確認が新たな必須ブロッカーです。
+
+## クローズドテスト(Alpha) 公開状況
+
+- v0.7.0（`0.7.0+3`）がクローズドテスト(Alpha)トラックで公開中（2026-08-10 1:49 公開、審査完了）
+- アップロードは run `30360560641`（2026-07-28、`fa73fdb416`）の成果物
+- テスター: Google Group `aimitsumori-testers`（1名登録済み、2026-08-14 確認）
+- 本番公開にはクローズドテスト14日間継続・テスター12人達成が要件（TODO.md）
+- これは本番提出・実機受入の証跡ではありません
+
+## 署名鍵の整合性ブロッカー（2026-08-16 発見）
+
+`Android Internal Release` workflow が master 履歴上のコミット `5ad77e62a3` / `9f73ee23c3` で失敗しています（run `31587962315` / `31591654675`、2026-08-12）。
+
+- 失敗ステップ: `Verify *** keystore certificate`
+- 期待値: `ANDROID_UPLOAD_CERT_SHA256` = `DF:5B:D8:9F:29:C4:4B:EC:FA:C1:48:3A:00:29:52:16:80:19:89:72:BA:A4:C0:7F:4F:4F:81:AD:EF:D6:91:E6`
+- 実測: `8D:BE:CD:58:FA:97:6D:3C:22:3C:38:A5:1C:0D:FB:80:6D:7E:AC:10:E3:22:DF:D8:92:2D:B4:8C:2C:B6:30:E8`
+
+現在のキーストアと登録済みアップロード証明書のどちらが正か確認できるまで、Play再配布・`formalRelease`・本番提出は進められません。Secrets／Variablesの値変更は外部環境の人間操作です。
 
 ## 最新の自動品質ゲート
 
-現行masterの検証対象HEAD：`b51ed3c6285976344fb3625dbdb3765150787e8f`
+現行masterの検証対象HEAD：`b010a9d646182e9591b269d8731b60f02ffb860b`（2026-08-14、#170 merge 後）
 
-- Release Automation Validation `31057386580`: SUCCESS
-- Release Readiness Preflight `31057386919`: SUCCESS
-- Flutter Release Validation `31057384779`: SUCCESS
-- Flutter CI `31088423419`: SUCCESS（masterへのworkflow_dispatch）
+- Release Automation Validation `31771720995`: SUCCESS
+- Flutter Release Validation `31771721000`: SUCCESS
+- Flutter CI `31771720982`: SUCCESS
   - Dart format
   - Analyze
   - 全Flutter test
@@ -27,7 +44,7 @@
   - release manifest生成
   - 署名APK/AAB・evidence artifactのupload
 
-`31088423419`のrelease manifestは対象master SHA、version `0.7.0+3`、Application ID、証明書照合結果を記録しています。これは自動artifactの証跡であり、Play Consoleへのupload・内部テスト・実機受入の証跡ではありません。
+`31771721000`のrelease manifestは対象master SHA、version `0.7.0+3`、Application ID、証明書照合結果を記録しています。これは自動artifactの証跡であり、Play Consoleへのupload・実機受入の証跡ではありません。
 
 ## 入力経路
 
@@ -83,9 +100,11 @@
 | 通知の再起動・更新維持 | BLOCKED | Issue #60のNormal/Reboot/install-r集約PASS |
 | Drift migration | 自動テスト済み | 旧版アプリからの実機アップグレードを追加確認 |
 | 購入状態 | ライフサイクル回帰テスト済み | Play経由の購入・復元・アップグレード確認 |
-| Analyze／全test／署名済みRelease artifact | PASS_AUTOMATED | run `31088423419`で現行master、署名・証明書照合・manifest生成まで完了 |
+| Analyze／全test／署名済みRelease artifact | PASS_AUTOMATED | run `31771720982`/`31771721000`で現行master、署名・証明書照合・manifest生成まで完了 |
+| クローズドテスト(Alpha)配布 | 公開済み | v0.7.0を2026-08-10に公開（07-28アップロードのrun `30360560641`）。テスター1名 |
+| Play再配布（Android Internal Release） | BLOCKED | 08-12にkeystore証明書不一致で失敗（run `31591654675`）。`ANDROID_UPLOAD_CERT_SHA256`とキーストアの整合を確認 |
 | Play App Signing／upload証明書のConsole照合 | BLOCKED | Repository VariableとCI artifactの照合は確認済み。Play Console画面の外部証跡は未確認 |
-| Play内部テスト | BLOCKED | 現行masterでAndroid Internal Releaseの新規成功run、Play upload、Play経由インストールを未確認 |
+| Play内部テスト（本番版） | BLOCKED | 現行masterでAndroid Internal Releaseの新規成功run、Play upload、Play経由インストールを未確認 |
 | release orchestrator `--report-only` | KEEP_BLOCKED | cleanな現行masterとartifact manifestで実行。Issue #60、Play signing、formalRelease、Play submission、internalTestの外部証跡不足 |
 | Android実機最終受入 | BLOCKED | 物理端末または承認された受入環境で完了 |
 
@@ -99,12 +118,13 @@
 
 ## 残タスクの優先順位
 
-1. Issue #60の通知実測
-2. 匿名化済み実プリント等30件以上のOCRベンチマーク
-3. 全入力経路と失敗経路の実機通し確認
-4. 旧版→0.7.0アップグレードと購入復元
-5. Play App SigningのConsole証跡、正式artifactの運用判断、内部テスト
-6. 元文対応表示と初回onboarding完了状態の仕様判断
+1. **keystore証明書の整合性確認**（`ANDROID_UPLOAD_CERT_SHA256`と現行キーストアの不一致解消）— Play再配布・formalReleaseの前提
+2. Issue #60の通知実測（current master `b010a9d646…` で再実行）
+3. 匿名化済み実プリント等30件以上のOCRベンチマーク
+4. 全入力経路と失敗経路の実機通し確認
+5. 旧版→0.7.0アップグレードと購入復元
+6. Play App SigningのConsole証跡、正式artifactの運用判断、本番内部テスト
+7. 元文対応表示と初回onboarding完了状態の仕様判断
 
 ## 判定ルール
 
