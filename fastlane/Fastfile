@@ -1,3 +1,7 @@
+require "fileutils"
+require "json"
+require "time"
+
 def truthy?(value)
   %w[1 true yes].include?(value.to_s.downcase)
 end
@@ -18,6 +22,46 @@ end
 
 def package_name
   "com.ashita_motsumono"
+end
+
+def play_publisher(options)
+  require "google/apis/androidpublisher_v3"
+  require "googleauth"
+
+  scope = Google::Apis::AndroidpublisherV3::AUTH_ANDROIDPUBLISHER
+  authorization = Google::Auth::ServiceAccountCredentials.make_creds(
+    json_key_io: File.open(play_json_key(options)),
+    scope: scope,
+  )
+  publisher = Google::Apis::AndroidpublisherV3::AndroidPublisherService.new
+  publisher.authorization = authorization
+  publisher
+end
+
+def used_version_codes(publisher, package)
+  edit = publisher.insert_edit(package)
+  codes = []
+  publisher.list_edit_tracks(package, edit.id).tracks.to_a.each do |track|
+    track.releases.to_a.each do |release|
+      codes.concat(release.version_codes.to_a.map(&:to_i))
+    end
+  end
+  publisher.list_edit_apks(package, edit.id).apks.to_a.each do |apk|
+    codes << apk.version_code.to_i
+  end
+  codes.uniq.sort
+end
+
+def write_used_version_codes(path, package, codes)
+  FileUtils.mkdir_p(File.dirname(path))
+  File.write(
+    path,
+    JSON.pretty_generate(
+      "packageName" => package,
+      "usedVersionCodes" => codes,
+      "fetchedAtUtc" => Time.now.utc.iso8601,
+    ) + "\n",
+  )
 end
 
 def play_json_key(options)
@@ -90,6 +134,17 @@ end
 default_platform(:android)
 
 platform :android do
+  desc "Fetch versionCodes already used on Google Play (fail-fast input for build)"
+  lane :play_preflight do |options|
+    path = File.expand_path(
+      options[:output] || ENV["PLAY_PREFLIGHT_OUTPUT"] || "build/play-release/used-version-codes.json",
+    )
+    used = used_version_codes(play_publisher(options), package_name)
+    write_used_version_codes(path, package_name, used)
+    UI.message("Used Google Play versionCodes: #{used.empty? ? '(none)' : used.join(', ')}")
+    UI.success("Play state preflight input written to #{path}")
+  end
+
   desc "Validate the Google Play service-account credential"
   lane :validate_play_credentials do |options|
     validate_credentials(options)

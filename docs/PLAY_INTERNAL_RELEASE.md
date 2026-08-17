@@ -3,17 +3,28 @@
 ## 結論
 
 - UMP同意対応、共有取り込み、PDF取り込みを含む次の機能リリースは `0.7.0` とする。
-- Play ConsoleのversionCodeは必ず増加させるため、現行 `0.6.3+2` の次は原則 `0.7.0+3` とする。ただしPlay ConsoleにversionCode 3以上が既に存在する場合は、それより大きい番号へ上げる。
+- versionCodeは `play_preflight`（Play状態preflight）が実APIから取得した未使用番号を使う。推測で採番せず、衝突時はビルド前にfail-fastする。
 - featureブランチから直接配布せず、PRをmasterへマージし、masterのCI成功後に `v0.7.0` タグを付ける。
 - ビルドとアップロードは `.github/workflows/release-android.yml` を正規経路とし、ローカルfastlaneは緊急時・接続確認用に限定する。
 
 ## 事前ゲート
 
 1. UMP ConsentのPRをmasterへマージする。
-2. `pubspec.yaml` を `version: 0.7.0+3` へ更新する。Play Consoleの最新versionCodeが3以上なら、`+4` など未使用の値にする。
+2. `pubspec.yaml` の `version: 0.7.0+<N>` を更新する。`<N>` は `release-readiness-preflight` の `play-state-preflight` job（またはローカルの `bundle exec fastlane android play_preflight`）が「未使用」と確認したversionCodeにする。使用済みversionCodeでPRを開くと、ビルド前にfail-fastで止まる。
 3. `Flutter CI` と `Flutter Release Validation` が成功していることを確認する。
 4. Android実機で、初回同意、広告表示、プライバシー設定、共有テキスト、画像、PDF、通知、購入復元を確認する。
 5. Play Consoleの「アプリのコンテンツ」で、広告、データセーフティ、プライバシーポリシー、対象年齢を最新実装と一致させる。
+
+## Play 状態 preflight（versionCode / 署名証明書）
+
+`PLAY_SERVICE_ACCOUNT_JSON` でGoogle Play APIへ接続し、ビルド前に実状態を確認するゲートです。
+
+- `bundle exec fastlane android play_preflight`（fastlane lane）: 全トラックのreleaseとAPKから**使用済みversionCode一覧**を取得し、`build/play-release/used-version-codes.json` へ書き出す。
+- `python3 tool/play_state_preflight.py`（Pythonツール）: pubspecのversionCodeと照合し、使用済みなら `BLOCKED`（exit 1）でビルドを止め、**次に空いているversionCode**を報告に出す。
+- 実施場所:
+  - `release-readiness-preflight.yml` の `play-state-preflight` job（pubspec.yaml等を触るPR / master push / 手動実行）
+  - `release-android.yml` の `Play release preflight (used versionCode)` ステップ（AABビルド直前）
+- 登録済みupload証明書はPlay Developer APIでは取得できない（Play ConsoleのApp integrity画面のみ）。keystore↔`ANDROID_UPLOAD_CERT_SHA256` 照合（既存）と `validate_only` アップロード受理（実アップロード時の検証）が自動チェックとなる。preflightの報告JSONにはこの制約を明記する。
 
 ## Google Cloud / Play Console サービスアカウント
 
@@ -65,7 +76,7 @@ Repository settings > Secrets and variables > Actions で設定する。
 3. リリースPRで `pubspec.yaml` を `0.7.0+3` へ更新し、`fastlane/metadata/android/ja-JP/changelogs/default.txt` を実際の変更内容へ更新する。
 4. リリースPRをmasterへマージし、masterのCI成功を確認する。
 5. `git tag v0.7.0` と `git push origin v0.7.0` を実行する。
-6. GitHub Actionsの `Android Internal Release` が、master包含確認、署名確認、AAB生成、Google Play API認証、internalトラックへのアップロードまで成功することを確認する。
+6. GitHub Actionsの `Android Internal Release` が、master包含確認、Play状態preflight（versionCode未使用・証明書照合）、AAB生成、Google Play API認証、internalトラックへのアップロードまで成功することを確認する。versionCodeが使用済みの場合はpreflightがビルド前に失敗するので、pubspecのbuild番号を次の空き番号へ更新して再実行する。
 7. Play Consoleの内部テストリリース画面でversionName/versionCode、リリースノート、対象デバイス除外、事前審査の警告を確認する。
 8. テスター端末でオプトインURLを開き、Google Play経由でインストール・更新する。
 
@@ -80,11 +91,12 @@ bundle install
 export PLAY_SERVICE_ACCOUNT_JSON_PATH=/secure/path/play-service-account.json
 export ANDROID_AAB_PATH=build/app/outputs/bundle/release/app-release.aab
 bundle exec fastlane android validate_play_credentials
+bundle exec fastlane android play_preflight
 bundle exec fastlane android internal
 ```
 
-AABは既存の署名設定を使って生成し、versionCodeがPlay Console上の既存値より大きいことを確認する。
+AABは既存の署名設定を使って生成する。versionCodeは事前に `play_preflight` で「未使用」を確認した番号を使う。
 
 ## ロールバック
 
-Google Playでは使用済みversionCodeを再利用できない。問題があれば内部テストリリースを停止し、修正版をより大きいversionCodeで再アップロードする。署名鍵やサービスアカウント鍵が漏えいした場合は、対象鍵を直ちに無効化・削除し、GitHub Secretを更新する。
+Google Playでは使用済みversionCodeを再利用できない。問題があれば内部テストリリースを停止し、`play_preflight` が提示する次の空きversionCodeで修正版を再アップロードする。署名鍵やサービスアカウント鍵が漏えいした場合は、対象鍵を直ちに無効化・削除し、GitHub Secretを更新する。
