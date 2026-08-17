@@ -51,7 +51,7 @@ def used_version_codes(publisher, package)
     track.releases.to_a.each do |release|
       codes.concat(release.version_codes.to_a.map(&:to_i))
     end
-    tracks[track.id] = codes.uniq.sort unless codes.empty?
+    tracks[track.track] = codes.uniq.sort unless codes.empty?
   end
   apk_codes = publisher
     .list_edit_apks(package, edit.id).apks.to_a

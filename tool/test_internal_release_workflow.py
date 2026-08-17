@@ -82,6 +82,7 @@ class InternalReleaseWorkflowTest(unittest.TestCase):
         self.assertIn('insert_edit', self.fastfile)
         self.assertIn('list_edit_tracks', self.fastfile)
         self.assertIn('list_edit_apks', self.fastfile)
+        self.assertIn('track.track', self.fastfile)
         self.assertIn('used-version-codes.json', self.fastfile)
 
     def test_fastlane_paths_resolve_from_repo_root(self) -> None:
