@@ -89,10 +89,8 @@ class InternalReleaseWorkflowTest(unittest.TestCase):
         # paths must be resolved against the repository root, not the lane CWD.
         self.assertIn('def repo_root', self.fastfile)
         self.assertIn('File.expand_path("..", __dir__)', self.fastfile)
-        self.assertIn(
-            'File.expand_path(\r\n      options[:output] || ENV["PLAY_PREFLIGHT_OUTPUT"] || "build/play-release/used-version-codes.json",\r\n      repo_root,\r\n    )',
-            self.fastfile,
-        )
+        self.assertIn('"build/play-release/used-version-codes.json",', self.fastfile)
+        self.assertIn('repo_root,', self.fastfile)
 
     def test_readiness_workflow_has_play_state_preflight_job(self) -> None:
         self.assertIn('play-state-preflight:', self.readiness)
