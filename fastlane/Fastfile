@@ -1,3 +1,7 @@
+require "fileutils"
+require "json"
+require "time"
+
 def truthy?(value)
   %w[1 true yes].include?(value.to_s.downcase)
 end
@@ -18,6 +22,57 @@ end
 
 def package_name
   "com.ashita_motsumono"
+end
+
+def repo_root
+  # fastlane lanes run with the working directory set to the Fastfile directory.
+  File.expand_path("..", __dir__)
+end
+
+def play_publisher(options)
+  require "google/apis/androidpublisher_v3"
+  require "googleauth"
+
+  scope = Google::Apis::AndroidpublisherV3::AUTH_ANDROIDPUBLISHER
+  authorization = Google::Auth::ServiceAccountCredentials.make_creds(
+    json_key_io: File.open(play_json_key(options)),
+    scope: scope,
+  )
+  publisher = Google::Apis::AndroidpublisherV3::AndroidPublisherService.new
+  publisher.authorization = authorization
+  publisher
+end
+
+def used_version_codes(publisher, package)
+  edit = publisher.insert_edit(package)
+  tracks = {}
+  publisher.list_edit_tracks(package, edit.id).tracks.to_a.each do |track|
+    codes = []
+    track.releases.to_a.each do |release|
+      codes.concat(release.version_codes.to_a.map(&:to_i))
+    end
+    tracks[track.track] = codes.uniq.sort unless codes.empty?
+  end
+  apk_codes = publisher
+    .list_edit_apks(package, edit.id).apks.to_a
+    .map { |apk| apk.version_code.to_i }
+    .uniq
+    .sort
+  [tracks.values.flatten.uniq.sort, tracks, apk_codes]
+end
+
+def write_used_version_codes(path, package, codes, tracks, apk_codes)
+  FileUtils.mkdir_p(File.dirname(path))
+  File.write(
+    path,
+    JSON.pretty_generate(
+      "packageName" => package,
+      "usedVersionCodes" => codes,
+      "tracks" => tracks,
+      "apkVersionCodes" => apk_codes,
+      "fetchedAtUtc" => Time.now.utc.iso8601,
+    ) + "\n",
+  )
 end
 
 def play_json_key(options)
@@ -90,6 +145,19 @@ end
 default_platform(:android)
 
 platform :android do
+  desc "Fetch versionCodes already used on Google Play (fail-fast input for build)"
+  lane :play_preflight do |options|
+    path = File.expand_path(
+      options[:output] || ENV["PLAY_PREFLIGHT_OUTPUT"] || "build/play-release/used-version-codes.json",
+      repo_root,
+    )
+    used, tracks, apk_codes = used_version_codes(play_publisher(options), package_name)
+    write_used_version_codes(path, package_name, used, tracks, apk_codes)
+    UI.message("Used Google Play versionCodes: #{used.empty? ? '(none)' : used.join(', ')}")
+    UI.message("Per-track: #{tracks.map { |id, codes| "#{id}=#{codes.join(',')}" }.join(' ')}")
+    UI.success("Play state preflight input written to #{path}")
+  end
+
   desc "Validate the Google Play service-account credential"
   lane :validate_play_credentials do |options|
     validate_credentials(options)

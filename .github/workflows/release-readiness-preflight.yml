@@ -13,6 +13,9 @@ on:
       - 'assets/store/**'
       - 'tool/release_readiness_preflight.py'
       - 'tool/test_release_readiness_preflight.py'
+      - 'tool/play_state_preflight.py'
+      - 'tool/test_play_state_preflight.py'
+      - 'fastlane/Fastfile'
       - 'test/release_readiness_preflight_tool_test.dart'
       - '.github/workflows/ci.yml'
       - '.github/workflows/release-readiness-preflight.yml'
@@ -29,6 +32,9 @@ on:
       - 'assets/store/**'
       - 'tool/release_readiness_preflight.py'
       - 'tool/test_release_readiness_preflight.py'
+      - 'tool/play_state_preflight.py'
+      - 'tool/test_play_state_preflight.py'
+      - 'fastlane/Fastfile'
       - 'test/release_readiness_preflight_tool_test.dart'
       - '.github/workflows/ci.yml'
       - '.github/workflows/release-readiness-preflight.yml'
@@ -107,5 +113,60 @@ jobs:
         with:
           name: release-readiness-configuration-${{ github.sha }}
           path: build/release-readiness/configuration-preflight.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  play-state-preflight:
+    name: Google Play state preflight (used versionCode)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    needs: static-readiness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Restore Google Play credential
+        shell: bash
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$PLAY_SERVICE_ACCOUNT_JSON" ]]; then
+            echo "::error::PLAY_SERVICE_ACCOUNT_JSON is not available on this run (fork PR?)."
+            exit 1
+          fi
+          credential="$RUNNER_TEMP/play-service-account.json"
+          printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON" > "$credential"
+          chmod 600 "$credential"
+          python3 -m json.tool "$credential" >/dev/null
+          echo "PLAY_SERVICE_ACCOUNT_JSON_PATH=$credential" >> "$GITHUB_ENV"
+
+      - name: Fetch used versionCodes from Google Play
+        shell: bash
+        run: bundle exec fastlane android play_preflight
+
+      - name: Evaluate versionCode availability
+        shell: bash
+        run: >-
+          python3 tool/play_state_preflight.py
+          --used-codes build/play-release/used-version-codes.json
+          --output build/play-release/play-state-preflight.json
+
+      - name: Upload play state preflight evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-readiness-play-state-${{ github.sha }}
+          path: build/play-release/play-state-preflight.json
           if-no-files-found: warn
           retention-days: 7

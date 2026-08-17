@@ -43,3 +43,6 @@ jobs:
 
       - name: Test internal release safeguards
         run: python3 -m unittest tool/test_internal_release_workflow.py
+
+      - name: Test Google Play state preflight
+        run: python3 -m unittest tool/test_play_state_preflight.py

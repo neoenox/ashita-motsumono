@@ -44,6 +44,9 @@ jobs:
       - name: Test Android release workflow
         run: python3 -m unittest tool/test_release_workflow.py
 
+      - name: Test Google Play state preflight
+        run: python3 -m unittest tool/test_play_state_preflight.py
+
       - name: Analyze
         run: python3 tool/run_flutter_analyze.py
 

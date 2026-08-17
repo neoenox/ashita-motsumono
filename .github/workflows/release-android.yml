@@ -168,6 +168,16 @@ jobs:
             --label "upload keystore" \
             --output build/upload-keystore-certificate.json
 
+      - name: Play release preflight (used versionCode)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle exec fastlane android play_preflight
+          python3 tool/play_state_preflight.py \
+            --used-codes build/play-release/used-version-codes.json \
+            --certificate build/upload-keystore-certificate.json \
+            --output build/play-release/play-state-preflight.json
+
       - name: Install Flutter dependencies
         run: flutter pub get
 
@@ -227,6 +237,8 @@ jobs:
             build/aab-signer-certificate.txt
             build/aab-certificate.json
             build/AAB_SHA256SUMS
+            build/play-release/used-version-codes.json
+            build/play-release/play-state-preflight.json
           if-no-files-found: warn
           retention-days: 14
 

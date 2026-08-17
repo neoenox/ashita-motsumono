@@ -6,6 +6,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / '.github/workflows/release-android.yml'
+READINESS_WORKFLOW = ROOT / '.github/workflows/release-readiness-preflight.yml'
 FASTFILE = ROOT / 'fastlane/Fastfile'
 APPFILE = ROOT / 'fastlane/Appfile'
 GEMFILE = ROOT / 'Gemfile'
@@ -16,6 +17,7 @@ class InternalReleaseWorkflowTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.workflow = WORKFLOW.read_text(encoding='utf-8')
+        cls.readiness = READINESS_WORKFLOW.read_text(encoding='utf-8')
         cls.fastfile = FASTFILE.read_text(encoding='utf-8')
         cls.appfile = APPFILE.read_text(encoding='utf-8')
         cls.gemfile = GEMFILE.read_text(encoding='utf-8')
@@ -54,9 +56,51 @@ class InternalReleaseWorkflowTest(unittest.TestCase):
         self.assertIn('skip_upload_metadata: true', self.fastfile)
         self.assertIn('skip_upload_changelogs: false', self.fastfile)
 
-    def test_guide_uses_next_feature_version(self) -> None:
-        self.assertIn('0.7.0+3', self.guide)
+    def test_guide_uses_play_state_preflight_for_version_code(self) -> None:
+        self.assertIn('play_preflight', self.guide)
+        self.assertIn('使用済みversionCode', self.guide)
         self.assertIn('featureブランチから直接配布せず', self.guide)
+
+    def test_play_preflight_runs_before_aab_build(self) -> None:
+        cert = self.workflow.index('- name: Verify upload keystore certificate')
+        preflight = self.workflow.index('- name: Play release preflight (used versionCode)')
+        build = self.workflow.index('- name: Build signed release AAB')
+        self.assertLess(cert, preflight)
+        self.assertLess(preflight, build)
+        self.assertIn('bundle exec fastlane android play_preflight', self.workflow)
+        self.assertIn('tool/play_state_preflight.py', self.workflow)
+        self.assertIn('--used-codes build/play-release/used-version-codes.json', self.workflow)
+        self.assertIn('--certificate build/upload-keystore-certificate.json', self.workflow)
+        self.assertIn('build/play-release/play-state-preflight.json', self.workflow)
+
+    def test_play_preflight_evidence_is_uploaded(self) -> None:
+        self.assertIn('build/play-release/used-version-codes.json', self.workflow)
+        self.assertIn('build/play-release/play-state-preflight.json', self.workflow)
+
+    def test_fastlane_play_preflight_fetches_used_version_codes(self) -> None:
+        self.assertIn('lane :play_preflight', self.fastfile)
+        self.assertIn('insert_edit', self.fastfile)
+        self.assertIn('list_edit_tracks', self.fastfile)
+        self.assertIn('list_edit_apks', self.fastfile)
+        self.assertIn('track.track', self.fastfile)
+        self.assertIn('used-version-codes.json', self.fastfile)
+
+    def test_fastlane_paths_resolve_from_repo_root(self) -> None:
+        # fastlane lanes run with CWD set to the Fastfile directory, so relative
+        # paths must be resolved against the repository root, not the lane CWD.
+        self.assertIn('def repo_root', self.fastfile)
+        self.assertIn('File.expand_path("..", __dir__)', self.fastfile)
+        self.assertIn('"build/play-release/used-version-codes.json",', self.fastfile)
+        self.assertIn('repo_root,', self.fastfile)
+
+    def test_readiness_workflow_has_play_state_preflight_job(self) -> None:
+        self.assertIn('play-state-preflight:', self.readiness)
+        self.assertIn('bundle exec fastlane android play_preflight', self.readiness)
+        self.assertIn(
+            '--used-codes build/play-release/used-version-codes.json',
+            self.readiness,
+        )
+        self.assertIn('release-readiness-play-state-', self.readiness)
 
 
 if __name__ == '__main__':
