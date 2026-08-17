@@ -22,6 +22,13 @@ REGISTERED_CERTIFICATE_NOTE = (
     "(validate_only) are the automated checks for that certificate."
 )
 
+USED_CODES_NOTE = (
+    "The tracks API reports active releases only. Superseded or draft version "
+    "codes (e.g. codes used by older releases) are not listed but remain "
+    "non-reusable, so nextFreeVersionCode = max(active)+1 is the safe choice "
+    "for a new build number."
+)
+
 
 def read_pubspec_version_code(path: Path) -> int:
     match = PUBSPEC_VERSION_PATTERN.search(path.read_text(encoding="utf-8"))
@@ -96,6 +103,7 @@ def evaluate(
         "versionCodeAvailable": version_available,
         "certificate": certificate,
         "registeredCertificateNote": REGISTERED_CERTIFICATE_NOTE,
+        "usedCodesNote": USED_CODES_NOTE,
         "errors": errors,
         "nextActions": next_actions,
     }

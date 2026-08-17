@@ -126,6 +126,11 @@ class PlayStatePreflightTest(unittest.TestCase):
         result = evaluate([1, 2], 3)
         self.assertIn("does not expose the upload certificate", result["registeredCertificateNote"])
 
+    def test_used_codes_note_explains_active_release_semantics(self) -> None:
+        result = evaluate([1, 2], 3)
+        self.assertIn("active releases only", result["usedCodesNote"])
+        self.assertIn("max(active)+1", result["usedCodesNote"])
+
 
 if __name__ == "__main__":
     unittest.main()

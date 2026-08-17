@@ -52,6 +52,7 @@
 - `PLAY_SERVICE_ACCOUNT_JSON` でGoogle Play APIへ接続し、全トラック+APKの**使用済みversionCode一覧**を取得する（fastlane `play_preflight` lane）。
 - `tool/play_state_preflight.py` がpubspecのversionCodeと照合し、使用済みならビルド前に `BLOCKED`（fail-fast）にする。報告JSONに次に空いているversionCodeを記録する。
 - 登録済みupload証明書はPlay Developer APIで取得できないため、keystore↔`ANDROID_UPLOAD_CERT_SHA256` 照合と `validate_only` アップロード受理が自動チェックになる。この制約はpreflight報告に明記される。
+- tracks APIはアクティブなreleaseのみを返すため、supersededされたversionCode（例: 4）は一覧に出ないが再利用不可のまま。次の番号は `max(アクティブ)+1` を選ぶ（報告JSONの `usedCodesNote` に明記）。
 
 ## リリースゲート
 

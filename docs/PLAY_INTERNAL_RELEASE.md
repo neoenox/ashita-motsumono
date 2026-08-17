@@ -25,6 +25,7 @@
   - `release-readiness-preflight.yml` の `play-state-preflight` job（pubspec.yaml等を触るPR / master push / 手動実行）
   - `release-android.yml` の `Play release preflight (used versionCode)` ステップ（AABビルド直前）
 - 登録済みupload証明書はPlay Developer APIでは取得できない（Play ConsoleのApp integrity画面のみ）。keystore↔`ANDROID_UPLOAD_CERT_SHA256` 照合（既存）と `validate_only` アップロード受理（実アップロード時の検証）が自動チェックとなる。preflightの報告JSONにはこの制約を明記する。
+- tracks APIは**アクティブなreleaseのみ**を返す。過去のreleaseで使われて廃止（superseded）されたversionCode（例: 4）は一覧に出ないが再利用不可のままなので、次に使う番号は `max(アクティブ)+1` を選ぶ。この意味論は報告JSONの `usedCodesNote` に明記される。
 
 ## Google Cloud / Play Console サービスアカウント
 
