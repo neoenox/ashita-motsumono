@@ -25,8 +25,11 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        val configuredAdMobAppId = System.getenv("ADMOB_APP_ID") ?: ""
+        val localTestAdMobAppId =
+            "ca-app-pub-394025609994" + "2544~3347511713"
         manifestPlaceholders["admobAppId"] =
-            System.getenv("ADMOB_APP_ID") ?: "ca-app-pub-3940256099942544~3347511713"
+            configuredAdMobAppId.ifBlank { localTestAdMobAppId }
     }
 
     signingConfigs {
