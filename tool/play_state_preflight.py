@@ -40,6 +40,8 @@ def read_used_codes(path: Path) -> dict[str, object]:
         "packageName": str(payload.get("packageName", "")),
         "fetchedAtUtc": str(payload.get("fetchedAtUtc", "")),
         "usedVersionCodes": sorted(set(codes)),
+        "tracks": payload.get("tracks", {}),
+        "apkVersionCodes": payload.get("apkVersionCodes", []),
     }
 
 
@@ -125,6 +127,8 @@ def main() -> int:
     result["source"] = {
         "packageName": used["packageName"],
         "fetchedAtUtc": used["fetchedAtUtc"],
+        "tracks": used["tracks"],
+        "apkVersionCodes": used["apkVersionCodes"],
         "pubspec": str(args.pubspec),
         "usedCodesFile": str(args.used_codes),
     }

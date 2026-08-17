@@ -44,6 +44,8 @@ class PlayStatePreflightTest(unittest.TestCase):
                     {
                         "packageName": "com.ashita_motsumono",
                         "usedVersionCodes": [5, 3, 4, 3],
+                        "tracks": {"internal": [3, 5], "alpha": [4]},
+                        "apkVersionCodes": [],
                         "fetchedAtUtc": "2026-08-17T00:00:00Z",
                     }
                 ),
@@ -54,6 +56,8 @@ class PlayStatePreflightTest(unittest.TestCase):
                     "packageName": "com.ashita_motsumono",
                     "fetchedAtUtc": "2026-08-17T00:00:00Z",
                     "usedVersionCodes": [3, 4, 5],
+                    "tracks": {"internal": [3, 5], "alpha": [4]},
+                    "apkVersionCodes": [],
                 },
             )
 
