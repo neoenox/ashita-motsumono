@@ -84,6 +84,16 @@ class InternalReleaseWorkflowTest(unittest.TestCase):
         self.assertIn('list_edit_apks', self.fastfile)
         self.assertIn('used-version-codes.json', self.fastfile)
 
+    def test_fastlane_paths_resolve_from_repo_root(self) -> None:
+        # fastlane lanes run with CWD set to the Fastfile directory, so relative
+        # paths must be resolved against the repository root, not the lane CWD.
+        self.assertIn('def repo_root', self.fastfile)
+        self.assertIn('File.expand_path("..", __dir__)', self.fastfile)
+        self.assertIn(
+            'File.expand_path(\r\n      options[:output] || ENV["PLAY_PREFLIGHT_OUTPUT"] || "build/play-release/used-version-codes.json",\r\n      repo_root,\r\n    )',
+            self.fastfile,
+        )
+
     def test_readiness_workflow_has_play_state_preflight_job(self) -> None:
         self.assertIn('play-state-preflight:', self.readiness)
         self.assertIn('bundle exec fastlane android play_preflight', self.readiness)

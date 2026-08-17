@@ -24,6 +24,11 @@ def package_name
   "com.ashita_motsumono"
 end
 
+def repo_root
+  # fastlane lanes run with the working directory set to the Fastfile directory.
+  File.expand_path("..", __dir__)
+end
+
 def play_publisher(options)
   require "google/apis/androidpublisher_v3"
   require "googleauth"
@@ -138,6 +143,7 @@ platform :android do
   lane :play_preflight do |options|
     path = File.expand_path(
       options[:output] || ENV["PLAY_PREFLIGHT_OUTPUT"] || "build/play-release/used-version-codes.json",
+      repo_root,
     )
     used = used_version_codes(play_publisher(options), package_name)
     write_used_version_codes(path, package_name, used)
