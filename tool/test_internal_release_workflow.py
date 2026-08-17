@@ -59,6 +59,7 @@ class InternalReleaseWorkflowTest(unittest.TestCase):
     def test_guide_uses_play_state_preflight_for_version_code(self) -> None:
         self.assertIn('play_preflight', self.guide)
         self.assertIn('使用済みversionCode', self.guide)
+        self.assertIn('bump_app_version.py', self.guide)
         self.assertIn('featureブランチから直接配布せず', self.guide)
 
     def test_play_preflight_runs_before_aab_build(self) -> None:

@@ -47,6 +47,9 @@ jobs:
       - name: Test Google Play state preflight
         run: python3 -m unittest tool/test_play_state_preflight.py
 
+      - name: Test automatic versionCode bump
+        run: python3 -m unittest tool/test_bump_app_version.py
+
       - name: Analyze
         run: python3 tool/run_flutter_analyze.py
 

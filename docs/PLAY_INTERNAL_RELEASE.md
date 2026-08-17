@@ -10,7 +10,14 @@
 ## 事前ゲート
 
 1. UMP ConsentのPRをmasterへマージする。
-2. `pubspec.yaml` の `version: 0.7.0+<N>` を更新する。`<N>` は `release-readiness-preflight` の `play-state-preflight` job（またはローカルの `bundle exec fastlane android play_preflight`）が「未使用」と確認したversionCodeにする。使用済みversionCodeでPRを開くと、ビルド前にfail-fastで止まる。
+2. `pubspec.yaml` の versionCode を自動採番する。**推測で採番しない**。ローカルでは次を実行する（詳細は「バージョン bump フロー」を参照）:
+
+   ```bash
+   bundle exec fastlane android play_preflight
+   python3 tool/bump_app_version.py --write
+   ```
+
+   使用済みversionCodeでPRを開くと `play-state-preflight` job がビルド前にfail-fastで止まる。
 3. `Flutter CI` と `Flutter Release Validation` が成功していることを確認する。
 4. Android実機で、初回同意、広告表示、プライバシー設定、共有テキスト、画像、PDF、通知、購入復元を確認する。
 5. Play Consoleの「アプリのコンテンツ」で、広告、データセーフティ、プライバシーポリシー、対象年齢を最新実装と一致させる。
@@ -26,6 +33,13 @@
   - `release-android.yml` の `Play release preflight (used versionCode)` ステップ（AABビルド直前）
 - 登録済みupload証明書はPlay Developer APIでは取得できない（Play ConsoleのApp integrity画面のみ）。keystore↔`ANDROID_UPLOAD_CERT_SHA256` 照合（既存）と `validate_only` アップロード受理（実アップロード時の検証）が自動チェックとなる。preflightの報告JSONにはこの制約を明記する。
 - tracks APIは**アクティブなreleaseのみ**を返す。過去のreleaseで使われて廃止（superseded）されたversionCode（例: 4）は一覧に出ないが再利用不可のままなので、次に使う番号は `max(アクティブ)+1` を選ぶ。この意味論は報告JSONの `usedCodesNote` に明記される。
+
+### バージョン bump フロー（推測採番の廃止）
+
+1. `bundle exec fastlane android play_preflight` — Play の使用済み versionCode を実 API から取得し `build/play-release/used-version-codes.json` へ書き出す。
+2. `python3 tool/bump_app_version.py --write` — pubspec の現在値と照合し、次空き番号（`max(max(used), 現在値)+1`、現在値が未使用なら維持）を採番して `pubspec.yaml` と `lib/src/app_version.g.dart` を更新する。`--write` を外すと dry-run（変更内容の確認のみ）。
+3. 報告JSON（`build/play-release/bump-app-version.json` 等）と推奨commitメッセージを確認し、commit → push → PR する。
+4. PR の `play-state-preflight` job が新 versionCode の空きを実 API で再確認する（衝突時は fail-fast）。
 
 ## Google Cloud / Play Console サービスアカウント
 
@@ -74,7 +88,7 @@ Repository settings > Secrets and variables > Actions で設定する。
 
 1. featureブランチのローカル変更を確認し、意図したファイルだけコミットしてpushする。
 2. feature PRのCIとレビューを完了し、masterへsquash mergeする。
-3. リリースPRで `pubspec.yaml` を `0.7.0+3` へ更新し、`fastlane/metadata/android/ja-JP/changelogs/default.txt` を実際の変更内容へ更新する。
+3. リリースPRで `pubspec.yaml` の versionCode を「バージョン bump フロー」（`bump_app_version.py`）で採番し、`fastlane/metadata/android/ja-JP/changelogs/default.txt` を実際の変更内容へ更新する。
 4. リリースPRをmasterへマージし、masterのCI成功を確認する。
 5. `git tag v0.7.0` と `git push origin v0.7.0` を実行する。
 6. GitHub Actionsの `Android Internal Release` が、master包含確認、Play状態preflight（versionCode未使用・証明書照合）、AAB生成、Google Play API認証、internalトラックへのアップロードまで成功することを確認する。versionCodeが使用済みの場合はpreflightがビルド前に失敗するので、pubspecのbuild番号を次の空き番号へ更新して再実行する。
@@ -93,10 +107,11 @@ export PLAY_SERVICE_ACCOUNT_JSON_PATH=/secure/path/play-service-account.json
 export ANDROID_AAB_PATH=build/app/outputs/bundle/release/app-release.aab
 bundle exec fastlane android validate_play_credentials
 bundle exec fastlane android play_preflight
+python3 tool/bump_app_version.py --write
 bundle exec fastlane android internal
 ```
 
-AABは既存の署名設定を使って生成する。versionCodeは事前に `play_preflight` で「未使用」を確認した番号を使う。
+AABは既存の署名設定を使って生成する。versionCodeは `bump_app_version.py` が `play_preflight` の取得結果から採番する（推測しない）。
 
 ## ロールバック
 
