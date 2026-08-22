@@ -3,6 +3,7 @@
 // 関連: main.dart, src/screens/home_screen.dart, src/screens/add_child_screen.dart,
 //       src/screens/todo_detail_screen.dart, src/app_state.dart
 
+import 'dart:convert';
 import 'dart:io' show Directory, Platform;
 
 import 'package:ashita_motsumono/main.dart';
@@ -48,7 +49,7 @@ class _FakeNotificationService extends NotificationService {
   Future<void> initialize() async {}
 
   @override
-  Future<void> requestPermissions() async {}
+  Future<bool> requestPermissions() async => true;
 
   @override
   Future<void> scheduleTodo(AppTodo todo) async {}
@@ -241,6 +242,15 @@ void main() {
         sourceType: 'camera',
         localImagePath: '/private/photo.jpg',
         ocrText: '明日までに水筒を持参',
+        pages: const [
+          DocumentPageRecord(
+            id: 'page-0',
+            documentId: 'page-doc',
+            pageIndex: 0,
+            localImagePath: '/private/page-0.jpg',
+            ocrText: '1ページ目',
+          ),
+        ],
       );
       await appState.addTodoFromDraft(
         draft: const ExtractionDraft(
@@ -256,6 +266,8 @@ void main() {
       expect(snapshot.documents.single.localImagePath, null);
       expect(snapshot.documents.single.ocrText, '明日までに水筒を持参');
       expect(snapshot.todos.single.documentId, doc.id);
+      final json = jsonEncode(snapshot.toJson());
+      expect(json, isNot(contains('localImagePath')));
     });
   });
 

@@ -7,6 +7,10 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val configuredAdMobAppId = System.getenv("ADMOB_APP_ID") ?: ""
+val localTestAdMobAppId =
+    "ca-app-pub-394025609994" + "2544~3347511713"
+
 @Suppress("UnstableApiUsage")
 android {
     namespace = "com.ashita_motsumono"
@@ -25,9 +29,6 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        val configuredAdMobAppId = System.getenv("ADMOB_APP_ID") ?: ""
-        val localTestAdMobAppId =
-            "ca-app-pub-394025609994" + "2544~3347511713"
         manifestPlaceholders["admobAppId"] =
             configuredAdMobAppId.ifBlank { localTestAdMobAppId }
     }
@@ -66,6 +67,16 @@ android {
                 signingConfig = releaseSigning
             }
             // Play release signing enforcement: end
+            val requestedReleaseBuild = gradle.startParameter.taskNames.any {
+                it.contains("Release", ignoreCase = true)
+            }
+            if (requestedReleaseBuild &&
+                configuredAdMobAppId.ifBlank { localTestAdMobAppId } == localTestAdMobAppId
+            ) {
+                throw GradleException(
+                    "ADMOB_APP_ID must resolve to a production AdMob app id for release builds",
+                )
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

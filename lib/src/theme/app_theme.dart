@@ -79,15 +79,12 @@ class AppTheme {
         headlineSmall: TextStyle(fontWeight: FontWeight.w600),
         titleLarge: TextStyle(fontWeight: FontWeight.w700),
         titleMedium: TextStyle(fontWeight: FontWeight.w600),
-        titleSmall: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.05),
+        titleSmall: TextStyle(fontWeight: FontWeight.w600),
         bodyLarge: TextStyle(fontWeight: FontWeight.w500),
         bodyMedium: TextStyle(fontWeight: FontWeight.w400),
         bodySmall: TextStyle(fontWeight: FontWeight.w400),
-        labelLarge: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.05),
-        labelMedium: TextStyle(
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.05,
-        ),
+        labelLarge: TextStyle(fontWeight: FontWeight.w600),
+        labelMedium: TextStyle(fontWeight: FontWeight.w600),
       ),
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
@@ -116,7 +113,6 @@ class AppTheme {
           textStyle: const TextStyle(
             fontFamily: 'NotoSansJP',
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.05,
           ),
         ),
       ),

@@ -222,6 +222,25 @@ void main() {
       expect(draft.amount, 500);
     });
 
+    test('prefers amount near payment keywords over first match', () {
+      final draft = ExtractionService.extract(
+        '売り上げの報告は500円でした。'
+        '配布物についての説明文がここに入ります。'
+        '集金袋に800円を入れてください。',
+        now: now,
+      );
+      expect(draft.amount, 800);
+    });
+
+    test('falls back to first amount when keywords are far away', () {
+      final draft = ExtractionService.extract(
+        '負担についての説明は長文です。' * 3 +
+            '最初の記載は300円です。その後の記載は700円です。',
+        now: now,
+      );
+      expect(draft.amount, 300);
+    });
+
     test('returns null amount when no amount found', () {
       final draft = ExtractionService.extract('水筒を持参してください', now: now);
       expect(draft.amount, isNull);

@@ -260,93 +260,9 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
   }
 
   void _showBatchFixDialog() {
-    final findController = TextEditingController();
-    final replaceController = TextEditingController();
-    var target = 'title';
-
     showAdaptiveDialog(
       context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final targetLabel = target == 'items' ? '持ち物' : 'タイトル';
-            return AlertDialog(
-              title: const Text('一括修正'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '全候補の$targetLabelから文字列を検索して置換します',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: Spacing.md),
-                  DropdownButtonFormField<String>(
-                    initialValue: target,
-                    decoration: const InputDecoration(
-                      labelText: '対象フィールド',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'title', child: Text('タイトル')),
-                      DropdownMenuItem(value: 'items', child: Text('持ち物')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setDialogState(() => target = value);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: Spacing.sm),
-                  TextField(
-                    controller: findController,
-                    decoration: const InputDecoration(
-                      labelText: '検索文字列',
-                      border: OutlineInputBorder(),
-                      hintText: '例: 水筒',
-                    ),
-                  ),
-                  const SizedBox(height: Spacing.sm),
-                  TextField(
-                    controller: replaceController,
-                    decoration: const InputDecoration(
-                      labelText: '置換文字列',
-                      border: OutlineInputBorder(),
-                      hintText: '例: 水筒（水の代わり）',
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('キャンセル'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final find = findController.text.trim();
-                    if (find.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('検索文字列を入力してください')),
-                      );
-                      return;
-                    }
-                    Navigator.pop(ctx);
-                    _applyBatchFix(
-                      find: find,
-                      replace: replaceController.text.trim(),
-                      target: target,
-                    );
-                  },
-                  child: const Text('置換'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (ctx) => _BatchFixDialog(onApply: _applyBatchFix),
     );
   }
 
@@ -392,6 +308,11 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
       _saved = true;
       if (!mounted) return;
       navigator.popUntil((route) => route.isFirst);
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('登録に失敗しました: $error')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -540,6 +461,112 @@ Future<void> _showSourceText(BuildContext context, String rawText) {
       ],
     ),
   );
+}
+
+class _BatchFixDialog extends StatefulWidget {
+  const _BatchFixDialog({required this.onApply});
+
+  final void Function({
+    required String find,
+    required String replace,
+    required String target,
+  })
+  onApply;
+
+  @override
+  State<_BatchFixDialog> createState() => _BatchFixDialogState();
+}
+
+class _BatchFixDialogState extends State<_BatchFixDialog> {
+  final _findController = TextEditingController();
+  final _replaceController = TextEditingController();
+  var _target = 'title';
+
+  @override
+  void dispose() {
+    _findController.dispose();
+    _replaceController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final targetLabel = _target == 'items' ? '持ち物' : 'タイトル';
+    return AlertDialog(
+      title: const Text('一括修正'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '全候補の$targetLabelから文字列を検索して置換します',
+            style: TextStyle(
+              fontSize: 13,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: Spacing.md),
+          DropdownButtonFormField<String>(
+            initialValue: _target,
+            decoration: const InputDecoration(
+              labelText: '対象フィールド',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'title', child: Text('タイトル')),
+              DropdownMenuItem(value: 'items', child: Text('持ち物')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _target = value);
+              }
+            },
+          ),
+          const SizedBox(height: Spacing.sm),
+          TextField(
+            controller: _findController,
+            decoration: const InputDecoration(
+              labelText: '検索文字列',
+              border: OutlineInputBorder(),
+              hintText: '例: 水筒',
+            ),
+          ),
+          const SizedBox(height: Spacing.sm),
+          TextField(
+            controller: _replaceController,
+            decoration: const InputDecoration(
+              labelText: '置換文字列',
+              border: OutlineInputBorder(),
+              hintText: '例: 水筒（水の代わり）',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('キャンセル'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final find = _findController.text.trim();
+            if (find.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('検索文字列を入力してください')),
+              );
+              return;
+            }
+            Navigator.pop(context);
+            widget.onApply(
+              find: find,
+              replace: _replaceController.text.trim(),
+              target: _target,
+            );
+          },
+          child: const Text('置換'),
+        ),
+      ],
+    );
+  }
 }
 
 String _formatDate(DateTime date) => '${date.year}/${date.month}/${date.day}';

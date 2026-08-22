@@ -347,6 +347,48 @@ void main() {
       expect(snapshot!.todos.single.personId, 'person-current');
     });
 
+    test(
+      'keeps orphan todos when legacy snapshot has dangling references',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'ashita_motsumono_snapshot_v1': '''
+        {
+          "version": 1,
+          "children": [],
+          "todos": [
+            {
+              "id": "todo-dangling-refs",
+              "title": "参照切れのTodo",
+              "personId": "missing-child",
+              "documentId": "missing-document",
+              "category": "item",
+              "status": "active",
+              "items": [],
+              "notifyPreviousNight": true,
+              "notifySameMorning": true,
+              "createdAt": "2026-01-01T00:00:00.000",
+              "updatedAt": "2026-01-01T00:00:00.000"
+            }
+          ],
+          "documents": []
+        }
+        ''',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        AppSnapshot? snapshot;
+        final ok = await AppDatabase.tryMigration(
+          prefs,
+          onMigrated: (migrated) => snapshot = migrated,
+        );
+
+        expect(ok, isTrue);
+        expect(snapshot, isNotNull);
+        expect(snapshot!.todos.single.id, 'todo-dangling-refs');
+        expect(snapshot!.todos.single.personId, isNull);
+        expect(snapshot!.todos.single.documentId, isNull);
+      },
+    );
+
     test('marks migration done when no legacy data', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();

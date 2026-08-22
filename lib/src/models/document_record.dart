@@ -57,17 +57,22 @@ class DocumentRecord {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'sourceType': sourceType,
-    'localImagePath': localImagePath,
-    'ocrText': ocrText,
-    'sourceMimeType': sourceMimeType,
-    'sourceFingerprint': sourceFingerprint,
-    'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt.toIso8601String(),
-    'pages': pages.map((p) => p.toJson()).toList(),
-  };
+  Map<String, dynamic> toJson() {
+    final json = <String, dynamic>{
+      'id': id,
+      'sourceType': sourceType,
+      'ocrText': ocrText,
+      'sourceMimeType': sourceMimeType,
+      'sourceFingerprint': sourceFingerprint,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'pages': pages.map((p) => p.toJson()).toList(),
+    };
+    if (localImagePath != null) {
+      json['localImagePath'] = localImagePath;
+    }
+    return json;
+  }
 
   factory DocumentRecord.fromJson(Map<String, dynamic> json) {
     final id = json['id'];

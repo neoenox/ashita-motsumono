@@ -3,6 +3,7 @@
 // ファイル選択 → コピー → OCR → 候補抽出 → 永続化 を一貫して行う。
 // 関連: pdf_render_service.dart, ocr_service.dart, extraction_service.dart, app_state.dart
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
@@ -502,8 +503,13 @@ class DocumentIntakeService {
 
   Future<String?> _sha256(File file) async {
     try {
-      final bytes = await file.readAsBytes();
-      return sha256.convert(bytes).toString();
+      final sink = _DigestSink();
+      final conversion = sha256.startChunkedConversion(sink);
+      await for (final chunk in file.openRead()) {
+        conversion.add(chunk);
+      }
+      conversion.close();
+      return sink.digest?.toString();
     } on Object {
       return null;
     }
@@ -553,4 +559,14 @@ final class PageOcrResult {
   final int pageIndex;
   final File imageFile;
   final String text;
+}
+
+class _DigestSink implements Sink<Digest> {
+  Digest? digest;
+
+  @override
+  void add(Digest data) => digest = data;
+
+  @override
+  void close() {}
 }

@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Validate release-candidate repository state without building or deploying.
 
-The optional configuration check consumes boolean environment flags only. It never
-reads or prints secret values.
+The optional configuration check consumes boolean environment flags only, except the
+keystore secret values that are compared byte-for-byte for drift detection. Secret
+values are never printed.
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 from pathlib import Path
@@ -32,13 +34,19 @@ REQUIRED_FILES = (
 )
 
 REQUIRED_SECRETS = (
-    "KEYSTORE_BASE64",
     "KEYSTORE_STORE_PASSWORD",
     "KEYSTORE_KEY_PASSWORD",
     "KEYSTORE_KEY_ALIAS",
     "ADMOB_APP_ID",
     "ADMOB_BANNER_AD_UNIT_ID",
     "GEMINI_PROXY_URL",
+)
+
+# release-apk.yml / ci.yml use KEYSTORE_BASE64 while release-android.yml uses
+# KEYSTORE_FILE_B64; at least one of the two must be configured.
+KEYSTORE_SECRET_ALTERNATIVES = (
+    "KEYSTORE_BASE64",
+    "KEYSTORE_FILE_B64",
 )
 
 REQUIRED_VARIABLES = (
@@ -109,6 +117,47 @@ def _required_config_presence(
         else:
             missing.append(name)
     return present, missing
+
+
+def _keystore_secret_state(
+    environment: dict[str, str]
+) -> tuple[list[str], list[str]]:
+    found: list[str] = []
+    for name in KEYSTORE_SECRET_ALTERNATIVES:
+        flagged = _truthy(environment.get(f"HAS_SECRET_{name}"))
+        if flagged or (environment.get(name) or "").strip():
+            found.append(name)
+
+    errors: list[str] = []
+    if not found:
+        errors.append(
+            "no keystore secret is configured; register at least one of "
+            f"{', '.join(KEYSTORE_SECRET_ALTERNATIVES)}"
+        )
+    elif len(found) == len(KEYSTORE_SECRET_ALTERNATIVES):
+        values = [environment.get(name) or "" for name in KEYSTORE_SECRET_ALTERNATIVES]
+        if any(not value.strip() for value in values):
+            errors.append(
+                "both keystore secrets are configured but their values were not "
+                "provided for drift verification"
+            )
+        else:
+            decoded: list[bytes] = []
+            for name, value in zip(KEYSTORE_SECRET_ALTERNATIVES, values):
+                try:
+                    decoded.append(base64.b64decode(value))
+                except ValueError:
+                    errors.append(f"keystore secret is not valid base64: {name}")
+            if (
+                len(decoded) == len(KEYSTORE_SECRET_ALTERNATIVES)
+                and decoded[0] != decoded[1]
+            ):
+                errors.append(
+                    "keystore secret drift detected: "
+                    f"{KEYSTORE_SECRET_ALTERNATIVES[0]} and "
+                    f"{KEYSTORE_SECRET_ALTERNATIVES[1]} decode to different bytes"
+                )
+    return found, errors
 
 
 def evaluate(
@@ -192,12 +241,21 @@ def evaluate(
         present_variables, missing_variables = _required_config_presence(
             REQUIRED_VARIABLES, "VARIABLE", env
         )
+        keystore_found_names, keystore_errors = _keystore_secret_state(env)
         configuration = {
-            "result": "PASS" if not missing_secrets and not missing_variables else "BLOCKED",
+            "result": (
+                "PASS"
+                if not missing_secrets
+                and not missing_variables
+                and not keystore_errors
+                else "BLOCKED"
+            ),
             "presentSecretNames": present_secrets,
             "missingSecretNames": missing_secrets,
             "presentVariableNames": present_variables,
             "missingVariableNames": missing_variables,
+            "foundKeystoreSecretNames": keystore_found_names,
+            "keystoreSecretErrors": keystore_errors,
         }
     else:
         configuration = {
@@ -206,6 +264,8 @@ def evaluate(
             "missingSecretNames": [],
             "presentVariableNames": [],
             "missingVariableNames": [],
+            "foundKeystoreSecretNames": [],
+            "keystoreSecretErrors": [],
         }
 
     static_result = "PASS" if not errors else "BLOCKED"
@@ -220,6 +280,10 @@ def evaluate(
         next_actions.append("Fix repository release-candidate invariants.")
     if configuration["result"] == "BLOCKED":
         next_actions.append("Register the missing GitHub Secrets and Repository Variables.")
+    if configuration["keystoreSecretErrors"]:
+        next_actions.append(
+            "Reconcile the keystore secrets so at least one name is configured with matching bytes."
+        )
     if overall_result == "PASS" and check_configuration:
         next_actions.append("Proceed to Issue #60 evidence; do not create a formal release yet.")
     elif overall_result == "PASS":

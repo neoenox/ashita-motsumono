@@ -14,6 +14,30 @@ void main() {
       expect(DateExtractor.extract('2026年7月10日まで', now), DateTime(2026, 7, 10));
     });
 
+    test('extracts Reiwa era date as western year', () {
+      expect(DateExtractor.extract('令和8年3月1日まで', now), DateTime(2026, 3, 1));
+    });
+
+    test('extracts Heisei era date as western year', () {
+      expect(
+        DateExtractor.extract('平成30年12月25日まで', now),
+        DateTime(2018, 12, 25),
+      );
+    });
+
+    test('extracts cross-year Showa era date without month/day fallback', () {
+      // 「昭和64年1月7日」は西暦1989年。月日だけのフォールバックなら
+      // 過去の日付として null になるため、西暦変換が効いている証拠になる。
+      expect(
+        DateExtractor.extract('昭和64年1月7日まで', now),
+        DateTime(1989, 1, 7),
+      );
+    });
+
+    test('extracts era date with full-width year digits', () {
+      expect(DateExtractor.extract('令和８年３月１日まで', now), DateTime(2026, 3, 1));
+    });
+
     test('extracts month/day date', () {
       expect(DateExtractor.extract('7月10日まで', now), DateTime(2026, 7, 10));
     });
@@ -108,6 +132,14 @@ void main() {
     test('returns false when no month/day pattern found', () {
       expect(
         DateExtractor.hasPastMonthDayDate('タオルを持参', DateTime(2026, 7, 2)),
+        false,
+      );
+    });
+
+    test('treats past era date as concrete date, not past month/day', () {
+      // 平成30年 = 2018年のため「12月25日」を今年の日付扱いしない
+      expect(
+        DateExtractor.hasPastMonthDayDate('平成30年12月25日まで', now),
         false,
       );
     });

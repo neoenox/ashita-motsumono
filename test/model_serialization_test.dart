@@ -7,6 +7,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ashita_motsumono/src/models/app_todo.dart';
 import 'package:ashita_motsumono/src/models/person_profile.dart';
+import 'package:ashita_motsumono/src/models/document_page_record.dart';
 import 'package:ashita_motsumono/src/models/document_record.dart';
 import 'package:ashita_motsumono/src/models/checklist_item.dart';
 import 'package:ashita_motsumono/src/models/enums.dart';
@@ -245,6 +246,34 @@ void main() {
       final copy = doc.copyWith(clearLocalImagePath: true);
       expect(copy.localImagePath, isNull);
       expect(copy.id, doc.id);
+    });
+  });
+
+  group('DocumentPageRecord', () {
+    final page = DocumentPageRecord(
+      id: 'page-0',
+      documentId: 'doc-1',
+      pageIndex: 0,
+      localImagePath: '/path/to/page-0.jpg',
+      ocrText: '1ページ目',
+    );
+
+    test('toJson omits local image path', () {
+      final json = page.toJson();
+      expect(json['id'], 'page-0');
+      expect(json['documentId'], 'doc-1');
+      expect(json['pageIndex'], 0);
+      expect(json['ocrText'], '1ページ目');
+      expect(json.containsKey('localImagePath'), isFalse);
+    });
+
+    test('fromJson restores original without local image path', () {
+      final restored = DocumentPageRecord.fromJson(page.toJson());
+      expect(restored.id, page.id);
+      expect(restored.documentId, page.documentId);
+      expect(restored.pageIndex, page.pageIndex);
+      expect(restored.ocrText, page.ocrText);
+      expect(restored.localImagePath, '');
     });
   });
 

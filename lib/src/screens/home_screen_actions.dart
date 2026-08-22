@@ -124,13 +124,20 @@ extension _HomeScreenActions on _HomeScreenState {
 
     // "あとで" is a true deferral: do not persist the shown flag.
     if (!mounted || enableNotifications != true) return;
-    await prefs.setBool(_HomeScreenState._notificationInfoShownKey, true);
-    if (!mounted) return;
 
     try {
       await appState.requestNotificationPermissions();
+      final granted = await NotificationService.areNotificationsEnabled();
+      // 実際に許可ダイアログを出した後でのみ表示済みフラグを永続化する。
+      await prefs.setBool(_HomeScreenState._notificationInfoShownKey, true);
       if (!mounted) return;
-      messenger.showSnackBar(const SnackBar(content: Text('通知設定を確認しました')));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            granted ? '通知設定を確認しました' : '通知がオフになっています。設定から許可してください',
+          ),
+        ),
+      );
     } on Object {
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('通知設定を確認できませんでした')));

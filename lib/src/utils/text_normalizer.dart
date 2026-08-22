@@ -28,7 +28,8 @@ class TextNormalizer {
         .replaceAll(_multiNewlinePattern, '\n\n')
         .trim();
     text = text.replaceAllMapped(RegExp(r'(?<=\d)[ー一](?=\d)'), (_) => '/');
-    text = text.replaceAllMapped(RegExp(r'円\s*(?=\d)'), (_) => '¥');
+    // 直前が数字の「N円N」は個数表記のため ¥ へ置換しない（例: 1円2つ）
+    text = text.replaceAllMapped(RegExp(r'(?<!\d)円\s*(?=\d)'), (_) => '¥');
     // OCR誤認識: 数字に隣接するO/l、またはlO/Ol連鎖を0/1に変換
     // lO→10 / Ol→01 のペアは1回のreplaceAllMappedで変換（先読みだけでは不十分）
     text = text.replaceAllMapped(

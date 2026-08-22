@@ -20,6 +20,7 @@ class AddChildScreen extends StatefulWidget {
 
 class _AddChildScreenState extends State<AddChildScreen> {
   final _controller = TextEditingController();
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -54,7 +55,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: () => _add(context),
+                      onPressed: _submitting ? null : () => _add(context),
                       icon: const Icon(Icons.add),
                       label: const Text('追加'),
                     ),
@@ -121,6 +122,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
   }
 
   Future<void> _add(BuildContext context) async {
+    if (_submitting) return;
     final appState = context.read<AppState>();
     final messenger = ScaffoldMessenger.of(context);
     final name = _controller.text.trim();
@@ -129,10 +131,15 @@ class _AddChildScreenState extends State<AddChildScreen> {
       messenger.showSnackBar(const SnackBar(content: Text('同じ名前がすでに登録されています')));
       return;
     }
-    await appState.addChild(name);
-    _controller.clear();
-    if (context.mounted) {
-      messenger.showSnackBar(const SnackBar(content: Text('追加しました')));
+    setState(() => _submitting = true);
+    try {
+      await appState.addChild(name);
+      _controller.clear();
+      if (context.mounted) {
+        messenger.showSnackBar(const SnackBar(content: Text('追加しました')));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
