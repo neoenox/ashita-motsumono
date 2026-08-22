@@ -62,14 +62,17 @@ void main() {
     expect(py, contains('DESUGAR_DEP_GROOVY'));
   });
 
-  test('release Gradle config fails closed instead of using the test AdMob app id', () {
-    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+  test(
+    'release Gradle config fails closed instead of using the test AdMob app id',
+    () {
+      final gradle = File('android/app/build.gradle.kts').readAsStringSync();
 
-    expect(gradle, contains('System.getenv("ADMOB_APP_ID") ?: ""'));
-    expect(gradle, contains('requestedReleaseBuild'));
-    expect(gradle, contains('GradleException'));
-    expect(gradle, isNot(contains('ca-app-pub-3940256099942544~3347511713')));
-  });
+      expect(gradle, contains('System.getenv("ADMOB_APP_ID") ?: ""'));
+      expect(gradle, contains('requestedReleaseBuild'));
+      expect(gradle, contains('GradleException'));
+      expect(gradle, isNot(contains('ca-app-pub-3940256099942544~3347511713')));
+    },
+  );
 
   test('production sources do not include Google sample AdMob ids', () {
     const samplePublisherId = 'ca-app-pub-3940256099942544';

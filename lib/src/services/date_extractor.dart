@@ -249,7 +249,8 @@ class DateExtractor {
     });
     return folded.replaceAllMapped(_eraYearPattern, (match) {
       final baseYear = _eraBaseYears[match.group(1)!]!;
-      final digits = match.group(2)!
+      final digits = match
+          .group(2)!
           .codeUnits
           .map(
             (unit) =>

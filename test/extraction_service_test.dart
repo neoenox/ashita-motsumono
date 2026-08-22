@@ -234,8 +234,7 @@ void main() {
 
     test('falls back to first amount when keywords are far away', () {
       final draft = ExtractionService.extract(
-        '負担についての説明は長文です。' * 3 +
-            '最初の記載は300円です。その後の記載は700円です。',
+        '負担についての説明は長文です。' * 3 + '最初の記載は300円です。その後の記載は700円です。',
         now: now,
       );
       expect(draft.amount, 300);

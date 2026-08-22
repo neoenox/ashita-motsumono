@@ -125,8 +125,7 @@ class _UpcomingSectionState extends State<UpcomingSection> {
                       child: Text(
                         _expanded ? '閉じる' : '他 $overflowCount 件',
                         style: TextStyle(
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontSize: 13,
                         ),
                       ),

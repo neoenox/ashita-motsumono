@@ -133,9 +133,7 @@ extension _HomeScreenActions on _HomeScreenState {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-            granted ? '通知設定を確認しました' : '通知がオフになっています。設定から許可してください',
-          ),
+          content: Text(granted ? '通知設定を確認しました' : '通知がオフになっています。設定から許可してください'),
         ),
       );
     } on Object {

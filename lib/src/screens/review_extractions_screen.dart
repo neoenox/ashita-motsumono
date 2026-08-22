@@ -550,9 +550,9 @@ class _BatchFixDialogState extends State<_BatchFixDialog> {
           onPressed: () {
             final find = _findController.text.trim();
             if (find.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('検索文字列を入力してください')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('検索文字列を入力してください')));
               return;
             }
             Navigator.pop(context);
