@@ -1,0 +1,48 @@
+name: Gemini Proxy Worker CI
+
+on:
+  pull_request:
+    paths:
+      - 'workers/gemini-proxy/**'
+      - '.github/workflows/worker-ci.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'workers/gemini-proxy/**'
+      - '.github/workflows/worker-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  worker-quality:
+    name: Worker typecheck and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: workers/gemini-proxy
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: workers/gemini-proxy/package.json
+
+      - name: Install test toolchain
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck Worker
+        run: npm run typecheck
+
+      - name: Run Worker tests
+        run: npm test
+
+      - name: Verify validated entrypoint is deployed
+        run: grep -Fq 'main = "src/validated.ts"' wrangler.toml
