@@ -16,6 +16,7 @@ SECRET_BEARING_WORKFLOWS = (
     ROOT / '.github/workflows/ci.yml',
     ROOT / '.github/workflows/release-android.yml',
     ROOT / '.github/workflows/release-apk.yml',
+    ROOT / '.github/workflows/release-readiness-preflight.yml',
 )
 
 
