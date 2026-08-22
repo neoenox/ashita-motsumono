@@ -4,7 +4,9 @@
 
 ## 対象プラットフォーム
 
-現行MVPは Android / iOS を対象とします。日本語OCRは Google ML Kit Text Recognition を使用します。
+現行MVPの正式サポート対象は **Android** です。日本語OCRは Google ML Kit Text Recognition を使用します。
+
+iOSコードとiOS向けの設計・申告下書きは将来対応の準備としてリポジトリに含まれますが、現時点では正式なiOSビルド、macOS CI、TestFlight、実機受入を完了していないため、サポート対象・公開対象とは扱いません。iOSの未検証項目は `docs/PLATFORM_SUPPORT.md` に記録します。
 
 Web / Windows / macOS / Linux は現行MVPの対象外です。
 
