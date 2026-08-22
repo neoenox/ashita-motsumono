@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { validateAnalysisBody, validateVerifyBody } from '../src/validated';
+import worker, {
+  validateAnalysisBody,
+  validateVerifyBody,
+} from '../src/validated';
 
 const verifyEnv = {
   REMOVE_ADS_PRODUCT_ID: 'remove_ads',
@@ -8,6 +11,98 @@ const verifyEnv = {
 };
 
 const analysisEnv = { MAX_IMAGE_BYTES: '5' };
+const signingSecret = '0123456789abcdef0123456789abcdef';
+
+function rateLimiter(success = true) {
+  return {
+    async limit() {
+      return { success };
+    },
+  };
+}
+
+function base64UrlBytes(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary)
+    .replaceAll('+', '-')
+    .replaceAll('/', '_')
+    .replace(/=+$/u, '');
+}
+
+function base64UrlJson(value: unknown): string {
+  return base64UrlBytes(new TextEncoder().encode(JSON.stringify(value)));
+}
+
+async function entitlementToken(
+  overrides: Partial<{
+    productId: string;
+    platform: string;
+    receiptHash: string;
+    iat: number;
+    exp: number;
+  }> = {},
+): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64UrlJson({ alg: 'HS256', typ: 'JWT' });
+  const payload = base64UrlJson({
+    productId: 'ai_analysis',
+    platform: 'ios',
+    receiptHash: 'a'.repeat(64),
+    iat: now,
+    exp: now + 15 * 60,
+    ...overrides,
+  });
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(signingSecret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(`${header}.${payload}`),
+  );
+  return `${header}.${payload}.${base64UrlBytes(new Uint8Array(signature))}`;
+}
+
+function runtimeEnv(options: { aiRateAllowed?: boolean; verifyRateAllowed?: boolean } = {}) {
+  return {
+    ...verifyEnv,
+    MAX_IMAGE_BYTES: '5242880',
+    GEMINI_API_KEY: 'gemini-test-key',
+    ENTITLEMENT_SIGNING_SECRET: signingSecret,
+    GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL: '',
+    GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY: '',
+    ANDROID_PACKAGE_NAME: 'com.ashita_motsumono',
+    IOS_BUNDLE_ID: 'com.ashita_motsumono',
+    AI_RATE_LIMITER: rateLimiter(options.aiRateAllowed ?? true),
+    ENTITLEMENT_RATE_LIMITER: rateLimiter(options.verifyRateAllowed ?? true),
+  };
+}
+
+function analyzeRequest(token: string): Request {
+  return new Request('https://worker.example/analyze', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      imageBase64: 'AQIDBA==',
+      mimeType: 'image/png',
+      today: '2026-08-22',
+      timezone: 'Asia/Tokyo',
+    }),
+  });
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe('purchase verification request validation', () => {
   it('accepts known products on supported platforms', () => {
@@ -148,5 +243,84 @@ describe('analysis request validation', () => {
         { MAX_IMAGE_BYTES: 'NaN' },
       ),
     ).toEqual({ error: 'AI service image limit is misconfigured', status: 503 });
+  });
+});
+
+describe('public Worker security boundary', () => {
+  it('rejects tampered, expired, future and wrong-product entitlement tokens', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const cases = [
+      `${await entitlementToken()}x`,
+      await entitlementToken({ iat: now - 100, exp: now - 1 }),
+      await entitlementToken({ iat: now + 61, exp: now + 120 }),
+      await entitlementToken({ productId: 'remove_ads' }),
+    ];
+
+    for (const token of cases) {
+      const response = await worker.fetch(analyzeRequest(token), runtimeEnv());
+      expect(response.status).toBe(401);
+      await expect(response.json()).resolves.toEqual({ error: 'Unauthorized' });
+    }
+  });
+
+  it('rejects valid entitlement when AI rate limit is exhausted', async () => {
+    const token = await entitlementToken();
+    const response = await worker.fetch(
+      analyzeRequest(token),
+      runtimeEnv({ aiRateAllowed: false }),
+    );
+
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toEqual({ error: 'Rate limit exceeded' });
+  });
+
+  it('turns Gemini transport failure into a bounded 502 response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('upstream timeout')));
+    const token = await entitlementToken();
+    const response = await worker.fetch(analyzeRequest(token), runtimeEnv());
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({ error: 'Failed to call AI service' });
+  });
+
+  it('rate-limits entitlement verification before calling a store', async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.example/entitlements/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platform: 'ios',
+          productId: 'ai_analysis',
+          verificationData: 'receipt',
+        }),
+      }),
+      runtimeEnv({ verifyRateAllowed: false }),
+    );
+
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toEqual({
+      error: 'Too many verification attempts',
+    });
+  });
+
+  it('treats App Store transport failure as retryable service failure', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('store timeout')));
+    const response = await worker.fetch(
+      new Request('https://worker.example/entitlements/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platform: 'ios',
+          productId: 'ai_analysis',
+          verificationData: 'receipt',
+        }),
+      }),
+      runtimeEnv(),
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: 'Store verification is temporarily unavailable',
+    });
   });
 });
