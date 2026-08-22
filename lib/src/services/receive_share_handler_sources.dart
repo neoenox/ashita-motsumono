@@ -161,11 +161,8 @@ extension _ReceiveShareSources on ReceiveShareHandler {
     }
   }
 
-  Future<ReceiveShareResult> _processImage(
-    String sourcePath, {
-    String? mimeType,
-  }) async {
-    final source = XFile(sourcePath, mimeType: mimeType);
+  Future<ReceiveShareResult> _processImage(SharedMediaFile file) async {
+    final source = XFile(file.path);
 
     int sourceLength;
     try {
@@ -190,9 +187,27 @@ extension _ReceiveShareSources on ReceiveShareHandler {
       );
     }
 
+    try {
+      return await _shareFileStagingService.withStagedFiles(
+        files: [file],
+        action: (stagedFiles) => _importStagedImage(stagedFiles.single),
+      );
+    } on ShareFileStagingException {
+      return const ReceiveShareFailure(
+        '画像の保存に失敗しました。',
+        kind: ReceiveShareFailureKind.saveFailed,
+      );
+    }
+  }
+
+  Future<ReceiveShareResult> _importStagedImage(
+    StagedShareFile stagedFile,
+  ) async {
     File copiedImage;
     try {
-      copiedImage = await _imageFileService.copyFromXFile(source);
+      copiedImage = await _imageFileService.copyFromXFile(
+        XFile(stagedFile.path),
+      );
     } on Object {
       return const ReceiveShareFailure(
         '画像の保存に失敗しました。',

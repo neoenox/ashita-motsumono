@@ -200,12 +200,41 @@ class AppDatabase extends _$AppDatabase {
 
     try {
       final jsonMap = jsonDecode(raw) as Map<String, dynamic>;
-      final snapshot = AppSnapshot.fromJson(jsonMap).migrate();
+      final snapshot = _repairSnapshotReferences(
+        AppSnapshot.fromJson(jsonMap).migrate(),
+      );
       await saveSnapshot(snapshot);
       return true;
     } on Object {
       return false;
     }
+  }
+
+  // 旧スナップショットに存在しない子ども・書類を参照する Todo があると
+  // 検証トリガー (RAISE(ABORT)) で移行が失敗し、再試行が無限に繰り返される。
+  // _repairLegacyReferences と同じく参照だけ NULL へ切り替え、Todo 自体は残す。
+  AppSnapshot _repairSnapshotReferences(AppSnapshot snapshot) {
+    final childIds = snapshot.children.map((child) => child.id).toSet();
+    final documentIds = snapshot.documents
+        .map((document) => document.id)
+        .toSet();
+    final todos = snapshot.todos
+        .map(
+          (todo) => todo.copyWith(
+            clearPersonId:
+                todo.personId != null && !childIds.contains(todo.personId),
+            clearDocumentId:
+                todo.documentId != null &&
+                !documentIds.contains(todo.documentId),
+          ),
+        )
+        .toList();
+    return AppSnapshot(
+      children: snapshot.children,
+      todos: todos,
+      documents: snapshot.documents,
+      version: snapshot.version,
+    );
   }
 
   Future<void> _backupRawSnapshot(String rawJson) async {
@@ -460,12 +489,19 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
+  // Drift は DateTime を秒精度で保存するため、ミリ秒以下の差は同一刻とみなす。
+  bool _sameInstant(DateTime? value, DateTime? other) {
+    if (value == null || other == null) return value == other;
+    return value.millisecondsSinceEpoch ~/ 1000 ==
+        other.millisecondsSinceEpoch ~/ 1000;
+  }
+
   bool _matchesPersonProfile(DbChildData? row, PersonProfile child) {
     return row != null &&
         row.name == child.name &&
         row.colorValue == child.colorValue &&
-        row.createdAt == child.createdAt &&
-        row.updatedAt == child.updatedAt;
+        _sameInstant(row.createdAt, child.createdAt) &&
+        _sameInstant(row.updatedAt, child.updatedAt);
   }
 
   bool _matchesDocumentRecord(DbDocumentData? row, DocumentRecord document) {
@@ -475,8 +511,8 @@ class AppDatabase extends _$AppDatabase {
         row.ocrText == document.ocrText &&
         row.sourceMimeType == document.sourceMimeType &&
         row.sourceFingerprint == document.sourceFingerprint &&
-        row.createdAt == document.createdAt &&
-        row.updatedAt == document.updatedAt;
+        _sameInstant(row.createdAt, document.createdAt) &&
+        _sameInstant(row.updatedAt, document.updatedAt);
   }
 
   bool _matchesAppTodo(DbTodoData? row, AppTodo todo) {
@@ -484,15 +520,15 @@ class AppDatabase extends _$AppDatabase {
         row.title == todo.title &&
         row.childId == todo.personId &&
         row.documentId == todo.documentId &&
-        row.dueDate == todo.dueDate &&
+        _sameInstant(row.dueDate, todo.dueDate) &&
         row.category == todo.category.name &&
         row.amount == todo.amount &&
         row.note == todo.note &&
         row.status == todo.status.name &&
         row.notifyPreviousNight == todo.notifyPreviousNight &&
         row.notifySameMorning == todo.notifySameMorning &&
-        row.createdAt == todo.createdAt &&
-        row.updatedAt == todo.updatedAt;
+        _sameInstant(row.createdAt, todo.createdAt) &&
+        _sameInstant(row.updatedAt, todo.updatedAt);
   }
 
   bool _matchesChecklistItem(

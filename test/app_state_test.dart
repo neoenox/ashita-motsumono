@@ -22,7 +22,7 @@ class _FakeNotificationService extends NotificationService {
   Future<void> initialize() async {}
 
   @override
-  Future<void> requestPermissions() async {}
+  Future<bool> requestPermissions() async => true;
 
   @override
   Future<void> scheduleTodo(AppTodo todo) async {

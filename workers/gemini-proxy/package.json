@@ -1,0 +1,13 @@
+{
+  "name": "ashita-gemini-proxy",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3",
+    "vitest": "3.2.4"
+  }
+}

@@ -15,6 +15,7 @@ import '../models/entities.dart';
 import '../services/ad_service.dart';
 import '../services/app_settings.dart';
 import '../services/export_service.dart';
+import '../services/notification_service.dart';
 import '../services/purchase_provider.dart';
 import '../services/receive_share_handler.dart';
 import '../theme/app_theme.dart';

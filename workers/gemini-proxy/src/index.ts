@@ -3,11 +3,17 @@ const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MO
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
 const DEFAULT_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const DEFAULT_AI_DAILY_LIMIT = 200;
 const TOKEN_TTL_SECONDS = 15 * 60;
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 interface RateLimiter {
   limit(options: { key: string }): Promise<{ success: boolean }>;
+}
+
+interface DailyQuotaStore {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, options: { expirationTtl?: number }): Promise<void>;
 }
 
 interface Env {
@@ -20,6 +26,8 @@ interface Env {
   REMOVE_ADS_PRODUCT_ID: string;
   AI_ACCESS_PRODUCT_ID: string;
   MAX_IMAGE_BYTES?: string;
+  AI_DAILY_LIMIT?: string;
+  AI_DAILY_QUOTA?: DailyQuotaStore;
   AI_RATE_LIMITER: RateLimiter;
   ENTITLEMENT_RATE_LIMITER: RateLimiter;
 }
@@ -70,7 +78,7 @@ export default {
     if (url.pathname === '/entitlements/verify') {
       return verifyEntitlement(request, env);
     }
-    if (url.pathname === '/analyze' || url.pathname === '/') {
+    if (url.pathname === '/analyze') {
       return analyze(request, env);
     }
     return json({ error: 'Not found' }, 404);
@@ -104,6 +112,9 @@ async function verifyEntitlement(request: Request, env: Env): Promise<Response> 
         env,
       );
     } else if (body.platform === 'ios') {
+      if (!env.IOS_BUNDLE_ID) {
+        return json({ error: 'Store verification is not configured' }, 500);
+      }
       verified = await verifyAppStore(
         body.productId,
         body.verificationData,
@@ -175,6 +186,11 @@ async function analyze(request: Request, env: Env): Promise<Response> {
     ? body.today!
     : new Date().toISOString().slice(0, 10);
   const timezone = (body.timezone ?? 'Asia/Tokyo').slice(0, 64);
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+  } catch {
+    return json({ error: 'Invalid timezone' }, 400);
+  }
   const prompt = `あなたは学校・園からのお知らせを解析するアシスタントです。
 与えられた画像からTodo候補を抽出してください。
 今日の日付は ${today}、タイムゾーンは ${timezone} です。
@@ -221,15 +237,34 @@ category は payment、submit、event、item、other のいずれかです。
     },
   };
 
+  if (env.AI_DAILY_QUOTA) {
+    const date = new Date().toISOString().slice(0, 10);
+    const key = `quota:${entitlement.receiptHash}:${date}`;
+    const current = Number(await env.AI_DAILY_QUOTA.get(key)) || 0;
+    if (current >= dailyQuotaLimit(env.AI_DAILY_LIMIT)) {
+      return json({ error: 'Daily rate limit exceeded' }, 429);
+    }
+    await env.AI_DAILY_QUOTA.put(key, String(current + 1), {
+      expirationTtl: 172800,
+    });
+  }
+
   try {
-    const response = await fetch(
-      `${GEMINI_URL}?key=${encodeURIComponent(env.GEMINI_API_KEY)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiPayload),
+    const response = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': env.GEMINI_API_KEY,
       },
-    );
+      body: JSON.stringify(geminiPayload),
+      signal: AbortSignal.timeout(55000),
+    });
+    if (!response.ok) {
+      if (response.status === 429) {
+        return json({ error: 'Rate limit exceeded' }, 429);
+      }
+      return json({ error: 'Failed to call AI service' }, 502);
+    }
     const data = await response.json();
     return json(data, response.status);
   } catch {
@@ -369,7 +404,7 @@ async function verifyAppStore(
     data = await response.json() as typeof data;
   }
   if (!response.ok || data.status !== 0) return false;
-  if (env.IOS_BUNDLE_ID && data.receipt?.bundle_id !== env.IOS_BUNDLE_ID) {
+  if (data.receipt?.bundle_id !== env.IOS_BUNDLE_ID) {
     return false;
   }
   return (data.receipt?.in_app ?? []).some(
@@ -532,6 +567,13 @@ async function sha256(value: string): Promise<string> {
     new Uint8Array(digest),
     (byte) => byte.toString(16).padStart(2, '0'),
   ).join('');
+}
+
+function dailyQuotaLimit(value: string | undefined): number {
+  const limit = Number.parseInt(value ?? '', 10);
+  return Number.isInteger(limit) && limit >= 1
+    ? limit
+    : DEFAULT_AI_DAILY_LIMIT;
 }
 
 function base64UrlJson(value: unknown): string {

@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 60
     env:
       ADMOB_APP_ID: ca-app-pub-3940256099942544~3347511713
+      RELEASE_ALLOW_TEST_ADMOB: "true"
       CI_KEYSTORE_PASSWORD: ashita-ci-release
       CI_KEY_ALIAS: ashita-ci
     steps:

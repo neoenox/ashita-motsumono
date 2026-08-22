@@ -6,8 +6,15 @@ class DateExtractor {
   DateExtractor._();
 
   static final _fullDatePattern = RegExp(
-    r'(20\d{2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?',
+    r'(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?',
   );
+  static final _eraYearPattern = RegExp(r'(令和|平成|昭和)([0-9]+)\s*年');
+  static final _fullWidthDigitPattern = RegExp(r'[０-９]');
+  static const _eraBaseYears = <String, int>{
+    '令和': 2018,
+    '平成': 1988,
+    '昭和': 1925,
+  };
   static final _monthDayPattern = RegExp(r'(\d{1,2})\s*月\s*(\d{1,2})\s*日?');
   static final _slashDatePattern = RegExp(
     r'(?<![\d第])(\d{1,2})\s*[/\-]\s*(\d{1,2})(?!\s*(?:組|教室|回|番|\d))',
@@ -37,7 +44,8 @@ class DateExtractor {
     '日': DateTime.sunday,
   };
 
-  static DateTime? extract(String text, DateTime now) {
+  static DateTime? extract(String rawText, DateTime now) {
+    final text = _normalizeEraDates(rawText);
     DateTime? result = _extractDeadlineDate(text, now);
     result ??= _extractRelativeDate(text, now);
     result ??= _extractRelativeWeekday(text, now);
@@ -234,6 +242,25 @@ class DateExtractor {
     return today.add(Duration(days: delta));
   }
 
+  static String _normalizeEraDates(String text) {
+    final folded = text.replaceAllMapped(_fullWidthDigitPattern, (match) {
+      final unit = text.codeUnitAt(match.start);
+      return String.fromCharCode(unit - 0xFF10 + 0x30);
+    });
+    return folded.replaceAllMapped(_eraYearPattern, (match) {
+      final baseYear = _eraBaseYears[match.group(1)!]!;
+      final digits = match
+          .group(2)!
+          .codeUnits
+          .map(
+            (unit) =>
+                unit >= 0xFF10 && unit <= 0xFF19 ? unit - 0xFF10 + 0x30 : unit,
+          )
+          .toList();
+      return '${baseYear + int.parse(String.fromCharCodes(digits))}年';
+    });
+  }
+
   static DateTime? _safeDate(int year, int month, int day) {
     try {
       final value = DateTime(year, month, day);
@@ -244,7 +271,8 @@ class DateExtractor {
     }
   }
 
-  static bool hasPastMonthDayDate(String text, DateTime now) {
+  static bool hasPastMonthDayDate(String rawText, DateTime now) {
+    final text = _normalizeEraDates(rawText);
     final match =
         _monthDayPattern.firstMatch(text) ?? _slashDatePattern.firstMatch(text);
     if (match == null) return false;

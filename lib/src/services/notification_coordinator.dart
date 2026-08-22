@@ -13,7 +13,7 @@ class NotificationCoordinator {
   final NotificationService _notifications;
   final Store _store;
 
-  Future<void> requestPermissions() => _notifications.requestPermissions();
+  Future<bool> requestPermissions() => _notifications.requestPermissions();
 
   Future<void> schedule(AppTodo todo) async {
     await _store.queueNotificationSync(
