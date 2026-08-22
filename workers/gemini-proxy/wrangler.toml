@@ -1,5 +1,5 @@
 name = "ashita-gemini-proxy"
-main = "src/index.ts"
+main = "src/validated.ts"
 compatibility_date = "2026-07-10"
 
 [vars]
