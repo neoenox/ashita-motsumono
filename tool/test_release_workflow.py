@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import unittest
 
 from tool.configure_android_privacy import transform_manifest
@@ -11,6 +12,12 @@ WORKFLOW = ROOT / '.github/workflows/ci.yml'
 RELEASE_CONFIG = ROOT / 'tool/configure_android_release.sh'
 CREATE_PLATFORMS = ROOT / 'tool/create_platforms.sh'
 PUBSPEC = ROOT / 'pubspec.yaml'
+SECRET_BEARING_WORKFLOWS = (
+    ROOT / '.github/workflows/ci.yml',
+    ROOT / '.github/workflows/release-android.yml',
+    ROOT / '.github/workflows/release-apk.yml',
+    ROOT / '.github/workflows/release-readiness-preflight.yml',
+)
 
 
 class ReleaseWorkflowTest(unittest.TestCase):
@@ -23,6 +30,23 @@ class ReleaseWorkflowTest(unittest.TestCase):
 
     def test_flutter_sdk_is_pinned(self) -> None:
         self.assertEqual(self.workflow.count("flutter-version: '3.44.0'"), 2)
+
+    def test_secret_bearing_workflows_pin_external_actions(self) -> None:
+        mutable = []
+        action_pattern = re.compile(r'^\s*uses:\s*([^\s#]+)', re.MULTILINE)
+        immutable_pattern = re.compile(r'^[^@]+@[0-9a-f]{40}$')
+        for path in SECRET_BEARING_WORKFLOWS:
+            source = path.read_text(encoding='utf-8')
+            for action in action_pattern.findall(source):
+                if action.startswith('./') or action.startswith('docker://'):
+                    continue
+                if not immutable_pattern.fullmatch(action):
+                    mutable.append(f'{path.name}: {action}')
+        self.assertEqual(
+            mutable,
+            [],
+            'Secret-bearing release workflows must pin external Actions to full commit SHAs',
+        )
 
     def test_release_build_requires_validated_latest_master(self) -> None:
         self.assertGreaterEqual(self.workflow.count('needs: analyze-and-test'), 2)
