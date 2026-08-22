@@ -23,9 +23,19 @@ class InternalReleaseWorkflowTest(unittest.TestCase):
         cls.gemfile = GEMFILE.read_text(encoding='utf-8')
         cls.guide = GUIDE.read_text(encoding='utf-8')
 
-    def test_release_is_limited_to_master_commits(self) -> None:
-        self.assertIn('git merge-base --is-ancestor "$GITHUB_SHA" origin/master', self.workflow)
-        self.assertIn('Internal releases must point to a commit already contained in master', self.workflow)
+    def test_release_is_limited_to_latest_master_commit(self) -> None:
+        self.assertIn('git fetch origin master --force', self.workflow)
+        self.assertIn('master_sha="$(git rev-parse origin/master)"', self.workflow)
+        self.assertIn('if [[ "$GITHUB_SHA" != "$master_sha" ]]', self.workflow)
+        self.assertIn('must point exactly to latest origin/master', self.workflow)
+        self.assertNotIn('git merge-base --is-ancestor', self.workflow)
+
+    def test_manual_dispatch_defaults_are_non_publishing(self) -> None:
+        dispatch = self.workflow.split('workflow_dispatch:', 1)[1].split('permissions:', 1)[0]
+        self.assertIn('release_status:', dispatch)
+        self.assertIn('default: draft', dispatch)
+        self.assertIn('validate_only:', dispatch)
+        self.assertIn('default: true', dispatch)
 
     def test_tag_must_match_pubspec_version_name(self) -> None:
         self.assertIn('expected_tag="v${pubspec_version}"', self.workflow)
@@ -36,6 +46,16 @@ class InternalReleaseWorkflowTest(unittest.TestCase):
         self.assertIn('$RUNNER_TEMP/play-service-account.json', self.workflow)
         self.assertIn('python3 -m json.tool "$credential"', self.workflow)
         self.assertIn('rm -f "$PLAY_SERVICE_ACCOUNT_JSON_PATH"', self.workflow)
+
+    def test_certificate_verification_is_mandatory(self) -> None:
+        self.assertIn('missing+=("ANDROID_UPLOAD_CERT_SHA256 variable")', self.workflow)
+        self.assertNotIn("if: vars.ANDROID_UPLOAD_CERT_SHA256 != ''", self.workflow)
+        self.assertNotIn('SHA256 not verified - first release', self.workflow)
+        self.assertNotIn('skipping AAB certificate matching', self.workflow)
+        self.assertEqual(
+            self.workflow.count('--expected "$ANDROID_UPLOAD_CERT_SHA256"'),
+            2,
+        )
 
     def test_signed_aab_is_verified_before_upload(self) -> None:
         build = self.workflow.index('- name: Build signed release AAB')
@@ -87,8 +107,6 @@ class InternalReleaseWorkflowTest(unittest.TestCase):
         self.assertIn('used-version-codes.json', self.fastfile)
 
     def test_fastlane_paths_resolve_from_repo_root(self) -> None:
-        # fastlane lanes run with CWD set to the Fastfile directory, so relative
-        # paths must be resolved against the repository root, not the lane CWD.
         self.assertIn('def repo_root', self.fastfile)
         self.assertIn('File.expand_path("..", __dir__)', self.fastfile)
         self.assertIn('"build/play-release/used-version-codes.json",', self.fastfile)
