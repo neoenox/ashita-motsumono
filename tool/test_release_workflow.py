@@ -9,6 +9,7 @@ from tool.configure_android_privacy import transform_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / '.github/workflows/ci.yml'
+INTERNAL_RELEASE_WORKFLOW = ROOT / '.github/workflows/release-android.yml'
 RELEASE_CONFIG = ROOT / 'tool/configure_android_release.sh'
 CREATE_PLATFORMS = ROOT / 'tool/create_platforms.sh'
 PUBSPEC = ROOT / 'pubspec.yaml'
@@ -24,6 +25,9 @@ class ReleaseWorkflowTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.workflow = WORKFLOW.read_text(encoding='utf-8')
+        cls.internal_release_workflow = INTERNAL_RELEASE_WORKFLOW.read_text(
+            encoding='utf-8'
+        )
         cls.release_config = RELEASE_CONFIG.read_text(encoding='utf-8')
         cls.create_platforms = CREATE_PLATFORMS.read_text(encoding='utf-8')
         cls.pubspec = PUBSPEC.read_text(encoding='utf-8')
@@ -62,6 +66,36 @@ class ReleaseWorkflowTest(unittest.TestCase):
         self.assertIn('git fetch origin master --force', self.workflow)
         self.assertIn('git rev-parse origin/master', self.workflow)
         self.assertIn('if [[ "$GITHUB_SHA" != "$master_sha" ]]', self.workflow)
+
+    def test_internal_release_requires_exact_latest_master(self) -> None:
+        source = self.internal_release_workflow
+        self.assertIn('git fetch origin master --force', source)
+        self.assertIn('master_sha="$(git rev-parse origin/master)"', source)
+        self.assertIn('if [[ "$GITHUB_SHA" != "$master_sha" ]]', source)
+        self.assertNotIn('git merge-base --is-ancestor', source)
+
+    def test_internal_release_manual_defaults_are_safe(self) -> None:
+        source = self.internal_release_workflow
+        dispatch = source.split('workflow_dispatch:', 1)[1].split('permissions:', 1)[0]
+        self.assertRegex(dispatch, r'release_status:[\s\S]*?default:\s*draft')
+        self.assertRegex(dispatch, r'validate_only:[\s\S]*?default:\s*true')
+
+    def test_internal_release_requires_certificate_and_never_skips_verification(self) -> None:
+        source = self.internal_release_workflow
+        self.assertIn(
+            'missing+=("ANDROID_UPLOAD_CERT_SHA256 variable")',
+            source,
+        )
+        self.assertNotIn(
+            "if: vars.ANDROID_UPLOAD_CERT_SHA256 != ''",
+            source,
+        )
+        self.assertNotIn('SHA256 not verified - first release', source)
+        self.assertNotIn('skipping AAB certificate matching', source)
+        self.assertEqual(
+            source.count('--expected "$ANDROID_UPLOAD_CERT_SHA256"'),
+            2,
+        )
 
     def test_upload_keystore_certificate_is_verified_before_builds(self) -> None:
         verify = self.workflow.index('- name: Verify upload keystore certificate')

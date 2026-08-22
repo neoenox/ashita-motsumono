@@ -5,7 +5,9 @@
 - UMP同意対応、共有取り込み、PDF取り込みを含む次の機能リリースは `0.7.0` とする。
 - versionCodeは `play_preflight`（Play状態preflight）が実APIから取得した未使用番号を使う。推測で採番せず、衝突時はビルド前にfail-fastする。
 - featureブランチから直接配布せず、PRをmasterへマージし、masterのCI成功後に `v0.7.0` タグを付ける。
+- **内部テストへ送れるSource SHAは実行時点の最新 `origin/master` と完全一致するcommitだけ**とする。master履歴上にある古いcommitでも拒否する。
 - ビルドとアップロードは `.github/workflows/release-android.yml` を正規経路とし、ローカルfastlaneは緊急時・接続確認用に限定する。
+- workflow_dispatchの既定値は `validate_only=true` / `release_status=draft`。実uploadは利用者が明示的に安全側の既定値を変更した場合だけ行う。
 
 ## 事前ゲート
 
@@ -21,6 +23,7 @@
 3. `Flutter CI` と `Flutter Release Validation` が成功していることを確認する。
 4. Android実機で、初回同意、広告表示、プライバシー設定、共有テキスト、画像、PDF、通知、購入復元を確認する。
 5. Play Consoleの「アプリのコンテンツ」で、広告、データセーフティ、プライバシーポリシー、対象年齢を最新実装と一致させる。
+6. `ANDROID_UPLOAD_CERT_SHA256` が必須Repository Variableとして設定済みであることを確認する。未設定・keystore不一致・AAB signer不一致はいずれもbuild/uploadを継続しない。
 
 ## Play 状態 preflight（versionCode / 署名証明書）
 
@@ -31,7 +34,7 @@
 - 実施場所:
   - `release-readiness-preflight.yml` の `play-state-preflight` job（pubspec.yaml等を触るPR / master push / 手動実行）
   - `release-android.yml` の `Play release preflight (used versionCode)` ステップ（AABビルド直前）
-- 登録済みupload証明書はPlay Developer APIでは取得できない（Play ConsoleのApp integrity画面のみ）。keystore↔`ANDROID_UPLOAD_CERT_SHA256` 照合（既存）と `validate_only` アップロード受理（実アップロード時の検証）が自動チェックとなる。preflightの報告JSONにはこの制約を明記する。
+- 登録済みupload証明書はPlay Developer APIでは取得できない（Play ConsoleのApp integrity画面のみ）。keystore↔`ANDROID_UPLOAD_CERT_SHA256` 照合と、AAB signer↔`ANDROID_UPLOAD_CERT_SHA256` 照合を必須とする。`validate_only` アップロード受理はPlay側登録証明書との追加確認として使う。
 - tracks APIは**アクティブなreleaseのみ**を返す。過去のreleaseで使われて廃止（superseded）されたversionCode（例: 4）は一覧に出ないが再利用不可のままなので、次に使う番号は `max(アクティブ)+1` を選ぶ。この意味論は報告JSONの `usedCodesNote` に明記される。
 
 ### バージョン bump フロー（推測採番の廃止）
@@ -69,7 +72,7 @@ Repository settings > Secrets and variables > Actions で設定する。
 
 ### Variables
 
-- `ANDROID_UPLOAD_CERT_SHA256`
+- `ANDROID_UPLOAD_CERT_SHA256`（**必須**。空値ではrelease workflowを開始しない）
 - `IAP_REMOVE_ADS_PRODUCT_ID`
 - `IAP_AI_ACCESS_PRODUCT_ID`
 
@@ -90,12 +93,13 @@ Repository settings > Secrets and variables > Actions で設定する。
 2. feature PRのCIとレビューを完了し、masterへsquash mergeする。
 3. リリースPRで `pubspec.yaml` の versionCode を「バージョン bump フロー」（`bump_app_version.py`）で採番し、`fastlane/metadata/android/ja-JP/changelogs/default.txt` を実際の変更内容へ更新する。
 4. リリースPRをmasterへマージし、masterのCI成功を確認する。
-5. `git tag v0.7.0` と `git push origin v0.7.0` を実行する。
-6. GitHub Actionsの `Android Internal Release` が、master包含確認、Play状態preflight（versionCode未使用・証明書照合）、AAB生成、Google Play API認証、internalトラックへのアップロードまで成功することを確認する。versionCodeが使用済みの場合はpreflightがビルド前に失敗するので、pubspecのbuild番号を次の空き番号へ更新して再実行する。
-7. Play Consoleの内部テストリリース画面でversionName/versionCode、リリースノート、対象デバイス除外、事前審査の警告を確認する。
-8. テスター端末でオプトインURLを開き、Google Play経由でインストール・更新する。
+5. タグ作成直前に `git fetch origin master --force` と `git rev-parse HEAD origin/master` を確認し、HEADと最新`origin/master`が完全一致していることを確認する。
+6. `git tag v0.7.0` と `git push origin v0.7.0` を実行する。
+7. GitHub Actionsの `Android Internal Release` が、**Source SHA == 最新origin/master**、Play状態preflight（versionCode未使用・証明書照合）、AAB生成、Google Play API認証、internalトラックへのアップロードまで成功することを確認する。versionCodeが使用済みの場合はpreflightがビルド前に失敗するので、pubspecのbuild番号を次の空き番号へ更新して再実行する。
+8. Play Consoleの内部テストリリース画面でversionName/versionCode、リリースノート、対象デバイス除外、事前審査の警告を確認する。
+9. テスター端末でオプトインURLを開き、Google Play経由でインストール・更新する。
 
-タグを作る前の疎通確認には、Actionsのworkflow_dispatchで `validate_only=true` を選ぶ。実配布はmaster上で `validate_only=false`、通常は `release_status=completed` を使用する。
+タグを作る前の疎通確認には、Actionsのworkflow_dispatchを使う。**既定値の `validate_only=true` / `release_status=draft` のままではpublishしない**。実配布する場合だけ、最新origin/masterとの一致を再確認した上で `validate_only=false` と意図するrelease statusを明示的に選ぶ。
 
 ## ローカルfastlane
 
