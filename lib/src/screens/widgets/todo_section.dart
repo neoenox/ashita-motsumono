@@ -71,15 +71,26 @@ class TodoSection extends StatelessWidget {
   }
 }
 
-class UpcomingSection extends StatelessWidget {
+class UpcomingSection extends StatefulWidget {
   const UpcomingSection({super.key, required this.todos});
 
   final List<AppTodo> todos;
 
   @override
+  State<UpcomingSection> createState() => _UpcomingSectionState();
+}
+
+class _UpcomingSectionState extends State<UpcomingSection> {
+  static const _collapsedLimit = 10;
+
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final todos = widget.todos;
     if (todos.isEmpty) return const SizedBox.shrink();
-    final shown = todos.take(10).toList();
+    final overflowCount = todos.length - _collapsedLimit;
+    final shown = _expanded ? todos : todos.take(_collapsedLimit).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -101,13 +112,23 @@ class UpcomingSection extends StatelessWidget {
             child: Column(
               children: [
                 ...shown.map((todo) => TodoTile(todo: todo, compact: true)),
-                if (todos.length > 10) ...[
+                if (overflowCount > 0) ...[
                   const SizedBox(height: Spacing.sm),
-                  Text(
-                    '他 ${todos.length - 10} 件',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontSize: 13,
+                  InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: () => setState(() => _expanded = !_expanded),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Spacing.xs,
+                        vertical: Spacing.xs,
+                      ),
+                      child: Text(
+                        _expanded ? '閉じる' : '他 $overflowCount 件',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ),
                 ],

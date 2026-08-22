@@ -18,7 +18,7 @@ class _FakeNotificationService extends NotificationService {
   Future<void> initialize() async {}
 
   @override
-  Future<void> requestPermissions() async {}
+  Future<bool> requestPermissions() async => true;
 }
 
 class _RecordingDocumentIntakeService extends DocumentIntakeService {

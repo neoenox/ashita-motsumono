@@ -1,9 +1,8 @@
 name: Release Android
 
+# Manual-only until this pipeline converges with the Play pipeline
+# (release-android.yml): v* tag pushes are intentionally disabled.
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 jobs:

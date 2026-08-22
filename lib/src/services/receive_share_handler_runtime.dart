@@ -139,10 +139,7 @@ extension ReceiveShareHandlerRuntime on ReceiveShareHandler {
         return await _processPdf(supportedFile);
       }
       if (_isImageFile(supportedFile)) {
-        return await _processImage(
-          supportedFile.path,
-          mimeType: supportedFile.mimeType ?? 'image/*',
-        );
+        return await _processImage(supportedFile);
       }
       return await _processText(supportedFile.path);
     } on OcrException catch (error) {
