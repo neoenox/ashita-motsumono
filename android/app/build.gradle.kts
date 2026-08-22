@@ -70,7 +70,10 @@ android {
             val requestedReleaseBuild = gradle.startParameter.taskNames.any {
                 it.contains("Release", ignoreCase = true)
             }
+            val allowsTestAdMobInRelease =
+                System.getenv("RELEASE_ALLOW_TEST_ADMOB") == "true"
             if (requestedReleaseBuild &&
+                !allowsTestAdMobInRelease &&
                 configuredAdMobAppId.ifBlank { localTestAdMobAppId } == localTestAdMobAppId
             ) {
                 throw GradleException(

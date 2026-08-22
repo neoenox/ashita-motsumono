@@ -69,6 +69,7 @@ void main() {
 
       expect(gradle, contains('System.getenv("ADMOB_APP_ID") ?: ""'));
       expect(gradle, contains('requestedReleaseBuild'));
+      expect(gradle, contains('RELEASE_ALLOW_TEST_ADMOB'));
       expect(gradle, contains('GradleException'));
       expect(gradle, isNot(contains('ca-app-pub-3940256099942544~3347511713')));
     },
