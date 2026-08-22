@@ -73,6 +73,10 @@ void main() {
       expect(TextNormalizer.normalize('円500'), '¥500');
     });
 
+    test('keeps standalone yen counts followed by digits unchanged', () {
+      expect(TextNormalizer.normalize('1円2つ'), '1円2つ');
+    });
+
     test('handles empty input', () {
       expect(TextNormalizer.normalize(''), '');
     });

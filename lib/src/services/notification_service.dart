@@ -84,18 +84,40 @@ class NotificationService {
     }
   }
 
-  Future<void> requestPermissions() async {
+  Future<bool> requestPermissions() async {
     await initialize();
-    await _plugin
+    final androidGranted = await _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >()
         ?.requestNotificationsPermission();
-    await _plugin
+    final iosGranted = await _plugin
         .resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin
         >()
         ?.requestPermissions(alert: true, badge: true, sound: true);
+    return androidGranted ?? iosGranted ?? false;
+  }
+
+  /// 現在の端末の通知権限が許可されているかを返す（判定できない場合は true）。
+  static Future<bool> areNotificationsEnabled() async {
+    final plugin = FlutterLocalNotificationsPlugin();
+    try {
+      final android = await plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.areNotificationsEnabled();
+      if (android != null) return android;
+      final ios = await plugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >()
+          ?.checkPermissions();
+      return ios?.isEnabled ?? true;
+    } on Object {
+      return true;
+    }
   }
 
   Future<void> scheduleTodo(AppTodo todo) async {

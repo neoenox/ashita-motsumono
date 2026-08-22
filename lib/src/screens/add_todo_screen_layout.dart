@@ -55,11 +55,11 @@ extension _AddTodoScreenLayout on _AddTodoScreenState {
               ),
               const SizedBox(height: Spacing.sm),
               if (Platform.isWindows)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: Spacing.sm),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Spacing.sm),
                   child: Text(
                     'カメラ・OCRはWindows未対応です。テキスト貼り付けまたは手入力を使ってください。',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: cs.onSurfaceVariant),
                   ),
                 )
               else

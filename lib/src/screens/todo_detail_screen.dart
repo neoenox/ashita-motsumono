@@ -377,18 +377,20 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
               const SizedBox(height: Spacing.sm),
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: imageFile.existsSync()
-                    ? Image.file(imageFile, cacheWidth: cacheWidth)
-                    : Container(
-                        height: 120,
-                        color: cs.surfaceContainerLow,
-                        child: Center(
-                          child: Text(
-                            '画像ファイルが見つかりません',
-                            style: TextStyle(color: cs.onSurfaceVariant),
-                          ),
-                        ),
+                child: Image.file(
+                  imageFile,
+                  cacheWidth: cacheWidth,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 120,
+                    color: cs.surfaceContainerLow,
+                    child: Center(
+                      child: Text(
+                        '画像ファイルが見つかりません',
+                        style: TextStyle(color: cs.onSurfaceVariant),
                       ),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

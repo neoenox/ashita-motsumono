@@ -103,14 +103,40 @@ class ExtractionService {
 
   static final _yenAmountPattern = RegExp(r'¥\s*([0-9,]+)');
   static final _yenSuffixPattern = RegExp(r'([0-9,]+)\s*円');
+  static final _amountKeywordPattern = RegExp(r'(集金|代金|納付|負担)');
+  static const _amountKeywordRadius = 20;
 
   static int? _extractAmount(String text) {
-    for (final pattern in [_yenAmountPattern, _yenSuffixPattern]) {
-      final match = pattern.firstMatch(text);
-      if (match != null) {
-        return int.tryParse(match.group(1)!.replaceAll(',', ''));
-      }
+    final allMatches = [
+      for (final pattern in [_yenAmountPattern, _yenSuffixPattern])
+        ...pattern.allMatches(text),
+    ];
+    final match =
+        allMatches
+            .where((candidate) => _nearAmountKeyword(text, candidate))
+            .firstOrNull ??
+        _firstAmountMatch(text);
+    if (match != null) {
+      return int.tryParse(match.group(1)!.replaceAll(',', ''));
     }
     return null;
+  }
+
+  static RegExpMatch? _firstAmountMatch(String text) {
+    for (final pattern in [_yenAmountPattern, _yenSuffixPattern]) {
+      final match = pattern.firstMatch(text);
+      if (match != null) return match;
+    }
+    return null;
+  }
+
+  static bool _nearAmountKeyword(String text, RegExpMatch amount) {
+    for (final keyword in _amountKeywordPattern.allMatches(text)) {
+      final distance = amount.start >= keyword.end
+          ? amount.start - keyword.end
+          : keyword.start - amount.end;
+      if (distance <= _amountKeywordRadius) return true;
+    }
+    return false;
   }
 }

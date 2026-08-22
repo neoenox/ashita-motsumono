@@ -8,6 +8,7 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
   }
 
   Future<void> _saveManual() async {
+    if (_busy) return;
     final title = _titleController.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(
@@ -37,15 +38,25 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
           ? null
           : _noteController.text.trim(),
     );
-    await appState.addTodoFromDraft(draft: draft, personId: _personId);
-    await settings.addLearnedItemLabels(items);
-    if (!mounted) return;
-    navigator.pop();
+    _update(() => _busy = true);
+    try {
+      await appState.addTodoFromDraft(draft: draft, personId: _personId);
+      await settings.addLearnedItemLabels(items);
+      if (!mounted) return;
+      navigator.pop();
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('登録に失敗しました: $error')));
+    } finally {
+      if (mounted) _update(() => _busy = false);
+    }
   }
 
   Future<void> _extractFromText(String text) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty || _busy) return;
     final appState = context.read<AppState>();
     final settings = context.read<AppSettings>();
     final navigator = Navigator.of(context);
@@ -60,23 +71,31 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
       );
       return;
     }
-    final document = await appState.addDocument(
-      sourceType: 'text',
-      ocrText: trimmed,
-    );
-    if (!mounted) return;
-    await navigator.pushReplacement(
-      MaterialPageRoute(
-        builder: (_) =>
-            _reviewScreenFor(drafts: drafts, documentId: document.id),
-      ),
-    );
+    _update(() => _busy = true);
+    try {
+      final document = await appState.addDocument(
+        sourceType: 'text',
+        ocrText: trimmed,
+      );
+      if (!mounted) return;
+      await navigator.pushReplacement(
+        MaterialPageRoute(
+          builder: (_) =>
+              _reviewScreenFor(drafts: drafts, documentId: document.id),
+        ),
+      );
+    } on Object catch (error) {
+      if (kDebugMode) debugPrint('Text extraction error: $error');
+      _showOcrError('テキストからTodo情報を抽出できませんでした。手入力で登録してください。');
+    } finally {
+      if (mounted) _update(() => _busy = false);
+    }
   }
 
   Future<void> _importFromClipboard() async {
     final text = await getClipboardText();
+    if (!mounted) return;
     if (text == null || text.trim().isEmpty) {
-      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('クリップボードにテキストがありません')));

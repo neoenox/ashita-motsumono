@@ -40,7 +40,6 @@ class DocumentPageRecord {
     'id': id,
     'documentId': documentId,
     'pageIndex': pageIndex,
-    'localImagePath': localImagePath,
     'ocrText': ocrText,
   };
 

@@ -20,3 +20,9 @@ name = "ENTITLEMENT_RATE_LIMITER"
 type = "ratelimit"
 namespace_id = "1002"
 simple = { limit = 20, period = 60 }
+
+# Optional: enables the AI daily usage quota (see README). Replace the id with
+# a real KV namespace id before uncommenting.
+# [[kv_namespaces]]
+# binding = "AI_DAILY_QUOTA"
+# id = "<unique-kv-namespace-id>"
