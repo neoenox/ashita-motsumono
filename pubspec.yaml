@@ -23,7 +23,7 @@ dependencies:
   intl: ^0.20.2
   drift: ^2.34.0
   sqlite3_flutter_libs: ^0.6.0
-  google_mobile_ads: ^9.0.0
+  google_mobile_ads: ^9.1.0
   characters: ^1.4.1
   in_app_purchase: ^3.3.0
   url_launcher: ^6.3.1
