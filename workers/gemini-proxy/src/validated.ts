@@ -5,14 +5,53 @@ const DEFAULT_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_VERIFICATION_DATA_CHARS = 200_000;
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
+interface DailyQuotaStore {
+  get(key: string): Promise<string | null>;
+  put(
+    key: string,
+    value: string,
+    options: { expirationTtl?: number },
+  ): Promise<void>;
+}
+
 interface RuntimeEnv {
   REMOVE_ADS_PRODUCT_ID: string;
   AI_ACCESS_PRODUCT_ID: string;
   MAX_IMAGE_BYTES?: string;
+  AI_DAILY_QUOTA?: DailyQuotaStore;
   [key: string]: unknown;
 }
 
 type JsonRecord = Record<string, unknown>;
+
+class DeferredDailyQuotaStore implements DailyQuotaStore {
+  private pendingWrites: Array<{
+    key: string;
+    value: string;
+    options: { expirationTtl?: number };
+  }> = [];
+
+  constructor(private readonly delegate: DailyQuotaStore) {}
+
+  get(key: string): Promise<string | null> {
+    return this.delegate.get(key);
+  }
+
+  async put(
+    key: string,
+    value: string,
+    options: { expirationTtl?: number },
+  ): Promise<void> {
+    this.pendingWrites.push({ key, value, options });
+  }
+
+  async commit(): Promise<void> {
+    for (const write of this.pendingWrites) {
+      await this.delegate.put(write.key, write.value, write.options);
+    }
+    this.pendingWrites = [];
+  }
+}
 
 export function validateVerifyBody(
   value: unknown,
@@ -144,8 +183,8 @@ async function parseJsonClone(
 
 export default {
   async fetch(request: Request, env: RuntimeEnv): Promise<Response> {
+    const path = new URL(request.url).pathname;
     if (request.method === 'POST') {
-      const path = new URL(request.url).pathname;
       if (path === '/entitlements/verify') {
         const body = await parseJsonClone(request, 256 * 1024);
         if (body instanceof Response) return body;
@@ -162,6 +201,25 @@ export default {
     const delegate = worker as unknown as {
       fetch(request: Request, env: RuntimeEnv): Promise<Response>;
     };
-    return delegate.fetch(request, env);
+    const quota = path === '/analyze' ? env.AI_DAILY_QUOTA : undefined;
+    if (quota === undefined) {
+      return delegate.fetch(request, env);
+    }
+
+    const deferredQuota = new DeferredDailyQuotaStore(quota);
+    const response = await delegate.fetch(request, {
+      ...env,
+      AI_DAILY_QUOTA: deferredQuota,
+    });
+    if (!response.ok) {
+      return response;
+    }
+
+    try {
+      await deferredQuota.commit();
+    } catch {
+      return json({ error: 'AI daily quota is temporarily unavailable' }, 503);
+    }
+    return response;
   },
 };
