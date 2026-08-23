@@ -41,11 +41,15 @@ class AppState extends ChangeNotifier {
     required NotificationService notifications,
     Uuid? uuid,
     SensitiveDataCleaner? sensitiveDataCleaner,
+    DocumentImageCleaner? documentImageCleaner,
   }) : _store = store,
        _notifications = notifications,
        _uuid = uuid ?? const Uuid(),
-       _sensitiveDataCleaner = sensitiveDataCleaner ?? SensitiveDataCleaner() {
+       _sensitiveDataCleaner = sensitiveDataCleaner ?? SensitiveDataCleaner(),
+       _documentImageCleaner = documentImageCleaner ?? DocumentImageCleaner() {
     childState.addListener(notifyListeners);
+    todoState.addListener(notifyListeners);
+    documentState.addListener(notifyListeners);
   }
 
   final Store _store;
@@ -61,8 +65,7 @@ class AppState extends ChangeNotifier {
   late final TodoFactory _todoFactory = TodoFactory(_uuid);
   late final NotificationCoordinator _notificationCoordinator =
       NotificationCoordinator(_notifications, _store);
-  final DocumentImageCleaner _documentImageCleaner =
-      const DocumentImageCleaner();
+  final DocumentImageCleaner _documentImageCleaner;
 
   bool _loaded = false;
   Future<void>? _closeFuture;
@@ -217,6 +220,8 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     childState.removeListener(notifyListeners);
+    todoState.removeListener(notifyListeners);
+    documentState.removeListener(notifyListeners);
     childState.dispose();
     todoState.dispose();
     documentState.dispose();

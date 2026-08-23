@@ -209,4 +209,29 @@ extension _HomeScreenActions on _HomeScreenState {
       return child?.name.toLowerCase().contains(query) == true;
     }).toList();
   }
+
+  void _refreshSectionTodos(AppState state) {
+    final now = DateTime.now();
+    final dayKey = DateTime(now.year, now.month, now.day);
+    if (identical(state.todos, _sectionSourceTodos) &&
+        identical(state.children, _sectionSourceChildren) &&
+        _searchQuery == _sectionSearchQuery &&
+        _filterPersonId == _sectionFilterPersonId &&
+        dayKey == _sectionDayKey) {
+      return;
+    }
+    final tomorrow = now.add(const Duration(days: 1));
+    _todaySectionTodos = _filter(state.todosForDate(now), state.children);
+    _tomorrowSectionTodos = _filter(
+      state.todosForDate(tomorrow),
+      state.children,
+    );
+    _undatedSectionTodos = _filter(state.undatedTodos(), state.children);
+    _upcomingSectionTodos = _filter(state.futureTodos(), state.children);
+    _sectionSourceTodos = state.todos;
+    _sectionSourceChildren = state.children;
+    _sectionSearchQuery = _searchQuery;
+    _sectionFilterPersonId = _filterPersonId;
+    _sectionDayKey = dayKey;
+  }
 }

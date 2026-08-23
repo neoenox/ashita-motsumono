@@ -44,7 +44,7 @@ void main() {
     return state;
   }
 
-  test('document changes notify only DocumentState', () async {
+  test('document changes notify DocumentState and relay to AppState', () async {
     final state = await createState();
     var appNotifications = 0;
     var childNotifications = 0;
@@ -60,10 +60,10 @@ void main() {
     expect(documentNotifications, 1);
     expect(todoNotifications, 0);
     expect(childNotifications, 0);
-    expect(appNotifications, 0);
+    expect(appNotifications, 1);
   });
 
-  test('todo changes notify only TodoState', () async {
+  test('todo changes notify TodoState and relay to AppState', () async {
     final state = await createState();
     var appNotifications = 0;
     var childNotifications = 0;
@@ -86,7 +86,7 @@ void main() {
     expect(todoNotifications, 1);
     expect(documentNotifications, 0);
     expect(childNotifications, 0);
-    expect(appNotifications, 0);
+    expect(appNotifications, 1);
   });
 
   test(

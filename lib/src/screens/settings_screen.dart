@@ -3,6 +3,7 @@
 // Stitch デザインに合わせてカードベースのレイアウトに刷新。
 // 関連: app_settings.dart, home_screen.dart, notification_service.dart
 
+import 'package:app_settings/app_settings.dart' as os_settings;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -114,6 +115,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: settings.showNotificationDetails,
                   onChanged: (enabled) =>
                       _setNotificationDetails(context, enabled),
+                ),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.notifications_active_outlined),
+                  title: const Text('通知設定を開く'),
+                  subtitle: const Text(
+                    '端末の設定で通知の許可を変更します',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  onTap: _openOsAppSettings,
                 ),
               ],
             ),
@@ -282,6 +294,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } on Object {
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('通知表示設定の保存に失敗しました')));
+    }
+  }
+
+  Future<void> _openOsAppSettings() async {
+    try {
+      await os_settings.AppSettings.openAppSettings();
+    } on Object {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('通知設定を開けませんでした')));
     }
   }
 
