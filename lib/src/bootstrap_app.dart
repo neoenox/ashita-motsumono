@@ -223,6 +223,12 @@ class _BootstrapAppState extends State<BootstrapApp> {
     );
     unawaited(
       runner.run(
+        name: 'orphan document image sweep',
+        action: appState.deleteOrphanDocumentImages,
+      ),
+    );
+    unawaited(
+      runner.run(
         name: 'consent and ad service initialization',
         action: _initAdWithConsent,
       ),

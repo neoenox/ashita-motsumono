@@ -53,6 +53,16 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _shareListenerInitialized = false;
   bool _fabPressed = false;
 
+  List<AppTodo>? _sectionSourceTodos;
+  List<PersonProfile>? _sectionSourceChildren;
+  String? _sectionSearchQuery;
+  String? _sectionFilterPersonId;
+  DateTime? _sectionDayKey;
+  List<AppTodo> _todaySectionTodos = const [];
+  List<AppTodo> _tomorrowSectionTodos = const [];
+  List<AppTodo> _undatedSectionTodos = const [];
+  List<AppTodo> _upcomingSectionTodos = const [];
+
   @override
   void initState() {
     super.initState();

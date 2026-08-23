@@ -112,6 +112,14 @@ class InternalReleaseWorkflowTest(unittest.TestCase):
         self.assertIn('"build/play-release/used-version-codes.json",', self.fastfile)
         self.assertIn('repo_root,', self.fastfile)
 
+    def test_readiness_workflow_derives_version_prefix_from_pubspec(self) -> None:
+        self.assertNotIn('--expected-version-prefix 0.7.0+', self.readiness)
+        self.assertEqual(2, self.readiness.count('${version%+*}+'))
+        self.assertEqual(
+            2,
+            self.readiness.count('--expected-version-prefix "${version%+*}+"'),
+        )
+
     def test_readiness_workflow_has_play_state_preflight_job(self) -> None:
         self.assertIn('play-state-preflight:', self.readiness)
         self.assertIn('bundle exec fastlane android play_preflight', self.readiness)

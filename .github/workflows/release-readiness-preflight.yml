@@ -59,12 +59,19 @@ jobs:
       - name: Run preflight unit tests
         run: python3 -m unittest tool/test_release_readiness_preflight.py
 
-      - name: Validate v0.7.0 release candidate
-        run: >-
-          python3 tool/release_readiness_preflight.py
-          --root .
-          --expected-version-prefix 0.7.0+
-          --output build/release-readiness/static-preflight.json
+      - name: Validate release candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | head -n 1)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+\+[0-9]+$ ]]; then
+            echo "::error::pubspec.yaml version has unexpected format: $version"
+            exit 1
+          fi
+          python3 tool/release_readiness_preflight.py \
+            --root . \
+            --expected-version-prefix "${version%+*}+" \
+            --output build/release-readiness/static-preflight.json
 
       - name: Upload static preflight evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -100,12 +107,18 @@ jobs:
           HAS_VARIABLE_ANDROID_UPLOAD_CERT_SHA256: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 != '' }}
           HAS_VARIABLE_IAP_REMOVE_ADS_PRODUCT_ID: ${{ vars.IAP_REMOVE_ADS_PRODUCT_ID != '' }}
           HAS_VARIABLE_IAP_AI_ACCESS_PRODUCT_ID: ${{ vars.IAP_AI_ACCESS_PRODUCT_ID != '' }}
-        run: >-
-          python3 tool/release_readiness_preflight.py
-          --root .
-          --expected-version-prefix 0.7.0+
-          --check-configuration
-          --output build/release-readiness/configuration-preflight.json
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | head -n 1)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+\+[0-9]+$ ]]; then
+            echo "::error::pubspec.yaml version has unexpected format: $version"
+            exit 1
+          fi
+          python3 tool/release_readiness_preflight.py \
+            --root . \
+            --expected-version-prefix "${version%+*}+" \
+            --check-configuration \
+            --output build/release-readiness/configuration-preflight.json
 
       - name: Upload configuration preflight evidence
         if: always()

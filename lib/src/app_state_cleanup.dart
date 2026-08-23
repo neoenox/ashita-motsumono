@@ -64,6 +64,17 @@ extension CleanupAppStateOperations on AppState {
     }
   }
 
+  /// DBから参照されない画像ファイルを起動時に一掃する。
+  /// 画像保存とDB保存の間でクラッシュした際の取り残しを回復する。
+  Future<void> deleteOrphanDocumentImages() async {
+    final directory = await _documentImageCleaner.resolveImagesDirectory();
+    final referencedPaths = _documentImageCleaner.pathsFor(documents).toSet();
+    await _documentImageCleaner.deleteOrphans(
+      directory: directory,
+      referencedPaths: referencedPaths,
+    );
+  }
+
   Future<void> tryDeleteDocumentOnDispose({
     required bool saved,
     required String? documentId,

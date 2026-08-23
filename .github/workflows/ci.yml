@@ -54,7 +54,15 @@ jobs:
         run: python3 tool/run_flutter_analyze.py
 
       - name: Test
-        run: flutter test
+        run: flutter test --coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-report
+          path: coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Generate LP screenshots
         run: flutter test tool/generate_lp_screenshots_test.dart

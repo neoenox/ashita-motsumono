@@ -59,10 +59,13 @@ class TodoSection extends StatelessWidget {
                       ],
                     ),
                   )
-                : Column(
-                    children: todos
-                        .map((todo) => TodoTile(todo: todo))
-                        .toList(),
+                : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    itemCount: todos.length,
+                    itemBuilder: (context, index) =>
+                        TodoTile(todo: todos[index]),
                   ),
           ),
         ),

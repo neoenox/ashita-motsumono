@@ -3,12 +3,11 @@ part of 'home_screen.dart';
 extension _HomeScreenLayout on _HomeScreenState {
   Widget _buildHome(BuildContext context) {
     final state = context.watch<AppState>();
-    final today = DateTime.now();
-    final tomorrow = today.add(const Duration(days: 1));
-    final todayTodos = _filter(state.todosForDate(today), state.children);
-    final tomorrowTodos = _filter(state.todosForDate(tomorrow), state.children);
-    final undated = _filter(state.undatedTodos(), state.children);
-    final upcoming = _filter(state.futureTodos(), state.children);
+    _refreshSectionTodos(state);
+    final todayTodos = _todaySectionTodos;
+    final tomorrowTodos = _tomorrowSectionTodos;
+    final undated = _undatedSectionTodos;
+    final upcoming = _upcomingSectionTodos;
     final allFiltered =
         todayTodos.isEmpty &&
         tomorrowTodos.isEmpty &&

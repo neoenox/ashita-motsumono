@@ -577,7 +577,11 @@ void main() {
       await _pumpUi(tester);
 
       await _openSettings(tester);
-      await tester.drag(find.byType(ListView), const Offset(0, -800));
+      await tester.dragUntilVisible(
+        find.text('登録データをすべて削除'),
+        find.byType(ListView),
+        const Offset(0, -200),
+      );
       await _pumpUi(tester);
 
       await tester.tap(find.text('登録データをすべて削除'));
