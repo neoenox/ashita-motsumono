@@ -1,6 +1,8 @@
 # ネイティブ設定メモ
 
-このMVPの対象は Android/iOS のみです。Web、Windows、macOS、Linux は v0.2 の対象外です。
+現行MVPの正式サポート対象は Android です。Web、Windows、macOS、Linux は対象外です。
+
+iOS向け設定は将来対応の準備用であり、この文書のiOS手順を実行できることだけではiOSサポートを保証しません。iOSを正式サポートへ戻すには、`docs/PLATFORM_SUPPORT.md` のbuild・主要機能受入・TestFlight条件を満たし、別途実測結果を記録してください。
 
 `flutter create . --platforms=android,ios` 実行後に必要な設定です。
 

@@ -7,6 +7,9 @@
 
 公開予定URL: `https://lp-5t7.pages.dev/apps/ashita-motsumono/privacy`
 
+> **サポート範囲**
+> 現行MVPの正式サポート対象はAndroidです。iOSに関する記述は将来対応の設計・申告下書きであり、正式iOS成果物と実機受入が完了するまでiOSの公開・サポートを保証しません。詳細は [`docs/PLATFORM_SUPPORT.md`](PLATFORM_SUPPORT.md) を参照してください。
+
 > **正本**
 > リポジトリ内のプライバシーポリシーは、この `docs/privacy_policy.md` を唯一の正本とします。ストア提出資料、README、サポート文書および公開ページは、本書の内容と一致させてください。
 >

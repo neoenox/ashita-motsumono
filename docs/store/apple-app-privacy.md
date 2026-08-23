@@ -1,5 +1,7 @@
 # Apple App Privacy 回答案
 
+> **現行MVPではiOSは未保証・将来対応です。** この文書は正式iOS成果物と実機受入が完了するまで申告下書きとして扱います。現行サポート範囲は [`../PLATFORM_SUPPORT.md`](../PLATFORM_SUPPORT.md) を参照してください。
+
 基準日: 2026年7月15日  
 対象基準commit: PR #115 最新HEAD
 
