@@ -8,8 +8,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'src/services/ocr_service.dart';
-import 'src/services/extraction_service.dart';
+import 'package:ashita_motsumono/src/services/ocr_service.dart';
+import 'package:ashita_motsumono/src/services/extraction_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

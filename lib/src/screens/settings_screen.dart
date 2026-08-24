@@ -582,9 +582,12 @@ class _AiAccessCard extends StatelessWidget {
         const SizedBox(height: Spacing.sm),
         const _BenefitRow(icon: Icons.check, text: '手書き文字の読み取りに対応'),
         const SizedBox(height: Spacing.xs),
-        const _BenefitRow(icon: Icons.check, text: '¥190 買い切り／無制限に利用可能'),
+        _BenefitRow(
+          icon: Icons.check,
+          text: '${purchase.aiPriceLabel}／無制限に利用可能',
+        ),
         const SizedBox(height: Spacing.xs),
-        const _BenefitRow(icon: Icons.check, text: '広告除去とは別商品（両方購入で¥380）'),
+        const _BenefitRow(icon: Icons.check, text: '広告除去とは別の買い切り商品です'),
         const SizedBox(height: Spacing.md),
         SizedBox(
           width: double.infinity,
