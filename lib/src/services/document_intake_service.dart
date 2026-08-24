@@ -4,8 +4,8 @@
 // 関連: pdf_render_service.dart, ocr_service.dart, extraction_service.dart, app_state.dart
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
-
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
@@ -261,6 +261,24 @@ class DocumentIntakeService {
           copiedImages.add(copied);
         }
 
+        // PDF取り込みと同様に、画像セット全体のフィンガープリントで
+        // 重複取り込みを検出する（ページ順も含めて一意化する）。
+        final pageHashes = <String>[];
+        for (final image in copiedImages) {
+          final hash = await _sha256(image);
+          if (hash == null) {
+            return const IntakeError('画像を読み込めませんでした。');
+          }
+          pageHashes.add(hash);
+        }
+        final fingerprint = sha256
+            .convert(utf8.encode(pageHashes.join('\n')))
+            .toString();
+        final existing = _findDocumentByFingerprint(fingerprint);
+        if (existing != null) {
+          return IntakeDuplicate(existingDocumentId: existing.id);
+        }
+
         final pageResults = <PageOcrResult>[];
         for (var i = 0; i < copiedImages.length; i++) {
           cancellationToken?.throwIfCancelled();
@@ -291,10 +309,15 @@ class DocumentIntakeService {
             total: 1,
           ),
         );
+        final duplicateBeforeSave = _findDocumentByFingerprint(fingerprint);
+        if (duplicateBeforeSave != null) {
+          return IntakeDuplicate(existingDocumentId: duplicateBeforeSave.id);
+        }
         cancellationToken?.throwIfCancelled();
         final document = await _saveDocumentWithPages(
           sourceType: sourceType,
           sourceMimeType: 'image/*',
+          sourceFingerprint: fingerprint,
           ocrText: combinedText,
           pageResults: pageResults,
           cancellationToken: cancellationToken,

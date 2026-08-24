@@ -217,18 +217,23 @@ jobs:
 
       - name: Restore Android upload keystore
         shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          echo "::add-mask::${{ secrets.KEYSTORE_STORE_PASSWORD }}"
-          echo "::add-mask::${{ secrets.KEYSTORE_KEY_PASSWORD }}"
-          echo "::add-mask::${{ secrets.KEYSTORE_KEY_ALIAS }}"
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
-          cat > android/key.properties <<EOF
+          echo "::add-mask::$KEYSTORE_STORE_PASSWORD"
+          echo "::add-mask::$KEYSTORE_KEY_PASSWORD"
+          echo "::add-mask::$KEYSTORE_KEY_ALIAS"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF_KEY
           storeFile=app/upload-keystore.jks
-          storePassword=${{ secrets.KEYSTORE_STORE_PASSWORD }}
-          keyAlias=${{ secrets.KEYSTORE_KEY_ALIAS }}
-          keyPassword=${{ secrets.KEYSTORE_KEY_PASSWORD }}
-          EOF
+          storePassword=$KEYSTORE_STORE_PASSWORD
+          keyAlias=$KEYSTORE_KEY_ALIAS
+          keyPassword=$KEYSTORE_KEY_PASSWORD
+          EOF_KEY
 
       - name: Verify upload keystore certificate
         shell: bash
