@@ -152,6 +152,9 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('候補が見つかりませんでした')));
+        case OcrPickAiSuccess():
+          // AI結果は_pickAndOcrWithAi経由でのみ返るため、この経路では発生しない。
+          break;
         case OcrPickError():
           if (!mounted ||
               result.message == DocumentIntakeService.cancelledMessage) {
@@ -300,6 +303,8 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('候補が見つかりませんでした')));
+      case OcrPickAiSuccess():
+        break;
       case OcrPickError():
         if (result.message == DocumentIntakeService.cancelledMessage) return;
         ScaffoldMessenger.of(
@@ -359,7 +364,7 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
   Future<void> _pickAndOcrWithAi() async {
     _update(() => _busy = true);
     final appState = context.read<AppState>();
-    OcrPickSuccess? pendingSuccess;
+    String? pendingImagePath;
     String? persistedDocumentId;
     var handedOff = false;
     try {
@@ -369,12 +374,12 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
       if (result == null) return;
 
       switch (result) {
-        case OcrPickSuccess(document: final doc, drafts: final drafts):
-          pendingSuccess = result;
+        case OcrPickAiSuccess(imagePath: final imagePath):
+          pendingImagePath = imagePath;
           if (!mounted) return;
-          if (drafts.isEmpty) {
-            await _cleanupAbandonedOcrResult(appState, result);
-            pendingSuccess = null;
+          if (result.drafts.isEmpty) {
+            await ImageFileService.deleteIfExists(imagePath);
+            pendingImagePath = null;
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -385,16 +390,18 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
           }
           final document = await appState.addDocument(
             sourceType: 'camera',
-            localImagePath: doc.localImagePath ?? '',
-            ocrText: doc.ocrText,
+            localImagePath: imagePath,
+            ocrText: result.ocrText,
           );
           persistedDocumentId = document.id;
-          pendingSuccess = null;
+          pendingImagePath = null;
           if (!mounted) return;
           final navigation = Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (_) =>
-                  _reviewScreenFor(drafts: drafts, documentId: document.id),
+              builder: (_) => _reviewScreenFor(
+                drafts: result.drafts,
+                documentId: document.id,
+              ),
             ),
           );
           handedOff = true;
@@ -408,7 +415,9 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
           );
         case OcrPickDuplicate():
         case OcrPickNoCandidates():
+        case OcrPickSuccess():
         case OcrPickError():
+          // 通常OCR結果は_pickAndOcr経由でのみ返るため、この経路では発生しない。
           _showOcrError('AI解析に失敗しました。画像を撮り直すか、テキスト貼り付けを使ってください。');
       }
     } on OcrException catch (error) {
@@ -430,8 +439,18 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
               );
             }
           }
-        } else if (pendingSuccess != null) {
-          await _cleanupAbandonedOcrResult(appState, pendingSuccess);
+        } else if (pendingImagePath != null) {
+          final path = pendingImagePath;
+          try {
+            await ImageFileService.deleteIfExists(path);
+          } on Object catch (error, stackTrace) {
+            if (kDebugMode) {
+              debugPrint(
+                'Failed to clean up abandoned AI image: '
+                '$error\n$stackTrace',
+              );
+            }
+          }
         }
       }
       if (mounted) _update(() => _busy = false);
@@ -443,15 +462,7 @@ extension _AddTodoScreenActions on _AddTodoScreenState {
     OcrPickSuccess result,
   ) async {
     try {
-      final document = result.document;
-      if (document.id.isNotEmpty) {
-        await appState.deleteDocument(document.id);
-        return;
-      }
-      final path = document.localImagePath;
-      if (path != null && path.isNotEmpty) {
-        await ImageFileService.deleteIfExists(path);
-      }
+      await appState.deleteDocument(result.document.id);
     } on Object catch (error, stackTrace) {
       if (kDebugMode) {
         debugPrint(

@@ -237,16 +237,17 @@ category は payment、submit、event、item、other のいずれかです。
     },
   };
 
-  if (env.AI_DAILY_QUOTA) {
-    const date = new Date().toISOString().slice(0, 10);
-    const key = `quota:${entitlement.receiptHash}:${date}`;
-    const current = Number(await env.AI_DAILY_QUOTA.get(key)) || 0;
+  // KV is eventually consistent and get→put is not atomic: concurrent requests
+  // can briefly exceed AI_DAILY_LIMIT. Strict per-identity counting would need
+  // Durable Objects, which is out of scope here.
+  const quotaKey = env.AI_DAILY_QUOTA
+    ? `quota:${entitlement.receiptHash}:${new Date().toISOString().slice(0, 10)}`
+    : null;
+  if (env.AI_DAILY_QUOTA && quotaKey) {
+    const current = Number(await env.AI_DAILY_QUOTA.get(quotaKey)) || 0;
     if (current >= dailyQuotaLimit(env.AI_DAILY_LIMIT)) {
       return json({ error: 'Daily rate limit exceeded' }, 429);
     }
-    await env.AI_DAILY_QUOTA.put(key, String(current + 1), {
-      expirationTtl: 172800,
-    });
   }
 
   try {
@@ -266,6 +267,15 @@ category は payment、submit、event、item、other のいずれかです。
       return json({ error: 'Failed to call AI service' }, 502);
     }
     const data = await response.json();
+    // Consume the daily quota only after a successful upstream call so that
+    // Gemini failures do not burn the buyer's allowance. The value is re-read
+    // right before writing to keep lost updates between concurrent requests small.
+    if (env.AI_DAILY_QUOTA && quotaKey) {
+      const current = Number(await env.AI_DAILY_QUOTA.get(quotaKey)) || 0;
+      await env.AI_DAILY_QUOTA.put(quotaKey, String(current + 1), {
+        expirationTtl: 172800,
+      });
+    }
     return json(data, response.status);
   } catch {
     return json({ error: 'Failed to call AI service' }, 502);

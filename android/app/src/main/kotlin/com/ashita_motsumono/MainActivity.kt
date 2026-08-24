@@ -4,6 +4,7 @@ import android.net.Uri
 import android.webkit.MimeTypeMap
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -42,6 +43,7 @@ class MainActivity : FlutterActivity() {
             return
         }
 
+        var activeRecognizer: TextRecognizer? = null
         try {
             val imageFile = File(path)
             if (!imageFile.exists()) {
@@ -53,17 +55,31 @@ class MainActivity : FlutterActivity() {
             val recognizer = TextRecognition.getClient(
                 JapaneseTextRecognizerOptions.Builder().build(),
             )
+            activeRecognizer = recognizer
 
+            // onComplete は成否に関わらず必ず一度だけ呼ばれるため、ここで
+            // close() と result 応答の両方を保証する（リスナー内のみ close すると
+            // コールバックが来ない場合にリソースリークと Dart 側の永久待機になる）。
             recognizer.process(image)
-                .addOnSuccessListener { recognized ->
-                    result.success(recognized.text)
+                .addOnCompleteListener { task ->
                     recognizer.close()
-                }
-                .addOnFailureListener { e ->
-                    result.error("NativeOcrError", e.message ?: e.toString(), e.toString())
-                    recognizer.close()
+                    val failure = task.exception
+                    when {
+                        task.isSuccessful -> result.success(task.result.text)
+                        failure != null -> result.error(
+                            "NativeOcrError",
+                            failure.message ?: failure.toString(),
+                            failure.toString(),
+                        )
+                        else -> result.error(
+                            "NativeOcrError",
+                            "OCR処理が完了しませんでした。",
+                            null,
+                        )
+                    }
                 }
         } catch (e: Exception) {
+            activeRecognizer?.close()
             result.error("NativeOcrError", e.message ?: e.toString(), e.toString())
         }
     }

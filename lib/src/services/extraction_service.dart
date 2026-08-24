@@ -38,9 +38,20 @@ class ExtractionService {
       dueDate: dueDate,
       amount: amount,
       items: items,
-      note: text.length > 500 ? '${text.substring(0, 500)}...' : text,
+      note: text.length > 500 ? '${_safeTruncate(text, 500)}...' : text,
       rawText: text,
     );
+  }
+
+  /// コードユニット境界でサロゲートペア（絵文字等）を分割しない切り詰め。
+  static String _safeTruncate(String text, int maxCodeUnits) {
+    var end = maxCodeUnits;
+    while (end > 0 &&
+        text.codeUnitAt(end - 1) >= 0xD800 &&
+        text.codeUnitAt(end - 1) <= 0xDBFF) {
+      end--;
+    }
+    return text.substring(0, end);
   }
 
   static List<ExtractionDraft> extractMany(

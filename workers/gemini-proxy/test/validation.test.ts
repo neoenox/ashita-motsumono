@@ -68,7 +68,14 @@ async function entitlementToken(
   return `${header}.${payload}.${base64UrlBytes(new Uint8Array(signature))}`;
 }
 
-function runtimeEnv(options: { aiRateAllowed?: boolean; verifyRateAllowed?: boolean } = {}) {
+function runtimeEnv(
+  options: {
+    aiRateAllowed?: boolean;
+    verifyRateAllowed?: boolean;
+    aiDailyQuota?: QuotaStore;
+    aiDailyLimit?: number;
+  } = {},
+) {
   return {
     ...verifyEnv,
     MAX_IMAGE_BYTES: '5242880',
@@ -80,6 +87,37 @@ function runtimeEnv(options: { aiRateAllowed?: boolean; verifyRateAllowed?: bool
     IOS_BUNDLE_ID: 'com.ashita_motsumono',
     AI_RATE_LIMITER: rateLimiter(options.aiRateAllowed ?? true),
     ENTITLEMENT_RATE_LIMITER: rateLimiter(options.verifyRateAllowed ?? true),
+    ...(options.aiDailyQuota
+      ? {
+          AI_DAILY_QUOTA: options.aiDailyQuota,
+          ...(options.aiDailyLimit !== undefined
+            ? { AI_DAILY_LIMIT: String(options.aiDailyLimit) }
+            : {}),
+        }
+      : {}),
+  };
+}
+
+interface QuotaStore {
+  readonly size: number;
+  value(key: string): number | undefined;
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string): Promise<void>;
+}
+
+function quotaStore(): QuotaStore {
+  const entries = new Map<string, number>();
+  return {
+    get size() {
+      return entries.size;
+    },
+    value: (key) => entries.get(key),
+    async get(key) {
+      return entries.has(key) ? String(entries.get(key)!) : null;
+    },
+    async put(key, value) {
+      entries.set(key, Number(value));
+    },
   };
 }
 
@@ -281,6 +319,54 @@ describe('public Worker security boundary', () => {
 
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({ error: 'Failed to call AI service' });
+  });
+
+  it('does not consume the daily quota when the upstream call fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('upstream timeout')));
+    const quota = quotaStore();
+    const token = await entitlementToken();
+    const response = await worker.fetch(
+      analyzeRequest(token),
+      runtimeEnv({ aiDailyQuota: quota }),
+    );
+
+    expect(response.status).toBe(502);
+    expect(quota.size).toBe(0);
+  });
+
+  it('consumes the daily quota only after a successful upstream call', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(Response.json({ drafts: [] })),
+    );
+    const quota = quotaStore();
+    const token = await entitlementToken();
+    const key = `quota:${'a'.repeat(64)}:${new Date().toISOString().slice(0, 10)}`;
+    const response = await worker.fetch(
+      analyzeRequest(token),
+      runtimeEnv({ aiDailyQuota: quota }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(quota.value(key)).toBe(1);
+  });
+
+  it('rejects with 429 without calling upstream once the daily limit is reached', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const quota = quotaStore();
+    const key = `quota:${'a'.repeat(64)}:${new Date().toISOString().slice(0, 10)}`;
+    await quota.put(key, '2');
+    const token = await entitlementToken();
+    const response = await worker.fetch(
+      analyzeRequest(token),
+      runtimeEnv({ aiDailyQuota: quota, aiDailyLimit: 2 }),
+    );
+
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toEqual({ error: 'Daily rate limit exceeded' });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(quota.value(key)).toBe(2);
   });
 
   it('rate-limits entitlement verification before calling a store', async () => {

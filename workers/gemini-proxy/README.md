@@ -14,7 +14,7 @@ The Google service account must have purchase read/acknowledge access for the ap
 ## Optional configuration
 
 - `AI_DAILY_LIMIT` — maximum `/analyze` requests per purchase identity per UTC day (integer, default `200`, minimum `1`). Requires the KV binding below; without the binding no daily counting happens and only the per-minute rate limiters apply.
-- `AI_DAILY_QUOTA` — optional KV namespace binding. When present, each accepted `/analyze` request increments `quota:${receiptHash}:${UTC date}` (TTL 48h) and requests are rejected with `429` once the day's count reaches `AI_DAILY_LIMIT`. See the commented-out `kv_namespaces` block in `wrangler.toml`.
+- `AI_DAILY_QUOTA` — optional KV namespace binding. When present, the day's count is checked before `/analyze` and consumed only after a successful Gemini call (upstream failures do not consume quota), incrementing `quota:${receiptHash}:${UTC date}` (TTL 48h) and rejecting requests with `429` once the day's count reaches `AI_DAILY_LIMIT`. KV `get`→`put` is not atomic, so concurrent requests can briefly exceed the limit; strict per-identity enforcement would require Durable Objects. See the commented-out `kv_namespaces` block in `wrangler.toml`.
 
 ## Routes
 
