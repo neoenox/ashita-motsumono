@@ -84,11 +84,11 @@ class _ReviewExtractionsScreenState extends State<ReviewExtractionsScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(
+        padding: EdgeInsets.fromLTRB(
           Spacing.md,
           Spacing.md,
           Spacing.md,
-          120,
+          120 + MediaQuery.paddingOf(context).bottom,
         ),
         children: [
           Card(

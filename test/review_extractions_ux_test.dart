@@ -29,8 +29,9 @@ class _ReviewHarness {
 
 Future<_ReviewHarness> _mountReview(
   WidgetTester tester,
-  List<ExtractionDraft> drafts,
-) async {
+  List<ExtractionDraft> drafts, {
+  double bottomPadding = 0,
+}) async {
   SharedPreferences.setMockInitialValues(const <String, Object>{});
   final prefs = await SharedPreferences.getInstance();
   final settings = AppSettings(prefs);
@@ -49,7 +50,10 @@ Future<_ReviewHarness> _mountReview(
         ChangeNotifierProvider<AppState>.value(value: appState),
         ChangeNotifierProvider<AppSettings>.value(value: settings),
       ],
-      child: MaterialApp(home: ReviewExtractionsScreen(drafts: drafts)),
+      child: MediaQuery(
+        data: MediaQueryData(padding: EdgeInsets.only(bottom: bottomPadding)),
+        child: MaterialApp(home: ReviewExtractionsScreen(drafts: drafts)),
+      ),
     ),
   );
   await tester.pumpAndSettle();
@@ -78,6 +82,16 @@ ExtractionDraft _draft(int index) {
 }
 
 void main() {
+  testWidgets('keeps the last candidate above the runtime bottom inset', (
+    tester,
+  ) async {
+    final harness = await _mountReview(tester, [_draft(0)], bottomPadding: 48);
+    addTearDown(() => harness.dispose(tester));
+
+    final list = tester.widget<ListView>(find.byType(ListView).first);
+    expect(list.padding, const EdgeInsets.fromLTRB(16, 16, 16, 168));
+  });
+
   testWidgets('120件の候補を表示して末尾まで操作できる', (tester) async {
     final harness = await _mountReview(tester, List.generate(120, _draft));
     addTearDown(() => harness.dispose(tester));

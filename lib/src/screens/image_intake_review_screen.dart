@@ -83,11 +83,11 @@ class _ImageIntakeReviewScreenState extends State<ImageIntakeReviewScreen> {
                   )
                 : ReorderableListView.builder(
                     buildDefaultDragHandles: false,
-                    padding: const EdgeInsets.fromLTRB(
+                    padding: EdgeInsets.fromLTRB(
                       Spacing.md,
                       0,
                       Spacing.md,
-                      96,
+                      96 + MediaQuery.paddingOf(context).bottom,
                     ),
                     itemCount: _selection.length,
                     onReorderItem: (oldIndex, newIndex) {
