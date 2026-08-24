@@ -20,7 +20,10 @@ void main() {
   test('Android OCR invocation is bounded by a timeout on the Dart side', () {
     final source = File('lib/src/services/ocr_service.dart').readAsStringSync();
 
-    expect(source, contains('static const defaultTimeout = Duration(seconds: 60);'));
+    expect(
+      source,
+      contains('static const defaultTimeout = Duration(seconds: 60);'),
+    );
     expect(source, contains('.timeout(timeout)'));
     expect(source, contains('on TimeoutException catch (e)'));
   });
