@@ -35,6 +35,27 @@ void main() {
     expect(find.text('この順番で2枚を読み取る'), findsOneWidget);
   });
 
+  testWidgets('keeps the last image above the runtime bottom inset', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(padding: EdgeInsets.only(bottom: 48)),
+        child: MaterialApp(
+          home: ImageIntakeReviewScreen(
+            files: [XFile('/tmp/one.jpg'), XFile('/tmp/two.jpg')],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final list = tester.widget<ReorderableListView>(
+      find.byType(ReorderableListView),
+    );
+    expect(list.padding, const EdgeInsets.fromLTRB(16, 0, 16, 144));
+  });
+
   testWidgets('disables confirmation after every image is excluded', (
     tester,
   ) async {
