@@ -43,7 +43,7 @@ class MainActivity : FlutterActivity() {
             return
         }
 
-        var recognizer: TextRecognizer? = null
+        var activeRecognizer: TextRecognizer? = null
         try {
             val imageFile = File(path)
             if (!imageFile.exists()) {
@@ -52,16 +52,17 @@ class MainActivity : FlutterActivity() {
             }
 
             val image = InputImage.fromFilePath(this, Uri.fromFile(imageFile))
-            recognizer = TextRecognition.getClient(
+            val recognizer = TextRecognition.getClient(
                 JapaneseTextRecognizerOptions.Builder().build(),
             )
+            activeRecognizer = recognizer
 
             // onComplete は成否に関わらず必ず一度だけ呼ばれるため、ここで
             // close() と result 応答の両方を保証する（リスナー内のみ close すると
             // コールバックが来ない場合にリソースリークと Dart 側の永久待機になる）。
             recognizer.process(image)
                 .addOnCompleteListener { task ->
-                    recognizer?.close()
+                    recognizer.close()
                     val failure = task.exception
                     when {
                         task.isSuccessful -> result.success(task.result.text)
@@ -78,7 +79,7 @@ class MainActivity : FlutterActivity() {
                     }
                 }
         } catch (e: Exception) {
-            recognizer?.close()
+            activeRecognizer?.close()
             result.error("NativeOcrError", e.message ?: e.toString(), e.toString())
         }
     }
