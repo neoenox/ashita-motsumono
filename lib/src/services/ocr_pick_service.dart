@@ -19,6 +19,21 @@ class OcrPickSuccess extends OcrPickResult {
   final List<ExtractionDraft> drafts;
 }
 
+/// AI解析のみ成功し、まだDocumentRecordとして永続化していない結果。
+/// 永続化は呼び出し側がドラフト確認後に明示的に行うため、
+/// 空IDのダミードキュメントではなく専用型で返す。
+class OcrPickAiSuccess extends OcrPickResult {
+  OcrPickAiSuccess({
+    required this.imagePath,
+    required this.ocrText,
+    required this.drafts,
+  });
+
+  final String imagePath;
+  final String ocrText;
+  final List<ExtractionDraft> drafts;
+}
+
 class OcrPickEmpty extends OcrPickResult {}
 
 class OcrPickDuplicate extends OcrPickResult {
@@ -216,18 +231,11 @@ class OcrPickService {
         imageFile,
         accessToken: verifiedToken,
       );
-      final now = DateTime.now();
       switch (result) {
         case GeminiSuccess(drafts: final drafts):
-          return OcrPickSuccess(
-            document: DocumentRecord(
-              id: '',
-              sourceType: 'camera',
-              localImagePath: imageFile.path,
-              ocrText: 'AI分析\n${drafts.map((draft) => draft.title).join('\n')}',
-              createdAt: now,
-              updatedAt: now,
-            ),
+          return OcrPickAiSuccess(
+            imagePath: imageFile.path,
+            ocrText: 'AI分析\n${drafts.map((draft) => draft.title).join('\n')}',
             drafts: drafts,
           );
         case GeminiEmpty():

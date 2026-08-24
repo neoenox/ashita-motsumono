@@ -56,17 +56,13 @@ class OcrService {
   Future<String> _recognizeOnAndroid(File imageFile) async {
     try {
       final text = await _androidOcrChannel
-          .invokeMethod<String>(
-            'recognizeJapaneseText',
-            {'path': imageFile.path},
-          )
+          .invokeMethod<String>('recognizeJapaneseText', {
+            'path': imageFile.path,
+          })
           .timeout(timeout);
       return (text ?? '').trim();
     } on TimeoutException catch (e) {
-      throw OcrException(
-        '文字の読み取りがタイムアウトしました。もう一度お試しください。',
-        cause: e,
-      );
+      throw OcrException('文字の読み取りがタイムアウトしました。もう一度お試しください。', cause: e);
     } on PlatformException catch (e) {
       throw OcrException(_messageForPlatformException(e), cause: e);
     } on MissingPluginException catch (e) {

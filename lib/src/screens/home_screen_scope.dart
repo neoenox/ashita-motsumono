@@ -73,6 +73,7 @@ class _HomeScreenScopeState extends State<HomeScreenScope> {
           await pushAdaptive<void>(context, (_) => screen);
         case OcrPickDuplicate():
         case OcrPickNoCandidates():
+        case OcrPickAiSuccess():
         case OcrPickError():
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('中断された画像選択を復旧できませんでした。')),
