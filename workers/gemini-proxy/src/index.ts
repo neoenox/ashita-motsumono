@@ -1,9 +1,15 @@
+import type {
+  DurableObjectNamespace,
+  QuotaReservation,
+} from './quota';
+
 const MODEL = 'gemini-2.5-flash';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
 const DEFAULT_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const DEFAULT_AI_DAILY_LIMIT = 200;
+const QUOTA_TTL_SECONDS = 172800;
 const TOKEN_TTL_SECONDS = 15 * 60;
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
@@ -14,6 +20,11 @@ interface RateLimiter {
 interface DailyQuotaStore {
   get(key: string): Promise<string | null>;
   put(key: string, value: string, options: { expirationTtl?: number }): Promise<void>;
+}
+
+interface DailyQuota {
+  reserve(dayKey: string, limit: number): Promise<boolean>;
+  release(dayKey: string): Promise<void>;
 }
 
 interface Env {
@@ -27,6 +38,7 @@ interface Env {
   AI_ACCESS_PRODUCT_ID: string;
   MAX_IMAGE_BYTES?: string;
   AI_DAILY_LIMIT?: string;
+  AI_QUOTA_COUNTER?: DurableObjectNamespace;
   AI_DAILY_QUOTA?: DailyQuotaStore;
   AI_RATE_LIMITER: RateLimiter;
   ENTITLEMENT_RATE_LIMITER: RateLimiter;
@@ -237,16 +249,25 @@ category は payment、submit、event、item、other のいずれかです。
     },
   };
 
-  if (env.AI_DAILY_QUOTA) {
-    const date = new Date().toISOString().slice(0, 10);
-    const key = `quota:${entitlement.receiptHash}:${date}`;
-    const current = Number(await env.AI_DAILY_QUOTA.get(key)) || 0;
-    if (current >= dailyQuotaLimit(env.AI_DAILY_LIMIT)) {
+  // The daily quota is reserved atomically before the upstream call and
+  // released again when the call fails, so Gemini outages never burn the
+  // buyer's allowance. With the Durable Object binding the reserve is a single
+  // serialized check-and-increment, so concurrent requests can never exceed
+  // AI_DAILY_LIMIT (the KV fallback is only for local dev/tests and stays
+  // eventually consistent).
+  const quotaDate = new Date().toISOString().slice(0, 10);
+  const dailyQuota = resolveDailyQuota(env, entitlement.receiptHash);
+
+  if (dailyQuota) {
+    let reserved: boolean;
+    try {
+      reserved = await dailyQuota.reserve(quotaDate, dailyQuotaLimit(env.AI_DAILY_LIMIT));
+    } catch {
+      return json({ error: 'Daily rate limit is temporarily unavailable' }, 503);
+    }
+    if (!reserved) {
       return json({ error: 'Daily rate limit exceeded' }, 429);
     }
-    await env.AI_DAILY_QUOTA.put(key, String(current + 1), {
-      expirationTtl: 172800,
-    });
   }
 
   try {
@@ -260,6 +281,7 @@ category は payment、submit、event、item、other のいずれかです。
       signal: AbortSignal.timeout(55000),
     });
     if (!response.ok) {
+      await dailyQuota?.release(quotaDate);
       if (response.status === 429) {
         return json({ error: 'Rate limit exceeded' }, 429);
       }
@@ -268,8 +290,80 @@ category は payment、submit、event、item、other のいずれかです。
     const data = await response.json();
     return json(data, response.status);
   } catch {
+    await dailyQuota?.release(quotaDate);
     return json({ error: 'Failed to call AI service' }, 502);
   }
+}
+
+function resolveDailyQuota(env: Env, receiptHash: string): DailyQuota | null {
+  if (env.AI_QUOTA_COUNTER) {
+    return durableDailyQuota(env.AI_QUOTA_COUNTER, receiptHash);
+  }
+  if (env.AI_DAILY_QUOTA) {
+    return kvDailyQuota(env.AI_DAILY_QUOTA, receiptHash);
+  }
+  return null;
+}
+
+function durableDailyQuota(
+  namespace: DurableObjectNamespace,
+  receiptHash: string,
+): DailyQuota {
+  const stub = namespace.get(namespace.idFromName(`ai-quota:${receiptHash}`));
+  const call = async (
+    action: 'reserve' | 'release',
+    dayKey: string,
+    limit?: number,
+  ): Promise<QuotaReservation> => {
+    const response = await stub.fetch(
+      new Request('https://quota-counter.internal/', {
+        method: 'POST',
+        body: JSON.stringify({ action, key: dayKey, limit }),
+      }),
+    );
+    if (!response.ok) throw new Error('Quota counter request failed');
+    return await response.json() as QuotaReservation;
+  };
+  return {
+    async reserve(dayKey: string, limit: number): Promise<boolean> {
+      const reservation = await call('reserve', dayKey, limit);
+      return reservation.allowed;
+    },
+    async release(dayKey: string): Promise<void> {
+      try {
+        await call('release', dayKey);
+      } catch {
+        // Best effort: a lost refund only over-counts by one and still never
+        // exceeds the cap, so it must not mask the upstream error response.
+      }
+    },
+  };
+}
+
+function kvDailyQuota(store: DailyQuotaStore, receiptHash: string): DailyQuota {
+  const keyFor = (dayKey: string) => `quota:${receiptHash}:${dayKey}`;
+  const current = async (key: string): Promise<number> =>
+    Number(await store.get(key)) || 0;
+  return {
+    async reserve(dayKey: string, limit: number): Promise<boolean> {
+      const key = keyFor(dayKey);
+      const value = await current(key);
+      if (value >= limit) return false;
+      await store.put(key, String(value + 1), {
+        expirationTtl: QUOTA_TTL_SECONDS,
+      });
+      return true;
+    },
+    async release(dayKey: string): Promise<void> {
+      try {
+        const key = keyFor(dayKey);
+        const value = Math.max(0, await current(key) - 1);
+        await store.put(key, String(value), { expirationTtl: QUOTA_TTL_SECONDS });
+      } catch {
+        // Best effort refund; see durableDailyQuota.
+      }
+    },
+  };
 }
 
 async function verifyGooglePlay(

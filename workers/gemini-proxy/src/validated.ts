@@ -1,5 +1,7 @@
 import worker from './index';
 
+export { QuotaCounter } from './quota';
+
 const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
 const DEFAULT_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_VERIFICATION_DATA_CHARS = 200_000;

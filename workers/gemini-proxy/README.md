@@ -13,8 +13,9 @@ The Google service account must have purchase read/acknowledge access for the ap
 
 ## Optional configuration
 
-- `AI_DAILY_LIMIT` — maximum `/analyze` requests per purchase identity per UTC day (integer, default `200`, minimum `1`). Requires the KV binding below; without the binding no daily counting happens and only the per-minute rate limiters apply.
-- `AI_DAILY_QUOTA` — optional KV namespace binding. When present, each accepted `/analyze` request increments `quota:${receiptHash}:${UTC date}` (TTL 48h) and requests are rejected with `429` once the day's count reaches `AI_DAILY_LIMIT`. See the commented-out `kv_namespaces` block in `wrangler.toml`.
+- `AI_DAILY_LIMIT` — maximum `/analyze` requests per purchase identity per UTC day (integer, default `200`, minimum `1`). Requires one of the quota bindings below; without any binding no daily counting happens and only the per-minute rate limiters apply.
+- `AI_QUOTA_COUNTER` — Durable Object binding (`QuotaCounter` class, enabled in `wrangler.toml`). Each `/analyze` request atomically reserves one unit per `quota:${receiptHash}:${UTC date}` key before calling Gemini and releases it again when the upstream call fails, so failures do not consume quota. The reserve is a serialized check-and-increment inside a single Durable Object instance per purchase identity, so concurrent requests can never exceed `AI_DAILY_LIMIT` (issue #211). Requires a Workers Paid plan; if the counter is unreachable, requests fail closed with `503 Daily rate limit is temporarily unavailable`.
+- `AI_DAILY_QUOTA` — optional KV namespace fallback for local dev/tests where Durable Objects are unavailable. Same reserve/release flow over the same key shape (TTL 48h), but KV `get`→`put` stays eventually consistent, so concurrent requests can briefly exceed the limit; prefer the DO binding in production. See the commented-out `kv_namespaces` block in `wrangler.toml`.
 
 ## Routes
 

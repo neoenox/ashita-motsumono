@@ -9,6 +9,16 @@ REMOVE_ADS_PRODUCT_ID = "remove_ads"
 AI_ACCESS_PRODUCT_ID = "ai_analysis"
 MAX_IMAGE_BYTES = "5242880"
 
+# Atomic per-identity daily quota counter for /analyze (issue #211). Durable
+# Objects require a Workers Paid plan; without this binding the worker falls
+# back to the optional AI_DAILY_QUOTA KV namespace below.
+[durable_objects]
+bindings = [{ name = "AI_QUOTA_COUNTER", class_name = "QuotaCounter" }]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["QuotaCounter"]
+
 [[unsafe.bindings]]
 name = "AI_RATE_LIMITER"
 type = "ratelimit"
