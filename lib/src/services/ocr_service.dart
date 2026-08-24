@@ -4,6 +4,7 @@
 // iOSでは google_mlkit_text_recognition を使う。
 // 関連: extraction_service.dart, image_file_service.dart, add_todo_screen.dart
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -21,7 +22,12 @@ class OcrException implements Exception {
 }
 
 class OcrService {
-  OcrService();
+  OcrService({Duration? timeout}) : timeout = timeout ?? defaultTimeout;
+
+  /// ネイティブOCRが応答しない場合でもUIが永久待機にならないための上限。
+  static const defaultTimeout = Duration(seconds: 60);
+
+  final Duration timeout;
 
   static const _androidOcrChannel = MethodChannel(
     'ashita_motsumono/native_ocr',
@@ -49,11 +55,18 @@ class OcrService {
 
   Future<String> _recognizeOnAndroid(File imageFile) async {
     try {
-      final text = await _androidOcrChannel.invokeMethod<String>(
-        'recognizeJapaneseText',
-        {'path': imageFile.path},
-      );
+      final text = await _androidOcrChannel
+          .invokeMethod<String>(
+            'recognizeJapaneseText',
+            {'path': imageFile.path},
+          )
+          .timeout(timeout);
       return (text ?? '').trim();
+    } on TimeoutException catch (e) {
+      throw OcrException(
+        '文字の読み取りがタイムアウトしました。もう一度お試しください。',
+        cause: e,
+      );
     } on PlatformException catch (e) {
       throw OcrException(_messageForPlatformException(e), cause: e);
     } on MissingPluginException catch (e) {
