@@ -390,7 +390,9 @@ describe('/analyze daily quota via KV fallback', () => {
 
     expect(response.status).toBe(502);
     const today = new Date().toISOString().slice(0, 10);
-    expect(store.value(`quota:${receiptHash}:${today}`)).toBe(0);
+    // The failed upstream call must refund the reservation. A zero value may
+    // be represented by an absent KV key in a fake/local implementation.
+    expect(store.value(`quota:${receiptHash}:${today}`) ?? 0).toBe(0);
   });
 
   it('rejects with 429 without calling upstream once the limit is reached', async () => {

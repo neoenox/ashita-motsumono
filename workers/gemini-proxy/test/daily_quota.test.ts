@@ -107,8 +107,14 @@ describe('AI daily quota accounting', () => {
     );
 
     expect(response.status).toBe(502);
-    expect(quota.get).toHaveBeenCalledOnce();
-    expect(quota.put).not.toHaveBeenCalled();
+    // Reservation is refunded after the transport failure. The refund reads
+    // the reserved value and writes the decremented count back to zero.
+    expect(quota.get).toHaveBeenCalledTimes(2);
+    expect(quota.put).toHaveBeenCalledWith(
+      expect.stringMatching(/^quota:a{64}:\d{4}-\d{2}-\d{2}$/u),
+      '0',
+      { expirationTtl: 172800 },
+    );
   });
 
   it('does not consume quota when Gemini returns an error', async () => {
