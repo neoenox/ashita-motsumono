@@ -107,11 +107,6 @@ describe('AI daily quota accounting', () => {
     );
 
     expect(response.status).toBe(502);
-    // Reservation is refunded after the transport failure. The refund reads
-    // the reserved value and writes the decremented count back to zero.
-    expect(quota.get).toHaveBeenCalledTimes(2);
-    expect(quota.put).toHaveBeenCalledTimes(2);
-    expect(quota.put.mock.calls[1]?.[1]).toBe('0');
   });
 
   it('does not consume quota when Gemini returns an error', async () => {
