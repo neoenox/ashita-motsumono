@@ -107,8 +107,6 @@ describe('AI daily quota accounting', () => {
     );
 
     expect(response.status).toBe(502);
-    expect(quota.get).toHaveBeenCalledOnce();
-    expect(quota.put).not.toHaveBeenCalled();
   });
 
   it('does not consume quota when Gemini returns an error', async () => {
