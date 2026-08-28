@@ -628,10 +628,30 @@ async function readJson<T>(
     return json({ error: 'Content-Type must be application/json' }, 415);
   }
   const declared = Number(request.headers.get('Content-Length') ?? 0);
-  if (declared > maxBytes) return json({ error: 'Request too large' }, 413);
-  const text = await request.text();
-  if (encoder.encode(text).byteLength > maxBytes) {
+  if (Number.isFinite(declared) && declared > maxBytes) {
     return json({ error: 'Request too large' }, 413);
+  }
+  if (!request.body) return json({ error: 'Invalid JSON' }, 400);
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        text += decoder.decode();
+        break;
+      }
+      bytes += value.byteLength;
+      if (bytes > maxBytes) {
+        await reader.cancel();
+        return json({ error: 'Request too large' }, 413);
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    reader.releaseLock();
   }
   try {
     const value = JSON.parse(text);
