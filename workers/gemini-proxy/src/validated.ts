@@ -192,11 +192,6 @@ export default {
         if (body instanceof Response) return body;
         const error = validateVerifyBody(body, env);
         if (error !== null) return json({ error }, 400);
-      } else if (path === '/analyze' || path === '/') {
-        const body = await parseJsonClone(request, MAX_REQUEST_BYTES);
-        if (body instanceof Response) return body;
-        const failure = validateAnalysisBody(body, env);
-        if (failure !== null) return json({ error: failure.error }, failure.status);
       }
     }
 

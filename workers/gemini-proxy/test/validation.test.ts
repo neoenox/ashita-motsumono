@@ -312,6 +312,59 @@ describe('public Worker security boundary', () => {
     await expect(response.json()).resolves.toEqual({ error: 'Rate limit exceeded' });
   });
 
+  it('authenticates before pulling an unauthenticated request body', async () => {
+    let pullCount = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pullCount += 1;
+        controller.enqueue(new Uint8Array(1024));
+      },
+    });
+    await Promise.resolve();
+    const pullsBeforeFetch = pullCount;
+    const response = await worker.fetch(
+      new Request('https://worker.example/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        duplex: 'half',
+      } as RequestInit),
+      runtimeEnv(),
+    );
+
+    expect(response.status).toBe(401);
+    expect(pullCount).toBe(pullsBeforeFetch);
+  });
+
+  it('stops reading an oversized authenticated stream at max plus one chunk', async () => {
+    const token = await entitlementToken();
+    const chunk = new Uint8Array(1024 * 1024);
+    let pullCount = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pullCount += 1;
+        controller.enqueue(chunk);
+      },
+    });
+    await Promise.resolve();
+    const pullsBeforeFetch = pullCount;
+    const response = await worker.fetch(
+      new Request('https://worker.example/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body,
+        duplex: 'half',
+      } as RequestInit),
+      runtimeEnv(),
+    );
+
+    expect(response.status).toBe(413);
+    expect(pullCount - pullsBeforeFetch).toBeLessThanOrEqual(9);
+  });
+
   it('turns Gemini transport failure into a bounded 502 response', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('upstream timeout')));
     const token = await entitlementToken();
