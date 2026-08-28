@@ -15,7 +15,8 @@ void main() {
   test('data cleanup cannot cancel newly-created todo notifications', () {
     final source = File('lib/src/app_state_cleanup.dart').readAsStringSync();
 
-    expect(source, contains('_runPostDeleteCleanup(todoIdsToCancel)'));
+    expect(source, contains('_runPostDeleteCleanup('));
+    expect(source, contains('strictSensitiveCleanup: awaitPostDeleteCleanup'));
     expect(source, contains('executeCanceledTodo(todoId)'));
     expect(source, isNot(contains('retryPending(const <AppTodo>[])')));
   });

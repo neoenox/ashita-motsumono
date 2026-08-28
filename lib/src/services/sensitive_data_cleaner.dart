@@ -34,7 +34,7 @@ class SensitiveDataCleaner {
     Directory? directory;
     try {
       directory = await _directoryProvider();
-      await for (final entity in directory.list()) {
+      for (final entity in directory.listSync()) {
         if (entity is! File) continue;
         final name = entity.uri.pathSegments.last;
         if (!_residualName.hasMatch(name)) continue;

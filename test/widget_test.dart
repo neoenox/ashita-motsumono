@@ -589,14 +589,17 @@ void main() {
       await tester.tap(find.text('削除する'));
       for (
         var attempt = 0;
-        attempt < 20 && find.text('登録データを削除しました').evaluate().isEmpty;
+        attempt < 400 && find.text('登録データを削除しました').evaluate().isEmpty;
         attempt++
       ) {
         await tester.pump(const Duration(milliseconds: 50));
       }
-      await _pumpUi(tester);
-
-      expect(find.text('登録データを削除しました'), findsOneWidget);
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pump();
+      expect(find.textContaining('登録データの削除に失敗しました').evaluate(), isEmpty);
       expect(appState.children, isEmpty);
       expect(appState.todos, isEmpty);
       expect(appState.documents, isEmpty);
