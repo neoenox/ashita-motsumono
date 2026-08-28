@@ -5,6 +5,16 @@ import 'package:path_provider/path_provider.dart';
 
 typedef DocumentsDirectoryProvider = Future<Directory> Function();
 
+class SensitiveDataCleanupException implements Exception {
+  const SensitiveDataCleanupException(this.failures);
+
+  final int failures;
+
+  @override
+  String toString() =>
+      'Sensitive data cleanup failed for $failures operation(s)';
+}
+
 class SensitiveDataCleaner {
   SensitiveDataCleaner({DocumentsDirectoryProvider? directoryProvider})
     : _directoryProvider =
@@ -15,15 +25,16 @@ class SensitiveDataCleaner {
   static final _residualName = RegExp(
     r'^(crash(?:\.previous)?\.log|ashita_motsumono_(?:legacy_backup_.*\.json|corrupt_.*\.db(?:-(?:wal|shm|journal))?))$',
   );
+  static const _retryMarkerName = 'ashita_motsumono_cleanup_retry.marker';
 
-  /// 補助ログや退避ファイルを可能な範囲で削除する。
-  /// 主データ削除が完了した後の後処理なので、プラグイン未初期化やI/O障害を
-  /// 呼び出し元へ再送出して削除済み状態を失敗扱いにはしない。
+  /// 補助ログや退避ファイルを削除する。
+  /// 失敗時は再試行マーカーを残し、削除成功を報告する呼び出し元へ通知する。
   Future<void> clearResidualFiles() async {
     var failures = 0;
+    Directory? directory;
     try {
-      final directory = await _directoryProvider();
-      await for (final entity in directory.list()) {
+      directory = await _directoryProvider();
+      for (final entity in directory.listSync()) {
         if (entity is! File) continue;
         final name = entity.uri.pathSegments.last;
         if (!_residualName.hasMatch(name)) continue;
@@ -42,8 +53,35 @@ class SensitiveDataCleaner {
         );
       }
     }
-    if (failures > 0 && kDebugMode) {
-      debugPrint('SensitiveDataCleaner: $failures cleanup operations failed');
+    if (failures > 0) {
+      await _writeRetryMarker(directory);
+      throw SensitiveDataCleanupException(failures);
+    }
+    await _removeRetryMarker(directory);
+  }
+
+  Future<void> _writeRetryMarker(Directory? directory) async {
+    if (directory == null) return;
+    try {
+      await File(
+        '${directory.path}/$_retryMarkerName',
+      ).writeAsString('retry-required\n', flush: true);
+    } on Object catch (error) {
+      if (kDebugMode) {
+        debugPrint('SensitiveDataCleaner: marker write failed: $error');
+      }
+    }
+  }
+
+  Future<void> _removeRetryMarker(Directory? directory) async {
+    if (directory == null) return;
+    try {
+      final marker = File('${directory.path}/$_retryMarkerName');
+      if (await marker.exists()) await marker.delete();
+    } on Object catch (error) {
+      if (kDebugMode) {
+        debugPrint('SensitiveDataCleaner: marker cleanup failed: $error');
+      }
     }
   }
 }

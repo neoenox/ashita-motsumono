@@ -335,7 +335,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirmed != true) return;
 
     try {
-      await appState.clearAllData();
+      await appState.clearAllData(awaitPostDeleteCleanup: true);
       await settings.clearLearnedItemLabels();
       if (!mounted) return;
       messenger.showSnackBar(const SnackBar(content: Text('登録データを削除しました')));

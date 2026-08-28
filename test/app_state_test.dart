@@ -35,6 +35,13 @@ class _FakeNotificationService extends NotificationService {
   }
 }
 
+class _FailingSensitiveDataCleaner extends SensitiveDataCleaner {
+  @override
+  Future<void> clearResidualFiles() async {
+    throw const SensitiveDataCleanupException(1);
+  }
+}
+
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
@@ -134,4 +141,19 @@ void main() {
       expect(loaded.documents, isEmpty);
     },
   );
+
+  test('strict clearAllData propagates sensitive cleanup failure', () async {
+    final store = await DriftStore.createInMemory();
+    final appState = AppState(
+      store: store,
+      notifications: _FakeNotificationService(),
+      sensitiveDataCleaner: _FailingSensitiveDataCleaner(),
+    );
+    await appState.load();
+
+    await expectLater(
+      appState.clearAllData(awaitPostDeleteCleanup: true),
+      throwsA(isA<SensitiveDataCleanupException>()),
+    );
+  });
 }
