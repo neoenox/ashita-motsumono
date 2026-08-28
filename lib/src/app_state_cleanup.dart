@@ -24,7 +24,10 @@ extension CleanupAppStateOperations on AppState {
         // 通常UIでは設定削除や成功表示をブロックしない。
         // テストや保守処理など、副作用完了まで必要な呼び出し元は明示的に待機できる。
         // 削除開始時に捕捉したTodoだけを取り消し、後から作成されたTodoの通知には触れない。
-        final cleanup = _runPostDeleteCleanup(todoIdsToCancel);
+        final cleanup = _runPostDeleteCleanup(
+          todoIdsToCancel,
+          strictSensitiveCleanup: awaitPostDeleteCleanup,
+        );
         if (awaitPostDeleteCleanup) {
           await cleanup;
         } else {
@@ -32,7 +35,10 @@ extension CleanupAppStateOperations on AppState {
         }
       });
 
-  Future<void> _runPostDeleteCleanup(Iterable<String> todoIds) async {
+  Future<void> _runPostDeleteCleanup(
+    Iterable<String> todoIds, {
+    required bool strictSensitiveCleanup,
+  }) async {
     await _runPostDeleteBestEffort('notification cancellation', () async {
       for (final todoId in todoIds) {
         await _notificationCoordinator.executeCanceledTodo(todoId);
@@ -42,10 +48,14 @@ extension CleanupAppStateOperations on AppState {
       'document image cleanup',
       _retryPendingFileCleanup,
     );
-    await _runPostDeleteBestEffort(
-      'residual file cleanup',
-      _sensitiveDataCleaner.clearResidualFiles,
-    );
+    if (strictSensitiveCleanup) {
+      await _sensitiveDataCleaner.clearResidualFiles();
+    } else {
+      await _runPostDeleteBestEffort(
+        'residual file cleanup',
+        _sensitiveDataCleaner.clearResidualFiles,
+      );
+    }
   }
 
   Future<void> _runPostDeleteBestEffort(
