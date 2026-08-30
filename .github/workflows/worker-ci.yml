@@ -8,13 +8,11 @@ on:
   push:
     branches:
       - master
-    paths:
-      - 'workers/gemini-proxy/**'
-      - '.github/workflows/worker-ci.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   worker-quality:
@@ -46,3 +44,46 @@ jobs:
 
       - name: Verify validated entrypoint is deployed
         run: grep -Fq 'main = "src/validated.ts"' wrangler.toml
+
+  record-master-status:
+    if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+    needs: worker-quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record master Worker CI status
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ needs.worker-quality.result }}
+          TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          state=failure
+          description="Worker CI failed"
+          if [[ "$RESULT" == "success" ]]; then
+            state=success
+            description="Worker CI passed"
+          fi
+
+          python3 - "$state" "$description" "$TARGET_URL" > status.json <<'PY'
+          import json
+          import sys
+
+          print(json.dumps({
+              "state": sys.argv[1],
+              "target_url": sys.argv[3],
+              "description": sys.argv[2],
+              "context": "worker-ci-master",
+          }))
+          PY
+
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --data @status.json \
+            "${{ github.api_url }}/repos/${{ github.repository }}/statuses/${{ github.sha }}"
