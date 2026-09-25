@@ -32,7 +32,7 @@ dependencies:
   receive_sharing_intent: 1.8.1 # 1.9.0 requires Android SDK 37 / AGP 9.2.1
   # Keep 10.3.10 until file_picker #1973's Android Kotlin plugin regression is fixed.
   file_picker: 10.3.10
-  pdfx: ^2.9.2
+  pdfx: ^2.11.0
 
 dev_dependencies:
   drift_dev: ^2.35.0
