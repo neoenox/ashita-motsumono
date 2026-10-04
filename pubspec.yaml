@@ -1,5 +1,5 @@
 name: ashita_motsumono
-version: 0.7.0+7
+version: 0.7.0+8
 publish_to: 'none'
 description: 園・学校・習い事のプリントから今日・明日の持ち物/提出物/集金をTodo化するMVP。
 
@@ -36,7 +36,8 @@ dependencies:
 
 dev_dependencies:
   drift_dev: ^2.35.0
-  # 2.16.1 requires analyzer >=13.3.0, which conflicts with the current Flutter SDK dependency set in CI.\n  build_runner: 2.15.0
+  # 2.16.1 requires analyzer >=13.3.0, which conflicts with the current Flutter SDK dependency set in CI.
+  build_runner: 2.15.0
   flutter_test:
     sdk: flutter
   integration_test:
