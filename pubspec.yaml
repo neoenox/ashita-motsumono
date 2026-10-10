@@ -35,7 +35,7 @@ dependencies:
   pdfx: ^2.11.0
 
 dev_dependencies:
-  drift_dev: ^2.35.0
+  drift_dev: ^2.35.1
   # 2.16.1 requires analyzer >=13.3.0, which conflicts with the current Flutter SDK dependency set in CI.\n  build_runner: 2.15.0
   flutter_test:
     sdk: flutter
