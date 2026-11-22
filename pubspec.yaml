@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   provider: ^6.1.5
-  shared_preferences: ^2.5.3
+  shared_preferences: ^2.5.6
   image_picker: ^1.2.1
   google_mlkit_text_recognition: ^0.15.1
   flutter_local_notifications: ^22.3.1
